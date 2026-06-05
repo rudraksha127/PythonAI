@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://mimran-khan.github.io/claude-code-source/sitemap.xml

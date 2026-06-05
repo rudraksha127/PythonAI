@@ -8,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import shlex
+
 from src.auth import interactive_login, logout, check_auth
 from src.auth.config import AuthConfig
 from src.auth.decorators import requires_auth
@@ -193,22 +195,67 @@ def ask(args: argparse.Namespace) -> int:
         results = execute_agents(args.question, swarm, ALL_AGENTS)
         
         print(f"\n[AI] SWARM RESULTS:")
-        print(f"{'─'*55}")
+        print(f"{'='*55}")
         for agent_name, output in results.items():
             print(f"[{agent_name.upper()}]:\n{output}\n")
-        print(f"{'─'*55}")
+        print(f"{'='*55}")
         return 0
     
-    # ── NEW: Tool-calling mode (--tools) ───────────────────────
+    # == Phase 6: Agentic Orchestration mode (--orchestrate) ===
+    if getattr(args, 'orchestrate', False):
+        from src.core.agents import AgentOrchestrator
+        from src.core.registry import get_registry
+        from src.core.tools import register_all_tools
+
+        registry = get_registry()
+        try:
+            register_all_tools(registry)
+        except Exception:
+            pass
+
+        print(f"  Provider: {args.model or 'auto'}")
+        print()
+
+        orchestrator = AgentOrchestrator(
+            registry=registry,
+            on_stream=lambda text: print(text, end="", flush=True),
+            verbose=True,
+        )
+
+        if args.question:
+            response = orchestrator.run(args.question)
+            print(f"\n{'='*55}")
+            print(orchestrator.summary())
+            print(f"{'='*55}\n")
+        else:
+            # Interactive mode
+            print("Entering agentic orchestration mode. Type 'exit' to quit.\n")
+            while True:
+                try:
+                    q = input("You: ").strip()
+                except (EOFError, KeyboardInterrupt):
+                    print("\n[Bye] Goodbye!")
+                    break
+                if not q or q.lower() in ("exit", "quit", "/exit"):
+                    break
+                if q.lower() == "/tools":
+                    for t in registry.list_all():
+                        print(f"  - {t.name}: {t.description}")
+                    continue
+                response = orchestrator.run(q)
+                print(orchestrator.summary())
+        return 0
+
+    # == Tool-calling mode (--tools) ===========================
     if getattr(args, 'tools', False):
-        from src.core.engine import ToolCallingEngine
+        from src.core.executor import ToolCallingEngine
         from src.core.registry import get_registry
         from src.core.tools import register_all_tools
 
         # Register tools on first use
         registry = get_registry()
         try:
-            register_all_core_tools(registry)
+            register_all_tools(registry)
         except Exception:
             pass  # Tools already registered
 
@@ -216,7 +263,7 @@ def ask(args: argparse.Namespace) -> int:
         print(f"{'='*55}")
         print(f"  Provider  : {args.model or 'auto'}")
         print(f"  Tools     : {registry.total_count} registered")
-        print(f"{'─'*55}\n")
+        print(f"{'='*55}\n")
 
         engine = ToolCallingEngine(
             provider="auto",
@@ -227,7 +274,7 @@ def ask(args: argparse.Namespace) -> int:
 
         if args.question:
             response = engine.run(args.question)
-            print(f"\n{'─'*55}")
+            print(f"\n{'='*55}")
             print(f"[Stats] {engine.get_stats_report()}")
             print(f"{'='*55}\n")
         else:
@@ -594,160 +641,30 @@ def hf_collect(args: argparse.Namespace) -> int:
 
 
 def serve_cmd(args: argparse.Namespace) -> int:
-    """Start a lightweight HTTP API server for the RAG assistant."""
+    """Start the PythonAI FastAPI server via uvicorn."""
     port = args.port
     host = args.host
 
-    print(f"[Serve] Starting PythonAI HTTP API on {host}:{port}...\n")
+    print(f"[Serve] Starting PythonAI FastAPI server on {host}:{port}...\n")
     print(f"  Endpoints:")
     print(f"    POST /ask          Ask a Python question")
     print(f"    POST /chat         Chat with history")
     print(f"    GET  /health       Health check")
-    print(f"    GET  /stats        Database statistics\n")
+    print(f"    GET  /stats        Database statistics")
+    print(f"    GET  /docs         Interactive API docs (Swagger UI)\n")
 
-    from http.server import HTTPServer, BaseHTTPRequestHandler
-    import json
-    import urllib.parse
+    try:
+        import uvicorn
+    except ImportError:
+        print("[FAIL] uvicorn is not installed. Run: pip install uvicorn")
+        return 1
 
-    # Lazy-load RAG db once and cache it
-    _db = None
-
-    def get_db():
-        nonlocal _db
-        if _db is None:
-            from src.rag.rag_engine import load_or_build_db
-            _db = load_or_build_db()
-        return _db
-
-    class RAGHandler(BaseHTTPRequestHandler):
-        def do_GET(self):
-            parsed = urllib.parse.urlparse(self.path)
-            if parsed.path == "/health":
-                self._json({"status": "ok", "version": VERSION})
-            elif parsed.path == "/stats":
-                try:
-                    coll, emb, bm, corp, cfile = get_db()
-                    self._json({
-                        "status": "ok",
-                        "chunks": coll.count(),
-                        "db_path": str(cfile),
-                    })
-                except Exception as e:
-                    self._json({"status": "error", "message": str(e)}, 500)
-            else:
-                self._json({"error": "Not found"}, 404)
-
-        def do_POST(self):
-            parsed = urllib.parse.urlparse(self.path)
-            content_len = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_len).decode("utf-8") if content_len > 0 else "{}"
-
-            try:
-                data = json.loads(body)
-            except json.JSONDecodeError:
-                self._json({"error": "Invalid JSON"}, 400)
-                return
-
-            if parsed.path == "/ask":
-                question = data.get("question", "")
-                if not question:
-                    self._json({"error": "Missing 'question' field"}, 400)
-                    return
-                try:
-                    coll, embedder, bm25, corpus, cfile = get_db()
-                    model = data.get("model", "")
-                    from src.rag.rag_engine import get_answer, DEFAULT_MODEL
-                    from src.rag.models import resolve_model, list_ollama_models
-                    available = list_ollama_models()
-                    selected = resolve_model(model or DEFAULT_MODEL, available=available)
-                    answer, docs = get_answer(
-                        question, coll, embedder, [],
-                        bm25=bm25, corpus_texts=corpus,
-                        use_query_expansion=data.get("query_expansion", False),
-                        use_mmr=data.get("mmr", False),
-                        mmr_lambda=data.get("mmr_lambda", 0.7),
-                        no_exec=True,
-                        model=selected,
-                    )
-                    self._json({
-                        "answer": answer,
-                        "sources": [
-                            {"title": d["title"], "version": d.get("version", ""), "category": d.get("category", "")}
-                            for d in docs
-                        ],
-                        "model": selected,
-                    })
-                except Exception as e:
-                    self._json({"error": str(e)}, 500)
-
-            elif parsed.path == "/chat":
-                question = data.get("question", "")
-                history = data.get("history", [])
-                if not question:
-                    self._json({"error": "Missing 'question' field"}, 400)
-                    return
-                try:
-                    coll, embedder, bm25, corpus, cfile = get_db()
-                    model = data.get("model", "")
-                    from src.rag.rag_engine import get_answer, DEFAULT_MODEL
-                    from src.rag.models import resolve_model, list_ollama_models
-                    available = list_ollama_models()
-                    selected = resolve_model(model or DEFAULT_MODEL, available=available)
-                    answer, docs = get_answer(
-                        question, coll, embedder, history[-10:],
-                        bm25=bm25, corpus_texts=corpus,
-                        use_query_expansion=data.get("query_expansion", False),
-                        use_mmr=data.get("mmr", False),
-                        mmr_lambda=data.get("mmr_lambda", 0.7),
-                        no_exec=True,
-                        model=selected,
-                    )
-                    self._json({
-                        "answer": answer,
-                        "sources": [
-                            {"title": d["title"], "version": d.get("version", ""), "category": d.get("category", "")}
-                            for d in docs
-                        ],
-                        "model": selected,
-                    })
-                except Exception as e:
-                    self._json({"error": str(e)}, 500)
-            else:
-                self._json({"error": "Not found"}, 404)
-
-        def _json(self, data: dict, status: int = 200):
-            self.send_response(status)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
-            self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
-
-        def log_message(self, format, *args):
-            print(f"[HTTP] {args[0]} {args[1]} {args[2]}")
-
-        def do_OPTIONS(self):
-            """Handle CORS preflight requests."""
-            self.send_response(200)
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-            self.end_headers()
-
-    server = HTTPServer((host, port), RAGHandler)
-    print(f"[OK] Server running at http://{host}:{port}")
-    print("     Press Ctrl+C to stop.\n")
-
-    # Graceful shutdown
-    def shutdown(sig, frame):
-        print("\n[Shutdown] Stopping server...")
-        server.shutdown()
-        print("[Bye] Server stopped.")
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, shutdown)
-    signal.signal(signal.SIGTERM, shutdown)
-
-    server.serve_forever()
+    uvicorn.run(
+        "src.api.server:app",
+        host=host,
+        port=port,
+        log_level="info",
+    )
     return 0
 
 
@@ -825,9 +742,9 @@ def export_cmd(args: argparse.Namespace) -> int:
 
 
 
-# ════════════════════════════════════════════
+# ============================================
 # Discovery Engine Commands
-# ════════════════════════════════════════════
+# ============================================
 
 def discovery_cmd(args: argparse.Namespace) -> int:
     """Discovery Engine — automated dataset discovery."""
@@ -924,9 +841,9 @@ def discovery_cmd(args: argparse.Namespace) -> int:
     return 1
 
 
-# ════════════════════════════════════════════
+# ============================================
 # Training Commands
-# ════════════════════════════════════════════
+# ============================================
 
 def training_cmd(args: argparse.Namespace) -> int:
     """Enhanced training pipeline management."""
@@ -1038,9 +955,9 @@ def training_cmd(args: argparse.Namespace) -> int:
     return 1
 
 
-# ════════════════════════════════════════════
+# ============================================
 # Phase 1 Data Collection Commands
-# ════════════════════════════════════════════
+# ============================================
 
 def phase1_cmd(args: argparse.Namespace) -> int:
     """Phase 1 data collection commands."""
@@ -1125,7 +1042,7 @@ def phase1_cmd(args: argparse.Namespace) -> int:
             records = mgr.list_by_phase(1)
         
         print(f"{'ID':40s} {'Status':16s} {'Lang':8s} {'Records':>12s} {'GB':>8s}")
-        print(f"{'─'*40} {'─'*16} {'─'*8} {'─'*12} {'─'*8}")
+        print(f"{'='*40} {'='*16} {'='*8} {'='*12} {'='*8}")
         for r in records:
             lang_str = ",".join(r.languages)[:8]
             rec_str = f"{r.actual_record_count:,}" if r.actual_record_count > 0 else "-"
@@ -1272,7 +1189,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     ask_parser = sub.add_parser("ask", help="Ask the offline RAG assistant or use tool-calling mode.")
     ask_parser.add_argument("question", nargs="?", default="")
-    ask_parser.add_argument("--agents", action="store_true", help="Enable multi-agent execution")
+    ask_parser.add_argument("--agents", action="store_true", help="Enable multi-agent execution (legacy swarm)")
+    ask_parser.add_argument("--orchestrate", action="store_true", help="Enable Phase 6 agentic orchestration (plan, delegate, synthesize)")
     ask_parser.add_argument("--tools", action="store_true", help="Use tool-calling mode (bash, read, write, edit, glob, grep, web)")
     ask_parser.add_argument("--no-auth", action="store_true", help="Skip authentication check")
     ask_parser.add_argument("--rebuild", action="store_true", help="Force rebuild database")
@@ -1415,7 +1333,7 @@ def build_parser() -> argparse.ArgumentParser:
     collect_parser.add_argument("--github-pages", type=int, default=3, help="GitHub pages (default: 3)")
     collect_parser.set_defaults(func=collect_data_cmd)
 
-    # ── Discovery Engine ────────────────────────────────────────
+    # == Discovery Engine ========================================
     discovery_parser = sub.add_parser("discovery", help="Automated dataset discovery engine.")
     discovery_sub = discovery_parser.add_subparsers(dest="action", required=True)
 
@@ -1448,7 +1366,7 @@ def build_parser() -> argparse.ArgumentParser:
     d_rank.add_argument("--top-n", type=int, default=20, help="Number of top results")
     d_rank.set_defaults(func=discovery_cmd)
 
-    # ── Training Management ─────────────────────────────────────
+    # == Training Management =====================================
     training_parser = sub.add_parser("training", help="Training configuration and checkpoint management.")
     training_sub = training_parser.add_subparsers(dest="action", required=True)
 
@@ -1478,7 +1396,7 @@ def build_parser() -> argparse.ArgumentParser:
     t_ckpt.add_argument("--dry-run", action="store_true", help="Dry-run mode for clean")
     t_ckpt.set_defaults(func=training_cmd)
 
-    # ── Phase 1 Data Collection ─────────────────────────────────
+    # == Phase 1 Data Collection =================================
     phase1_parser = sub.add_parser("data", help="Phase 1-4 data collection commands.")
     phase1_sub = phase1_parser.add_subparsers(dest="action", required=True)
 
@@ -1512,11 +1430,488 @@ def build_parser() -> argparse.ArgumentParser:
 
     phase1_parser.set_defaults(func=phase1_cmd)
 
+    # == Provider Commands (Phase 2) =============================
+    provider_parser = sub.add_parser("provider", help="Manage provider selection and routing.")
+    provider_sub = provider_parser.add_subparsers(dest="action", required=True)
+
+    p_list = provider_sub.add_parser("list", help="List all available providers")
+    p_list.set_defaults(func=provider_cmd)
+
+    p_current = provider_sub.add_parser("current", help="Show current provider selection")
+    p_current.set_defaults(func=provider_cmd)
+
+    p_switch = provider_sub.add_parser("switch", help="Switch to a different provider")
+    p_switch.add_argument("provider", help="Provider ID (e.g., openai, deepseek, gemini, ollama)")
+    p_switch.add_argument("--model", default="", help="Specific model to use")
+    p_switch.add_argument("--base-url", default="", help="Custom base URL")
+    p_switch.add_argument("--strategy", choices=["auto", "fastest", "cheapest", "best_quality", "local_only"], default="auto", help="Routing strategy")
+    p_switch.add_argument("--goal", choices=["coding", "latency", "balanced"], default="coding", help="Optimization goal")
+    p_switch.set_defaults(func=provider_cmd)
+
+    p_reset = provider_sub.add_parser("reset", help="Reset provider to auto-select")
+    p_reset.set_defaults(func=provider_cmd)
+
+    p_discover = provider_sub.add_parser("discover", help="Discover local Ollama models and endpoints")
+    p_discover.set_defaults(func=provider_cmd)
+
+    # == MCP Commands (Phase 4) ==================================
+    mcp_parser = sub.add_parser("mcp", help="Manage MCP server connections and tools.")
+    mcp_sub = mcp_parser.add_subparsers(dest="action", required=True)
+
+    mcp_list = mcp_sub.add_parser("list", help="List configured MCP servers")
+    mcp_list.add_argument("--connected", action="store_true", help="Show only connected servers")
+    mcp_list.set_defaults(func=mcp_cmd)
+
+    mcp_add = mcp_sub.add_parser("add", help="Add an MCP server configuration")
+    mcp_add.add_argument("name", help="Server name")
+    mcp_add.add_argument("--command", default="", help="Stdio command (e.g., npx)")
+    mcp_add.add_argument("--args", default="", help="Command arguments as a single quoted string, e.g. --args \"-y @anthropic/mcp-fetch\"")
+    mcp_add.add_argument("--url", default="", help="SSE/HTTP URL (for remote servers)")
+    mcp_add.add_argument("--type", choices=["stdio", "sse", "http"], default="stdio", help="Transport type")
+    mcp_add.add_argument("--scope", choices=["project", "local", "user"], default="local", help="Config scope")
+    mcp_add.set_defaults(func=mcp_cmd)
+
+    mcp_remove = mcp_sub.add_parser("remove", help="Remove an MCP server configuration")
+    mcp_remove.add_argument("name", help="Server name to remove")
+    mcp_remove.set_defaults(func=mcp_cmd)
+
+    mcp_connect = mcp_sub.add_parser("connect", help="Connect to all MCP servers and show tools")
+    mcp_connect.add_argument("--server", default="", help="Connect to a specific server")
+    mcp_connect.set_defaults(func=mcp_cmd)
+
+    mcp_discover = mcp_sub.add_parser("discover", help="Discover MCP config files and env settings")
+    mcp_discover.set_defaults(func=mcp_cmd)
+
+    mcp_start = mcp_sub.add_parser("start", help="Start PythonAI as an MCP server (for external tools)")
+    mcp_start.add_argument("--transport", choices=["stdio", "sse"], default="stdio", help="Transport type")
+    mcp_start.add_argument("--port", type=int, default=8766, help="Port for SSE mode")
+    mcp_start.add_argument("--host", default="127.0.0.1", help="Host for SSE mode")
+    mcp_start.set_defaults(func=mcp_cmd)
+
+    # == Models Command ==========================================
+    models_parser = sub.add_parser("models", help="List known models and their capabilities.")
+    models_parser.add_argument("--provider", default="", help="Filter by provider (e.g., openai, deepseek, ollama)")
+    models_parser.set_defaults(func=models_cmd)
+
     return parser
 
 
 def parse_args() -> argparse.Namespace:
     return build_parser().parse_args()
+
+
+# ============================================
+# Provider Commands (Phase 2)
+# ============================================
+
+def provider_cmd(args: argparse.Namespace) -> int:
+    """Manage provider selection and routing."""
+    from src.core.providers import (
+        ProviderRouter,
+        ProfileManager,
+        ProviderDiscovery,
+        get_model_info,
+        ALL_MODELS,
+    )
+
+    router = ProviderRouter()
+    profile_mgr = ProfileManager()
+
+    if args.action == "list":
+        statuses = router.get_provider_status()
+        print(f"\n[Provider] Available Providers")
+        print(f"{'='*60}")
+        print(f"  {'ID':14s} {'Status':10s} {'Default Model':30s}")
+        print(f"  {'='*14} {'='*10} {'='*30}")
+        for s in statuses:
+            status_str = "[OK]" if s["available"] else "[--]"
+            print(f"  {s['id']:14s} {status_str:10s} {s['default_model']:30s}")
+        print()
+        return 0
+
+    if args.action == "current":
+        current = profile_mgr.get_current()
+        print(f"\n[Provider] Current Selection")
+        print(f"{'='*50}")
+        print(f"  Provider : {current['provider']}")
+        print(f"  Model    : {current['model'] or '(default)'}")
+        print(f"  Label    : {current['label']}")
+        if current.get('base_url'):
+            print(f"  Base URL : {current['base_url']}")
+        print(f"  Strategy : {current.get('strategy', 'auto')}")
+        print(f"  Saved    : {current.get('is_saved', False)}")
+        print()
+
+        # Show route result
+        result = router.route(
+            provider=current['provider'],
+            model=current['model'],
+        )
+        if result.error:
+            print(f"  [!] {result.error}")
+        else:
+            print(f"  Active Route:")
+            print(f"    Provider: {result.provider}")
+            print(f"    Model   : {result.model}")
+            print(f"    API     : {result.base_url}")
+            print(f"    Key     : {'...' + result.api_key[-4:] if result.api_key else 'N/A'}")
+            print(f"    Type    : {result.api_type}")
+        print()
+        return 0
+
+    if args.action == "switch":
+        provider = args.provider
+        if not provider:
+            print("[Error] Please specify a provider. Use: python -m src.cli provider switch <provider>")
+            return 1
+
+        # Check provider exists
+        provider_info = None
+        from src.core.providers import get_registry
+        provider_info = get_registry().get_provider(provider)
+
+        if not provider_info:
+            print(f"[Error] Unknown provider '{provider}'. Use 'python -m src.cli provider list' to see available.")
+            return 1
+
+        # Check key availability
+        if provider_info.requires_key and not router.has_key(provider):
+            print(f"[!] No API key found for '{provider}'. Set {provider_info.env_key} env var or use:")
+            print(f"    python -m src.cli apikeys set {provider} <your-key>")
+            return 1
+
+        # Save profile
+        profile = profile_mgr.set_provider(
+            provider=provider,
+            model=args.model or "",
+            base_url=args.base_url or "",
+            strategy=args.strategy or "auto",
+            goal=args.goal or "coding",
+        )
+        print(f"[OK] Switched to provider: {profile.label} ({profile.provider})")
+        if profile.model:
+            print(f"     Model: {profile.model}")
+        print(f"     Saved to: {profile_mgr.profile_path}")
+        print()
+        print(f"  Next: Run 'python -m src.cli ask \"your question\" --tools' to use with tools")
+        print(f"        Or run 'python -m src.cli ask \"your question\"' for RAG mode")
+        return 0
+
+    if args.action == "reset":
+        profile_mgr.delete()
+        print("[OK] Provider profile cleared. Will auto-select provider on next run.")
+        return 0
+
+    if args.action == "discover":
+        discovery = ProviderDiscovery()
+        print("[Provider] Discovering local models...")
+        print()
+
+        # Ollama
+        ollama = discovery.discover_ollama()
+        if ollama:
+            print(f"  Ollama Models ({len(ollama)}):")
+            for m in ollama:
+                print(f"    - {m['name']}")
+            print()
+        else:
+            print("  Ollama: Not found or no models installed.")
+            print()
+
+        # Local endpoints
+        endpoints = discovery.detect_local_endpoints()
+        if endpoints:
+            print(f"  Local Endpoints ({len(endpoints)}):")
+            for ep in endpoints:
+                print(f"    - {ep['label']}: {ep['base_url']}")
+            print()
+
+        # Available cloud providers
+        statuses = router.get_provider_status()
+        cloud = [s for s in statuses if not s["is_local"] and s["available"]]
+        if cloud:
+            print(f"  Cloud Providers with keys ({len(cloud)}):")
+            for s in cloud:
+                print(f"    - {s['label']} ({s['id']}): {s['default_model']}")
+            print()
+
+        return 0
+
+    return 1
+
+
+# ============================================
+# MCP Commands (Phase 4)
+# ============================================
+
+def mcp_cmd(args: argparse.Namespace) -> int:
+    """Manage MCP server connections, configs, and tools."""
+    from src.core.mcp import (
+        MCPClient,
+        MCPConfigManager,
+        MCPScope,
+        StdioConfig,
+        SSEConfig,
+        HTTPConfig,
+        TransportType,
+        discover_mcp_servers,
+        find_mcp_configs,
+        find_mcp_json_files,
+    )
+    from src.core.registry import get_registry
+
+    if args.action == "list":
+        config_mgr = MCPConfigManager()
+        summary = config_mgr.summary()
+
+        print(f"\n[MCP] Configured Servers ({summary['total']})")
+        print(f"{'='*60}")
+
+        if not summary['servers']:
+            print("  No MCP servers configured.")
+            print("  Run 'python -m src.cli mcp add <name> --command <cmd>' to add one.")
+        else:
+            for s in summary['servers']:
+                print(f"  {s['name']:25s} {s['type']:25s} [{s['scope']}]")
+
+        # Show global config files
+        json_files = find_mcp_json_files()
+        if json_files:
+            print(f"\n  Config files:")
+            for f in json_files:
+                print(f"    {f}")
+        print()
+        return 0
+
+    if args.action == "discover":
+        print(f"\n[MCP] Discovery")
+        print(f"{'='*60}")
+
+        # Config files
+        json_files = find_mcp_json_files()
+        if json_files:
+            print(f"\n  Config files found:")
+            for f in json_files:
+                size = f.stat().st_size
+                print(f"    - {f} ({size} bytes)")
+        else:
+            print(f"\n  No .mcp.json or mcp.json config files found.")
+
+        # Env vars
+        import os
+        env_servers = {}
+        for key in os.environ:
+            if key.startswith("PYTHONAI_MCP_") and key.endswith("_COMMAND"):
+                name = key[len("PYTHONAI_MCP_"):-len("_COMMAND")].lower()
+                env_servers[name] = os.environ[key]
+
+        if env_servers:
+            print(f"\n  Environment-defined servers ({len(env_servers)}):")
+            for name, cmd in env_servers.items():
+                print(f"    - {name}: {cmd}")
+
+        # Registered servers from config
+        config_mgr = MCPConfigManager()
+        servers = config_mgr.get_servers()
+        if servers:
+            print(f"\n  Registered servers ({len(servers)}):")
+            for name in servers:
+                print(f"    - {name}")
+        print()
+        return 0
+
+    if args.action == "add":
+        name = args.name
+        transport_type = args.type or "stdio"
+
+        if transport_type == "stdio":
+            if not args.command:
+                print("[Error] --command is required for stdio servers")
+                return 1
+            # Split args string using shlex to handle quoted strings
+            # e.g. --args "-y @server/name C:\Program Files\dir"
+            # preserves "C:\Program Files\dir" as a single arg
+            args_list = shlex.split(args.args) if args.args else []
+            config = StdioConfig(command=args.command, args=args_list)
+        elif transport_type == "sse":
+            if not args.url:
+                print("[Error] --url is required for SSE servers")
+                return 1
+            config = SSEConfig(url=args.url)
+        elif transport_type == "http":
+            if not args.url:
+                print("[Error] --url is required for HTTP servers")
+                return 1
+            config = HTTPConfig(url=args.url)
+        else:
+            print(f"[Error] Unsupported transport: {transport_type}")
+            return 1
+
+        scope_map = {
+            "project": MCPScope.PROJECT,
+            "local": MCPScope.LOCAL,
+            "user": MCPScope.USER,
+        }
+        scope = scope_map.get(args.scope or "local", MCPScope.LOCAL)
+
+        config_mgr = MCPConfigManager()
+        config_mgr.add(name, config, scope)
+
+        print(f"[OK] MCP server '{name}' added ({transport_type}, scope: {scope.value})")
+        print(f"  Run 'python -m src.cli mcp connect --server {name}' to connect")
+        return 0
+
+    if args.action == "remove":
+        name = args.name
+        config_mgr = MCPConfigManager()
+        if config_mgr.remove(name):
+            print(f"[OK] MCP server '{name}' removed")
+        else:
+            print(f"[Error] MCP server '{name}' not found")
+            return 1
+        return 0
+
+    if args.action == "connect":
+        if args.server:
+            server_name = args.server
+            config_mgr = MCPConfigManager()
+            config = config_mgr.get(server_name)
+            if not config:
+                print(f"[Error] Server '{server_name}' not found in config")
+                print("  Run 'python -m src.cli mcp discover' to see available servers")
+                return 1
+
+            print(f"\n[MCP] Connecting to '{server_name}'...")
+
+            from src.core.mcp import MCPClient
+            client = MCPClient()
+            connection = client.connect(config, server_name)
+
+            if connection.state.name == "CONNECTED":
+                print(f"  [OK] Connected!")
+                print(f"  Tools: {len(connection.tools)}")
+                print(f"  Resources: {len(connection.resources)}")
+                print()
+
+                if connection.tools:
+                    print(f"  {'Tool Name':45s} {'Description'}")
+                    print(f"  {'='*45} {'='*40}")
+                    for t in connection.tools:
+                        desc = t.description[:50] + "..." if len(t.description) > 50 else t.description
+                        print(f"  {t.name:45s} {desc}")
+
+                # Register tools in registry
+                from src.core.registry import get_registry
+                registry = get_registry()
+                count = registry.register_mcp_server(connection)
+                print(f"\n  Registered {count} MCP tools in PythonAI registry")
+                print(f"  Total tools: {registry.total_count}")
+            else:
+                print(f"  [FAIL] {connection.error}")
+            print()
+        else:
+            print(f"\n[MCP] Connecting to all configured servers...")
+            connections = discover_mcp_servers()
+
+            connected = 0
+            total_tools = 0
+            for name, conn in connections.items():
+                if conn.state.name == "CONNECTED":
+                    connected += 1
+                    total_tools += len(conn.tools)
+                    # Register tools
+                    from src.core.registry import get_registry
+                    get_registry().register_mcp_server(conn)
+                    print(f"  [OK] {name}: {len(conn.tools)} tools, {len(conn.resources)} resources")
+                else:
+                    print(f"  [--] {name}: {conn.error or 'failed'}")
+
+            print(f"\n  Connected: {connected}/{len(connections)}")
+            print(f"  Total MCP tools registered: {total_tools}")
+            print()
+        return 0
+
+    if args.action == "start":
+        """Start PythonAI as an MCP server."""
+        from src.core.mcp import MCPServer, start_mcp_server
+        from src.core.registry import get_registry
+        from src.core.tools import register_all_tools
+
+        # Make sure built-in tools are registered
+        registry = get_registry()
+        try:
+            register_all_tools(registry)
+        except Exception:
+            pass
+
+        # Create the MCP server with tool discovery function
+        def get_tools_list():
+            registry = get_registry()
+            return [t.to_dict() for t in registry.list_all()]
+
+        server = MCPServer(
+            name="pythonai",
+            version="2.0.0",
+            get_tools_fn=get_tools_list,
+        )
+
+        print(f"\n[MCP] Starting PythonAI MCP server ({args.transport})...")
+        print(f"  Tools available: {len(get_tools_list())}")
+
+        if args.transport == "sse":
+            print(f"  SSE endpoint: http://{args.host}:{args.port}/sse")
+            print(f"  Message endpoint: http://{args.host}:{args.port}/message")
+            print(f"  Press Ctrl+C to stop\n")
+        else:
+            print(f"  Stdio mode — reading from stdin, writing to stdout")
+            print(f"  Use with: claude mcp add pythonai -- python -m src.cli mcp start")
+            print()
+
+        start_mcp_server(
+            server,
+            transport=args.transport,
+            host=args.host,
+            port=args.port,
+        )
+        return 0
+
+    return 1
+
+
+def models_cmd(args: argparse.Namespace) -> int:
+    """List available models."""
+    from src.core.providers import get_registry
+
+    registry = get_registry()
+    provider = args.provider
+    models = registry.list_models(provider=provider if provider else None)
+
+    if provider:
+        models = [m for m in models if m.provider == provider]
+        if not models:
+            print(f"[Models] No models found for provider '{provider}'")
+            return 1
+
+    print(f"\n[Models] Known Models ({len(models)})")
+    print(f"{'='*70}")
+    print(f"  {'Model ID':30s} {'Provider':12s} {'Context':10s} {'Capabilities'}")
+    print(f"  {'='*30} {'='*12} {'='*10} {'='*20}")
+
+    for m in models:
+        caps = []
+        if m.capabilities.vision: caps.append("vision")
+        if m.capabilities.reasoning: caps.append("reasoning")
+        if "coding" in m.classification: caps.append("coding")
+        cap_str = ", ".join(caps) if caps else "chat"
+
+        ctx = f"{m.context_window:,}"
+        default_mark = " [D]" if m.default_model else ""
+        print(f"  {m.id:30s} {m.provider:12s} {ctx:10s} {cap_str}{default_mark}")
+
+    print()
+    print("  [D] = Default model for provider")
+    print()
+    return 0
 
 
 def main() -> None:

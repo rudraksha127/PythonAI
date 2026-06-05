@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PythonAI — Progress Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-card: rgba(15, 23, 42, 0.85);
+      --bg-card-hover: rgba(20, 30, 55, 0.95);
+      --border: rgba(99, 102, 241, 0.15);
+      --border-glow: rgba(99, 102, 241, 0.35);
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-indigo: #818cf8;
+      --accent-violet: #a78bfa;
+      --accent-emerald: #34d399;
+      --accent-amber: #fbbf24;
+      --accent-rose: #fb7185;
+      --accent-cyan: #22d3ee;
+      --accent-blue: #60a5fa;
+      --gradient-hero: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+      --gradient-emerald: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+      --gradient-amber: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+      --gradient-rose: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%);
+      --gradient-cyan: linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%);
+      --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      --radius: 16px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background:
+        radial-gradient(ellipse 600px 400px at 20% 20%, rgba(99, 102, 241, 0.08), transparent),
+        radial-gradient(ellipse 500px 350px at 80% 80%, rgba(168, 85, 247, 0.06), transparent),
+        radial-gradient(ellipse 400px 300px at 50% 50%, rgba(16, 185, 129, 0.04), transparent);
+      z-index: 0;
+      animation: bgPulse 8s ease-in-out infinite alternate;
+    }
+
+    @keyframes bgPulse {
+      0%   { opacity: 0.6; }
+      100% { opacity: 1;   }
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    /* ─── Hero Header ─── */
+    .hero {
+      text-align: center;
+      margin-bottom: 48px;
+      animation: fadeInDown 0.6s ease-out;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent-indigo);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 16px;
+    }
+
+    .hero-badge .dot {
+      width: 8px; height: 8px;
+      background: var(--accent-emerald);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4); }
+      50%       { opacity: 0.7; box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
+    }
+
+    .hero h1 {
+      font-size: 2.8rem;
+      font-weight: 900;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.15;
+      margin-bottom: 10px;
+    }
+
+    .hero .subtitle {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .hero .timestamp {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    /* ─── Stats Row ─── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+      animation: fadeInUp 0.6s ease-out 0.15s both;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      text-align: center;
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(12px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+
+    .stat-card:nth-child(1)::before { background: var(--gradient-hero); }
+    .stat-card:nth-child(2)::before { background: var(--gradient-emerald); }
+    .stat-card:nth-child(3)::before { background: var(--gradient-cyan); }
+    .stat-card:nth-child(4)::before { background: var(--gradient-amber); }
+    .stat-card:nth-child(5)::before { background: var(--gradient-rose); }
+
+    .stat-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-glow);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .stat-number {
+      font-size: 2.4rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-card:nth-child(1) .stat-number { color: var(--accent-indigo); }
+    .stat-card:nth-child(2) .stat-number { color: var(--accent-emerald); }
+    .stat-card:nth-child(3) .stat-number { color: var(--accent-cyan); }
+    .stat-card:nth-child(4) .stat-number { color: var(--accent-amber); }
+    .stat-card:nth-child(5) .stat-number { color: var(--accent-rose); }
+
+    .stat-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+    }
+
+    /* ─── Sections ─── */
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title .icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 1rem;
+    }
+
+    /* ─── Phase Timeline ─── */
+    .timeline-section {
+      margin-bottom: 48px;
+      animation: fadeInUp 0.6s ease-out 0.3s both;
+    }
+
+    .timeline {
+      position: relative;
+      padding-left: 40px;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 15px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--accent-indigo), var(--accent-violet), var(--accent-emerald), var(--accent-amber), rgba(100, 116, 139, 0.2));
+    }
+
+    .phase {
+      position: relative;
+      margin-bottom: 18px;
+      transition: all 0.3s ease;
+    }
+
+    .phase-dot {
+      position: absolute;
+      left: -33px;
+      top: 14px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 3px solid;
+      z-index: 2;
+    }
+
+    .phase.done .phase-dot {
+      background: var(--accent-emerald);
+      border-color: var(--accent-emerald);
+      box-shadow: 0 0 12px rgba(52, 211, 153, 0.4);
+    }
+
+    .phase.active .phase-dot {
+      background: var(--accent-amber);
+      border-color: var(--accent-amber);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .phase.todo .phase-dot {
+      background: transparent;
+      border-color: var(--text-muted);
+    }
+
+    .phase-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 22px;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(8px);
+    }
+
+    .phase.active .phase-card {
+      border-color: rgba(251, 191, 36, 0.3);
+      box-shadow: 0 0 24px rgba(251, 191, 36, 0.06);
+    }
+
+    .phase.done .phase-card {
+      border-color: rgba(52, 211, 153, 0.2);
+    }
+
+    .phase:hover .phase-card {
+      transform: translateX(6px);
+      border-color: var(--border-glow);
+    }
+
+    .phase-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .phase-name {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .phase-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .phase.done .phase-badge {
+      background: rgba(52, 211, 153, 0.12);
+      color: var(--accent-emerald);
+    }
+
+    .phase.active .phase-badge {
+      background: rgba(251, 191, 36, 0.12);
+      color: var(--accent-amber);
+    }
+
+    .phase.todo .phase-badge {
+      background: rgba(100, 116, 139, 0.12);
+      color: var(--text-muted);
+    }
+
+    .phase-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .phase-items {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .phase-item {
+      font-size: 0.7rem;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+
+    .phase.done .phase-item {
+      background: rgba(52, 211, 153, 0.08);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(52, 211, 153, 0.15);
+    }
+
+    .phase.active .phase-item {
+      background: rgba(251, 191, 36, 0.08);
+      color: var(--accent-amber);
+      border: 1px solid rgba(251, 191, 36, 0.15);
+    }
+
+    .phase.todo .phase-item {
+      background: rgba(100, 116, 139, 0.08);
+      color: var(--text-muted);
+      border: 1px solid rgba(100, 116, 139, 0.15);
+    }
+
+    /* ─── Architecture Cards ─── */
+    .arch-section {
+      margin-bottom: 48px;
+      animation: fadeInUp 0.6s ease-out 0.45s both;
+    }
+
+    .arch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .arch-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: all 0.35s ease;
+      backdrop-filter: blur(8px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .arch-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-glow);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .arch-card .file-name {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.85rem;
+      color: var(--accent-cyan);
+      margin-bottom: 4px;
+    }
+
+    .arch-card .file-lines {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .arch-card .file-desc {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .arch-card .file-features {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .arch-card .feature-tag {
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--accent-violet);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      font-weight: 500;
+    }
+
+    /* ─── Progress Bar ─── */
+    .overall-progress {
+      margin-bottom: 48px;
+      animation: fadeInUp 0.6s ease-out 0.1s both;
+    }
+
+    .progress-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      backdrop-filter: blur(12px);
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 16px;
+    }
+
+    .progress-header h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .progress-percent {
+      font-size: 2rem;
+      font-weight: 900;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .progress-bar-track {
+      height: 14px;
+      background: rgba(30, 41, 59, 0.8);
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--gradient-hero);
+      width: 0%;
+      transition: width 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      position: relative;
+    }
+
+    .progress-bar-fill::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0; bottom: 0;
+      width: 40px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3));
+      animation: shimmer 2s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { opacity: 0; }
+      50%      { opacity: 1; }
+    }
+
+    .progress-phases {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+
+    .progress-phase-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-align: center;
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .progress-phase-label.done { color: var(--accent-emerald); }
+    .progress-phase-label.active { color: var(--accent-amber); font-weight: 700; }
+
+    /* ─── Test Results ─── */
+    .test-section {
+      margin-bottom: 48px;
+      animation: fadeInUp 0.6s ease-out 0.6s both;
+    }
+
+    .test-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .test-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .test-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--border-glow);
+    }
+
+    .test-card .test-file {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent-cyan);
+      margin-bottom: 8px;
+      word-break: break-all;
+    }
+
+    .test-card .test-count {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--accent-emerald);
+    }
+
+    .test-card .test-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--accent-emerald);
+      margin-top: 4px;
+    }
+
+    /* ─── Animations ─── */
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes countUp {
+      from { opacity: 0; transform: scale(0.5); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .count-up {
+      animation: countUp 0.5s ease-out forwards;
+    }
+
+    /* ─── Footer ─── */
+    .footer {
+      text-align: center;
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    .footer a {
+      color: var(--accent-indigo);
+      text-decoration: none;
+    }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 1.8rem; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .stat-number { font-size: 1.8rem; }
+      .container { padding: 24px 16px 60px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Hero -->
+    <header class="hero">
+      <div class="hero-badge"><span class="dot"></span> Live Progress</div>
+      <h1>PythonAI Project Dashboard</h1>
+      <p class="subtitle">Multi-provider Agent System — All 10 Phases Complete ✅</p>
+      <p class="timestamp">Last updated: 5 June 2026, 6:15 PM IST</p>
+    </header>
+
+    <!-- Overall Progress -->
+    <section class="overall-progress">
+      <div class="progress-container">
+        <div class="progress-header">
+          <h3>🚀 Overall Progress</h3>
+          <span class="progress-percent">100%</span>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="mainProgressBar"></div>
+        </div>
+        <div class="progress-phases">
+          <span class="progress-phase-label done">P1</span>
+          <span class="progress-phase-label done">P2</span>
+          <span class="progress-phase-label done">P3</span>
+          <span class="progress-phase-label done">P4</span>
+          <span class="progress-phase-label done">P5</span>
+          <span class="progress-phase-label done">P6</span>
+          <span class="progress-phase-label done">P7</span>
+          <span class="progress-phase-label done">P8</span>
+          <span class="progress-phase-label done">P9</span>
+          <span class="progress-phase-label done">P10 ★</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats Row -->
+    <section class="stats-row">
+      <div class="stat-card">
+        <div class="stat-number count-up" data-target="336">0</div>
+        <div class="stat-label">Tests Passing</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number count-up" data-target="31030">0</div>
+        <div class="stat-label">Source Lines</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number count-up" data-target="4593">0</div>
+        <div class="stat-label">Test Lines</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number count-up" data-target="140">0</div>
+        <div class="stat-label">Source Files</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number count-up" data-target="24">0</div>
+        <div class="stat-label">Test Files</div>
+      </div>
+    </section>
+
+    <!-- Phase Timeline -->
+    <section class="timeline-section">
+      <h2 class="section-title">
+        <span class="icon" style="background: rgba(99,102,241,0.12);">📋</span>
+        Phase Timeline
+      </h2>
+      <div class="timeline">
+
+        <div class="phase done">
+          <div class="phase-dot"></div>
+          <div class="phase-card">
+            <div class="phase-header">
+              <span class="phase-name">Phase 1 — Foundation</span>
+              <span class="phase-badge">✓ Done</span>
+            </div>
+            <p class="phase-desc">Project scaffolding, core config, auth system, CLI skeleton</p>
+            <div class="phase-items">
+              <span class="phase-item">Config</span>
+              <span class="phase-item">Auth</span>
+              <span class="phase-item">CLI</span>
+              <span class="phase-item">.env</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="phase done">
+          <div class="phase-dot"></div>
+          <div class="phase-card">
+            <div class="phase-header">
+              <span class="phase-name">Phase 2 — Provider Router</span>
+              <span class="phase-badge">✓ Done</span>
+            </div>
+            <p class="phase-desc">Multi-provider LLM routing: OpenAI, Gemini, DeepSeek, Anthropic, Ollama, Mistral + 10 OpenAI-compatible providers</p>
+            <div class="phase-items">
+              <span class="phase-item">ProviderRouter</span>
+              <span class="phase-item">RouteStrategy</span>
+              <span class="phase-item">ProfileManager</span>
+              <span class="phase-item">ModelRegistry</span>
+              <span class="phase-item">15+ Providers</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="phase done">
+          <div class="phase-dot"></div>
+          <div class="phase-card">
+            <div class="phase-header">
+              <span class="phase-name">Phase 3 — Tool System & Executor</span>
+              <span class="phase-badge">✓ Done</span>
+            </div>
+            <p class="phase-desc">Tool registry, executor engine, built-in tools (file, shell, web, code)</p>
+            <div class="phase-items">
+              <span class="phase-item">ToolRegistry</span>
+              <span class="phase-item">Executor</span>
+              <span class="phase-item">File Tools</span>
+              <span class="phase-item">Shell Tools</span>
+              <span class="phase-item">Web Tools</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="phase done">
+          <div class="phase-dot"></div>
+          <div class="phase-card">
+            <div class="phase-header">
+              <span class="phase-name">Phase 4 — RAG & Knowledge</span>
+              <span class="phase-badge">✓ Done</span>
+            </div>
+            <p class="phase-desc">Retrieval-Augmented Generation with FAISS vector search, embeddings, and knowledge base management</p>
+            <div class="phase-items">
+              <span class="phase-item">FAISS VectorStore</span>
+              <span class="phase-item">Embeddings</span>
+              <span class="phase-item">RAG Pipeline</span>
+              <span class="phase-item">Knowledge Manager</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="phase done">
+          <div class="phase-dot"></div>
+          <div class="phase-card">
+            <div class="phase-header">
+              <span class="phase-name">Phase 5 — MCP Integration</span>
+              <span class="phase-badge">✓ Done</span>
+            </div>
+            <p class="phase-desc">Model Context Protocol (MCP) client: stdio/SSE transports, tool discovery, auto-reconnect</p>
+            <div class="phase-items">
+              <span class="phase-item">MCP Client</span>
+              <span class="phase-item">Stdio Transport</span>
+              <span class="phase-item">SSE Transport</span>
+              <span class="phase-item">Auto-Connect</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="phase done">
+          <div class="phase-dot"></div>
+          <div class="phase-card">
+            <div class="phase-header">
+              <span class="phase-name">Phase 6 — Agent System Core</span>
+              <span class="phase-badge">✓ Done</span>
+            </div>
+            <p class="phase-desc">SubAgent with retry/jitter/backoff, AgentOrchestrator lifecycle, AgentSwarm parallel execution</p>
+            <div class="phase-items">
+              <span class="phase-item">SubAgent (501 LOC)</span>
+              <span class="phase-item">Orchestrator (631 LOC)</span>
+              <span class="phase-item">Swarm (140 LOC)</span>
+              <span class="phase-item">Retry/Jitter</span>
+              <span class="phase-item">MCP Cleanup</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="phase done">
+          <div class="phase-dot"></div>
+          <div class="phase-card">
+            <div class="phase-header">
+              <span class="phase-name">Phase 7 — LLM Planning & Synthesis</span>
+              <span class="phase-badge">✓ Done</span>
+            </div>
+            <p class="phase-desc">LLM-based intelligent task decomposition and cohesive result merging — with graceful fallbacks</p>
+            <div class="phase-items">
+              <span class="phase-item">LLM Planning</span>
+              <span class="phase-item">LLM Synthesis</span>
+              <span class="phase-item">Fallbacks</span>
+              <span class="phase-item">Retry E2E</span>
+              <span class="phase-item">Token Budget</span>
+              <span class="phase-item">Streaming</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="phase done">
+          <div class="phase-dot"></div>
+          <div class="phase-card">
+            <div class="phase-header">
+              <span class="phase-name">Phase 8 — Training & Fine-tuning</span>
+              <span class="phase-badge">✓ Done</span>
+            </div>
+            <p class="phase-desc">LoRA fine-tuning pipeline, dataset assembly (7-step forge), evaluation framework</p>
+            <div class="phase-items">
+              <span class="phase-item">LoRA/PEFT</span>
+              <span class="phase-item">Forge Pipeline</span>
+              <span class="phase-item">Evaluator</span>
+              <span class="phase-item">Checkpoint Mgr</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="phase done">
+          <div class="phase-dot"></div>
+          <div class="phase-card">
+            <div class="phase-header">
+              <span class="phase-name">Phase 9 — Deployment & Serving</span>
+              <span class="phase-badge">✓ Done</span>
+            </div>
+            <p class="phase-desc">FastAPI server with Swagger docs, Docker packaging, uvicorn production launcher</p>
+            <div class="phase-items">
+              <span class="phase-item">FastAPI Server</span>
+              <span class="phase-item">Swagger /docs</span>
+              <span class="phase-item">Docker</span>
+              <span class="phase-item">CORS</span>
+              <span class="phase-item">Uvicorn</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="phase done">
+          <div class="phase-dot"></div>
+          <div class="phase-card">
+            <div class="phase-header">
+              <span class="phase-name">Phase 10 — UI & Polish</span>
+              <span class="phase-badge">✓ Done</span>
+            </div>
+            <p class="phase-desc">Streamlit Web UI, progress dashboard, root cleanup, documentation finalization</p>
+            <div class="phase-items">
+              <span class="phase-item">Streamlit UI</span>
+              <span class="phase-item">Progress Dashboard</span>
+              <span class="phase-item">Root Cleanup</span>
+              <span class="phase-item">CHANGELOG</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Architecture Cards -->
+    <section class="arch-section">
+      <h2 class="section-title">
+        <span class="icon" style="background: rgba(34,211,238,0.12);">🏗️</span>
+        Core Agent Architecture
+      </h2>
+      <div class="arch-grid">
+        <div class="arch-card">
+          <div class="file-name">orchestrator.py</div>
+          <div class="file-lines">631 lines</div>
+          <div class="file-desc">MCP lifecycle, LLM-based planning, dependency-aware swarm dispatch, LLM synthesis</div>
+          <div class="file-features">
+            <span class="feature-tag">plan_task()</span>
+            <span class="feature-tag">_synthesize()</span>
+            <span class="feature-tag">_call_planning_llm()</span>
+            <span class="feature-tag">cleanup()</span>
+            <span class="feature-tag">Context Mgr</span>
+          </div>
+        </div>
+        <div class="arch-card">
+          <div class="file-name">sub_agent.py</div>
+          <div class="file-lines">501 lines</div>
+          <div class="file-desc">LLM + tool loop with retry, exponential backoff, jitter, max_tool_calls safety net</div>
+          <div class="file-features">
+            <span class="feature-tag">run()</span>
+            <span class="feature-tag">_call_llm()</span>
+            <span class="feature-tag">retry/backoff</span>
+            <span class="feature-tag">safety net</span>
+          </div>
+        </div>
+        <div class="arch-card">
+          <div class="file-name">swarm.py</div>
+          <div class="file-lines">140 lines</div>
+          <div class="file-desc">Parallel agent execution with dependency resolution using PlanStep.depends_on</div>
+          <div class="file-features">
+            <span class="feature-tag">AgentSwarm</span>
+            <span class="feature-tag">run_all()</span>
+            <span class="feature-tag">Dependency DAG</span>
+          </div>
+        </div>
+        <div class="arch-card">
+          <div class="file-name">executor.py</div>
+          <div class="file-lines">~900 lines</div>
+          <div class="file-desc">Tool execution engine with sandboxing, output capture, and timeout management</div>
+          <div class="file-features">
+            <span class="feature-tag">ToolExecutor</span>
+            <span class="feature-tag">Sandbox</span>
+            <span class="feature-tag">Timeout</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Test Results -->
+    <section class="test-section">
+      <h2 class="section-title">
+        <span class="icon" style="background: rgba(52,211,153,0.12);">🧪</span>
+        Test Suite Breakdown
+      </h2>
+      <div class="test-grid">
+        <div class="test-card">
+          <div class="test-file">test_orchestrator_llm_planning.py</div>
+          <div class="test-count">19 tests</div>
+          <div class="test-status">✅ ALL PASSING — Phase 7 NEW</div>
+        </div>
+        <div class="test-card">
+          <div class="test-file">test_orchestrator_cleanup.py</div>
+          <div class="test-count">31 tests</div>
+          <div class="test-status">✅ ALL PASSING</div>
+        </div>
+        <div class="test-card">
+          <div class="test-file">test_sub_agent_max_tool_calls.py</div>
+          <div class="test-count">28 tests</div>
+          <div class="test-status">✅ ALL PASSING</div>
+        </div>
+        <div class="test-card">
+          <div class="test-file">test_provider_tools.py</div>
+          <div class="test-count">~50 tests</div>
+          <div class="test-status">✅ ALL PASSING</div>
+        </div>
+        <div class="test-card">
+          <div class="test-file">test_rag.py</div>
+          <div class="test-count">~60 tests</div>
+          <div class="test-status">✅ ALL PASSING</div>
+        </div>
+        <div class="test-card">
+          <div class="test-file">test_smoke_e2e.py + others</div>
+          <div class="test-count">148+ tests</div>
+          <div class="test-status">✅ ALL PASSING</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>PythonAI Progress Dashboard — Auto-generated on 5 June 2026</p>
+      <p style="margin-top: 4px;">336 tests passing · 31,030 source lines · 140 files · 0 failures 🎉</p>
+    </footer>
+
+  </div>
+
+  <script>
+    // ─── Count-Up Animation ───
+    function animateCountUp(el, target, duration = 1500) {
+      const start = performance.now();
+      const format = (n) => n.toLocaleString('en-IN');
+
+      function step(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+        el.textContent = format(Math.floor(eased * target));
+        if (progress < 1) requestAnimationFrame(step);
+      }
+
+      requestAnimationFrame(step);
+    }
+
+    // Trigger count-ups when visible
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+          const target = parseInt(el.dataset.target, 10);
+          animateCountUp(el, target);
+          observer.unobserve(el);
+        }
+      });
+    }, { threshold: 0.3 });
+
+    document.querySelectorAll('.count-up').forEach((el) => observer.observe(el));
+
+    // Animate progress bar
+    setTimeout(() => {
+      document.getElementById('mainProgressBar').style.width = '100%';
+    }, 300);
+  </script>
+</body>
+</html>

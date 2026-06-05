@@ -110,15 +110,6 @@ PROVIDER_MAX_CONCURRENCY: dict[str, int] = {
     "nvidia_qwen": 10,
     "nvidia_moonshot": 10,
     "huggingface": 5,
-    "anthropic": 10,
-    "openai": 20,
-    "google": 20,
-    "groq": 20,
-    "cerebras": 10,
-    "sambanova": 10,
-    "together": 10,
-    "openrouter": 10,
-    "mistral": 10,
 }
 
 # Friendly display names

@@ -277,12 +277,19 @@ class Tool(ABC):
 
     def to_openai_tool(self) -> dict[str, Any]:
         """Convert to OpenAI tool calling format."""
+        schema = self.input_schema()
+        if isinstance(schema, dict):
+            # MCP tools: schema is already a JSON Schema dict
+            params = schema
+        else:
+            # Regular tools: convert InputSchema to JSON Schema
+            params = schema.json_schema()
         return {
             "type": "function",
             "function": {
                 "name": self._name,
                 "description": self._description,
-                "parameters": self.input_schema().json_schema(),
+                "parameters": params,
             }
         }
 
@@ -340,18 +347,21 @@ class SimpleTool(Tool):
     def __init__(self, defn: Any):
         super().__init__(defn.name, defn.description)
         self._input_schema = defn.input_schema
-        self._call_fn = defn.call
+        # Unwrap callable attributes — they may be bound methods from
+        # dynamically created classes (e.g. type('McpToolDef', (), {...})),
+        # which would pass the defn instance as 'self' on invocation.
+        self._call_fn = _unbind(defn.call)
         self._aliases = getattr(defn, 'aliases', [])
         self._search_hint = getattr(defn, 'search_hint', '')
         self._max_result_size_chars = getattr(defn, 'max_result_size_chars', 100000)
         self._is_readonly = getattr(defn, 'is_readonly', False)
         self._is_concurrency_safe = getattr(defn, 'is_concurrency_safe', False)
         self._is_destructive = getattr(defn, 'is_destructive', False)
-        self._validate_fn = getattr(defn, 'validate_input', None)
-        self._permissions_fn = getattr(defn, 'check_permissions', None)
-        self._user_facing_name_fn = getattr(defn, 'user_facing_name', None)
-        self._summary_fn = getattr(defn, 'get_tool_use_summary', None)
-        self._activity_fn = getattr(defn, 'get_activity_description', None)
+        self._validate_fn = _unbind(getattr(defn, 'validate_input', None))
+        self._permissions_fn = _unbind(getattr(defn, 'check_permissions', None))
+        self._user_facing_name_fn = _unbind(getattr(defn, 'user_facing_name', None))
+        self._summary_fn = _unbind(getattr(defn, 'get_tool_use_summary', None))
+        self._activity_fn = _unbind(getattr(defn, 'get_activity_description', None))
 
     def input_schema(self) -> InputSchema:
         return self._input_schema
@@ -394,6 +404,20 @@ class SimpleTool(Tool):
         if self._activity_fn:
             return self._activity_fn(input_data)
         return None
+
+
+def _unbind(fn: Any) -> Any:
+    """Unwrap a bound method to get the underlying function.
+
+    When a callable is accessed on a class instance created via
+    type('Name', (), {...})(), Python's descriptor protocol binds
+    the method to the instance. Storing the bound method and
+    calling it later passes the instance as 'self', adding an
+    unexpected positional argument.
+    """
+    if fn is None:
+        return None
+    return getattr(fn, '__func__', fn)
 
 
 TOOL_DEFAULTS = {

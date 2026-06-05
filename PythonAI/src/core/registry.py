@@ -31,13 +31,48 @@ class ToolRegistry:
             self._tools[alias] = tool
 
     def register_mcp(self, tool: Tool) -> None:
-        """Register an MCP tool."""
+        """Register an MCP tool (external tool via MCP protocol).
+
+        MCP tools are prefixed with 'mcp__' namespace to avoid
+        collision with built-in tools.
+        """
         self._mcp_tools[tool.name] = tool
+
+    def register_mcp_server(self, connection: Any) -> int:
+        """Register all tools from an MCP server connection.
+
+        Args:
+            connection: A ServerConnection object from mcp.client
+
+        Returns:
+            Number of MCP tools registered
+        """
+        from .mcp.tool_adapter import MCPToolAdapter
+        adapter = MCPToolAdapter(connection)
+        return adapter.register_all(self)
 
     def unregister(self, name: str) -> None:
         """Unregister a tool by name."""
         self._tools.pop(name, None)
         self._mcp_tools.pop(name, None)
+
+    def unregister_mcp_server(self, server_name: str) -> int:
+        """Unregister all tools from an MCP server.
+
+        Args:
+            server_name: Name of the MCP server whose tools to remove
+
+        Returns:
+            Number of tools removed
+        """
+        prefix = f"mcp__{server_name}__"
+        to_remove = [
+            name for name in self._mcp_tools
+            if name.startswith(prefix)
+        ]
+        for name in to_remove:
+            self._mcp_tools.pop(name, None)
+        return len(to_remove)
 
     def get(self, name: str) -> Tool | None:
         """Get a tool by name (built-in first, then MCP)."""

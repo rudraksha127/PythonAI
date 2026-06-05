@@ -35,7 +35,7 @@ def _extract_readable_text(html: str) -> str:
     html = re.sub(r'<header[^>]*>.*?</header>', '', html, flags=re.DOTALL)
 
     # Replace common block tags with newlines
-    for tag in ['</p>', '</div>', '</h[1-6]>', '</li>', '</tr>', '</blockquote>', '<br\s*/?>']:
+    for tag in ['</p>', '</div>', '</h[1-6]>', '</li>', '</tr>', '</blockquote>', r'<br\s*/?>']:
         html = re.sub(tag, '\n', html, flags=re.IGNORECASE)
 
     # Remove all HTML tags

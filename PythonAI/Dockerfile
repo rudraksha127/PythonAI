@@ -4,29 +4,27 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies (required for massive data scraping, video/audio)
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
     git \
     ffmpeg \
-    awscli \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirement files first to leverage Docker cache
+# Copy requirements file first to leverage Docker cache
 COPY requirements.txt .
-COPY requirements_god_mode.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir -r requirements_god_mode.txt
 
 # Copy the rest of the application
 COPY . .
 
-# Make port 8000 available to the world outside this container (for any web UI)
-EXPOSE 8000
+# Expose ports for FastAPI (8765) and Streamlit (8501)
+EXPOSE 8765
+EXPOSE 8501
 
-# Run collect_everything.py as the default command when container starts
-CMD ["python", "collect_everything.py", "--phase", "all"]
+# Default command starts the API server via the CLI
+CMD ["python", "-m", "src.cli", "serve", "--host", "0.0.0.0", "--port", "8765"]

@@ -773,6 +773,54 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+# ═══════════════════════════════
+# CODE EXECUTION & EXTRACTION
+# ═══════════════════════════════
+
+def execute_code(code: str, timeout: int = 5) -> tuple[str | None, str | None]:
+    """Execute Python code safely with a timeout and return (stdout, stderr).
+
+    Checks for dangerous patterns before execution.
+    """
+    dangerous_patterns = [
+        "import os",
+        "import subprocess",
+        "import shutil",
+        "import socket",
+        "import ctypes",
+        "eval(",
+        "exec(",
+        "__import__(",
+        "open(",
+    ]
+
+    for pattern in dangerous_patterns:
+        if pattern in code:
+            return None, "Skipped (safety)"
+
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        stdout = result.stdout.strip()
+        stderr = result.stderr.strip() or None
+        return stdout or None, stderr
+    except subprocess.TimeoutExpired:
+        return None, "Timeout"
+    except Exception as e:
+        return None, str(e)
+
+
+def extract_code_blocks(text: str) -> list[str]:
+    """Extract all Python fenced code blocks from a text string."""
+    pattern = r"```python\n(.*?)```"
+    matches = re.findall(pattern, text, re.DOTALL)
+    return [block.strip() for block in matches]
+
+
 def load_or_build_db(force_rebuild: bool = False) -> tuple[Any, SentenceTransformer, SimpleBM25 | None, list[str], KnowledgeGraph, Path]:
     import chromadb  # late import for startup speed
 

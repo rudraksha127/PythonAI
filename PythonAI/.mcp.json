@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "cmd",
+  "args": [
+    "/c",
+    "npx",
+    "-y",
+    "@modelcontextprotocol/server-filesystem",
+    "C:\\Users\\lucky_vv7fub\\OneDrive\\Desktop\\Today 1 June\\PythonAI"
+  ]
+    }
+  }
+}

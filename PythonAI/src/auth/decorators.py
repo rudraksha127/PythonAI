@@ -7,6 +7,11 @@ from typing import Any, Callable
 from src.auth.config import AuthConfig
 
 
+# ASCII-safe symbols (Windows terminal compatible)
+_LOCK = "[!]"
+_LINE = "-" * 40
+
+
 def requires_auth(func: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator that checks if user is authenticated before running the command.
 
@@ -26,8 +31,8 @@ def requires_auth(func: Callable[..., Any]) -> Callable[..., Any]:
 
         config = AuthConfig()
         if not config.is_logged_in():
-            print("\n🔒 Authentication Required")
-            print("─" * 40)
+            print(f"\n{_LOCK} Authentication Required")
+            print(_LINE)
             print("This command requires you to be logged in.")
             print("Run:  python -m src.cli login")
             print("Or pass --no-auth to skip authentication for local use.\n")

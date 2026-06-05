@@ -301,10 +301,11 @@ with st.sidebar:
     st.divider()
 
     # ── Navigation ──
+    pages = ["RAG Chat", "Agent Workspace", "Dataset Generation", "Dashboard Home", "Tool System", "Provider Routing", "MCP Servers"]
     page = st.radio(
         "Navigation",
-        ["RAG Chat", "Dataset Generation"],
-        index=0 if st.session_state.page == "RAG Chat" else 1,
+        pages,
+        index=pages.index(st.session_state.page) if st.session_state.page in pages else 0,
         key="page",
         label_visibility="collapsed",
     )
@@ -417,10 +418,30 @@ with st.sidebar:
 
 
 # ════════════════════════════════════════
-# MAIN AREA — RAG CHAT
+# DYNAMIC PAGE ROUTING
 # ════════════════════════════════════════
 
-if page == "RAG Chat":
+if page == "Dashboard Home":
+    from src.webui.views.dashboard_home import render as render_home
+    render_home()
+
+elif page == "Agent Workspace":
+    from src.webui.views.agent_workspace import render as render_agent_workspace
+    render_agent_workspace()
+
+elif page == "Tool System":
+    from src.webui.views.tools_dashboard import render as render_tools
+    render_tools()
+
+elif page == "Provider Routing":
+    from src.webui.views.providers_dashboard import render as render_providers
+    render_providers()
+
+elif page == "MCP Servers":
+    from src.webui.views.mcp_dashboard import render as render_mcp
+    render_mcp()
+
+elif page == "RAG Chat":
 
     st.markdown(
         '<div class="main-header">'
