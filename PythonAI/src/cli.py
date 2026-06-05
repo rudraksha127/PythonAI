@@ -198,7 +198,65 @@ def ask(args: argparse.Namespace) -> int:
             print(f"[{agent_name.upper()}]:\n{output}\n")
         print(f"{'─'*55}")
         return 0
-        
+    
+    # ── NEW: Tool-calling mode (--tools) ───────────────────────
+    if getattr(args, 'tools', False):
+        from src.core.engine import ToolCallingEngine
+        from src.core.registry import get_registry
+        from src.core.tools import register_all_tools
+
+        # Register tools on first use
+        registry = get_registry()
+        try:
+            register_all_core_tools(registry)
+        except Exception:
+            pass  # Tools already registered
+
+        print(f"\n[Tools] Tool-Calling Mode (engine ready)")
+        print(f"{'='*55}")
+        print(f"  Provider  : {args.model or 'auto'}")
+        print(f"  Tools     : {registry.total_count} registered")
+        print(f"{'─'*55}\n")
+
+        engine = ToolCallingEngine(
+            provider="auto",
+            model=args.model or "",
+            registry=registry,
+            on_stream=lambda text: print(text, end="", flush=True),
+        )
+
+        if args.question:
+            response = engine.run(args.question)
+            print(f"\n{'─'*55}")
+            print(f"[Stats] {engine.get_stats_report()}")
+            print(f"{'='*55}\n")
+        else:
+            # Interactive mode
+            print("Entering interactive tool-calling mode. Type 'exit' to quit.\n")
+            while True:
+                try:
+                    q = input("You: ").strip()
+                except (EOFError, KeyboardInterrupt):
+                    print("\n[Bye] Goodbye!")
+                    break
+                if not q or q.lower() in ("exit", "quit", "/exit"):
+                    break
+                if q.lower() == "/tools":
+                    for t in registry.list_all():
+                        print(f"  - {t.name}: {t.description}")
+                    continue
+                if q.lower() == "/stats":
+                    print(engine.get_stats_report())
+                    continue
+                if q.lower() == "/clear":
+                    engine.reset()
+                    print("[Reset] Conversation cleared!")
+                    continue
+
+                response = engine.run(q)
+                print()
+        return 0
+    
     cmd = [str(project_python()), "-m", "src.rag.rag_engine"]
     if args.question:
         cmd.extend(["--question", args.question])
@@ -225,15 +283,34 @@ def ask(args: argparse.Namespace) -> int:
     return run(cmd)
 
 def tools_cmd(args: argparse.Namespace) -> int:
-    from src.tools import ALL_TOOLS
-    print(f"\n[Tools] Registered MCP Tools ({len(ALL_TOOLS)})")
+    from src.tools import ALL_TOOLS as MCP_TOOLS
+    
+    # Show both old MCP tools and new Core tools
+    print(f"\n[Tools] Registered Tools")
     print(f"{'='*55}")
-    for t in ALL_TOOLS:
-        print(f" - {t.name}: {t.description}")
-        if getattr(args, 'verbose', False):
-            print("   Parameters:")
-            for p, p_info in t.parameters.items():
-                print(f"     - {p}: {p_info.get('description', '')}")
+    
+    print(f"\n  MCP Tools ({len(MCP_TOOLS)}):")
+    for t in MCP_TOOLS:
+        print(f"    - {t.name}: {t.description}")
+    
+    # Show new Core tools if available
+    try:
+        from src.core.registry import get_registry
+        from src.core.tools import register_all_tools
+        registry = get_registry()
+        try:
+            register_all_tools(registry)
+        except Exception:
+            pass
+        if registry.total_count > 0:
+            print(f"\n  Core Tools ({registry.total_count}):")
+            for t in registry.list_all():
+                ro = " [RO]" if t.is_readonly() else ""
+                print(f"    - {t.name}: {t.description}{ro}")
+    except ImportError:
+        pass
+    
+    print()
     return 0
 
 
@@ -1193,9 +1270,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     probe_parser.set_defaults(func=probe)
 
-    ask_parser = sub.add_parser("ask", help="Ask the offline RAG assistant.")
+    ask_parser = sub.add_parser("ask", help="Ask the offline RAG assistant or use tool-calling mode.")
     ask_parser.add_argument("question", nargs="?", default="")
     ask_parser.add_argument("--agents", action="store_true", help="Enable multi-agent execution")
+    ask_parser.add_argument("--tools", action="store_true", help="Use tool-calling mode (bash, read, write, edit, glob, grep, web)")
     ask_parser.add_argument("--no-auth", action="store_true", help="Skip authentication check")
     ask_parser.add_argument("--rebuild", action="store_true", help="Force rebuild database")
     ask_parser.add_argument("--stats", action="store_true", help="Show database statistics")
@@ -1205,7 +1283,7 @@ def build_parser() -> argparse.ArgumentParser:
     ask_parser.add_argument("--mmr", action="store_true", help="Enable MMR diversity re-ranking")
     ask_parser.add_argument("--version", default="", help="Filter by Python version (e.g., 3.10)")
     ask_parser.add_argument("--model", default="",
-                            help="Ollama model to use (default: qwen2.5-coder:14b). E.g. --model deepseek-coder:6.7b")
+                            help="Model to use (default: auto). E.g. --model gpt-4o or --model qwen2.5-coder:14b")
     ask_parser.add_argument("--list-models", action="store_true",
                             help="List available Ollama models and exit")
     ask_parser.add_argument("--category", default="", help="Filter by category (e.g., library, howto)")
