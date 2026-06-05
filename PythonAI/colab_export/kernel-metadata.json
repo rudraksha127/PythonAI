@@ -1,0 +1,17 @@
+{
+  "id": "rudraksha1/finetune-qwen14b-pythonai",
+  "title": "Finetune Qwen14B PythonAI",
+  "code_file": "finetune_qwen14b_unsloth.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "pythonai-training-data"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

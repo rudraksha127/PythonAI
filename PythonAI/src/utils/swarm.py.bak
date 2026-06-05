@@ -1,0 +1,95 @@
+from __future__ import annotations
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
+from typing import Any, Callable
+
+
+@dataclass(frozen=True)
+class GenerationTask:
+    task_id: str
+    task_type: str
+    prompt: str
+    dependencies: tuple[str, ...] = field(default_factory=tuple)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+class TaskDecomposer:
+    """Split a chunk into a dependency-aware task graph."""
+
+    def decompose(self, chunk: dict[str, Any], prompts: dict[str, str]) -> list[GenerationTask]:
+        has_code = bool(chunk.get("codes"))
+        tasks: list[GenerationTask] = []
+
+        for task_type, prompt in prompts.items():
+            dependencies: tuple[str, ...] = ()
+
+            if task_type in {"expert", "interview", "project", "cross_domain", "judgment", "multi_agent"}:
+                dependencies = ("reasoning",)
+
+            if task_type in {"error_fix", "code_review"}:
+                dependencies = ("basic",)
+
+            if task_type == "version":
+                dependencies = ("basic",)
+
+            if task_type in {"error_fix", "code_review"} and not has_code:
+                continue
+
+            tasks.append(
+                GenerationTask(
+                    task_id=f"{chunk.get('id', chunk.get('title', 'chunk'))}:{task_type}",
+                    task_type=task_type,
+                    prompt=prompt,
+                    dependencies=dependencies,
+                    metadata={
+                        "title": chunk.get("title", ""),
+                        "version": chunk.get("version", ""),
+                        "category": chunk.get("category", ""),
+                    },
+                )
+            )
+
+        return tasks
+
+
+class AgentSwarm:
+    """Execute independent tasks in parallel while honoring dependencies."""
+
+    def __init__(self, max_workers: int = 4):
+        self.max_workers = max(1, max_workers)
+
+    def execute(
+        self,
+        tasks: list[GenerationTask],
+        worker: Callable[[GenerationTask], dict[str, Any]],
+    ) -> dict[str, dict[str, Any]]:
+        pending = {task.task_id: task for task in tasks}
+        completed: set[str] = set()
+        results: dict[str, dict[str, Any]] = {}
+
+        while pending:
+            ready = [
+                task for task in pending.values()
+                if set(task.dependencies).issubset(completed)
+            ]
+
+            if not ready:
+                ready = list(pending.values())
+
+            with ThreadPoolExecutor(max_workers=min(self.max_workers, len(ready))) as executor:
+                future_map = {executor.submit(worker, task): task for task in ready}
+                for future in as_completed(future_map):
+                    task = future_map[future]
+                    try:
+                        results[task.task_id] = future.result()
+                    except Exception as exc:  # pragma: no cover - defensive fallback
+                        results[task.task_id] = {
+                            "task_type": task.task_type,
+                            "pairs": [],
+                            "error": str(exc),
+                        }
+                    completed.add(task.task_id)
+                    pending.pop(task.task_id, None)
+
+        return results

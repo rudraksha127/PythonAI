@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  anti-gravity:
+    build: .
+    container_name: anti-gravity-god-mode
+    env_file:
+      - .env
+    volumes:
+      # Map the massive output data directory to the host's D: drive (Windows) or root path (Linux)
+      - /mnt/d/PythonAI_Data:/app/data
+      # Map the memory/cost tracking DBs so they persist across restarts
+      - ./python_brain_godmode:/app/python_brain_godmode
+      - ./src:/app/src
+      - ./collect_everything.py:/app/collect_everything.py
+      - ./ag_config.json:/app/ag_config.json
+    restart: unless-stopped

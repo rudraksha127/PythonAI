@@ -1,0 +1,34 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ipynb_checkpoints/
+.sixth/
+
+# Virtual environment is local machine state.
+.venv/
+
+# Keep final adapter folders, but ignore resumable trainer internals.
+checkpoints/**/checkpoint-*/
+checkpoints/local_50.json
+
+# Large regeneratable data (can be re-scraped)
+data/raw/
+data/processed/
+extra_data/
+
+# Chroma vector database (can be re-embedded)
+python_brain_godmode/
+
+# OS files
+Thumbs.db
+.DS_Store
+*.log
+
+*.safetensors
+*.bin
+*.gpickle
+*.jsonl
+
+nul

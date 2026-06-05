@@ -1,0 +1,69 @@
+# ── Python ──────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+*.whl
+
+# ── PythonAI specific ──────────────────────────────
+PythonAI/.venv/
+PythonAI/venv/
+PythonAI/env/
+PythonAI/forge_workspace/
+PythonAI/data/raw/
+PythonAI/python_brain_godmode/
+PythonAI/checkpoints/
+PythonAI/.env
+PythonAI/*.db
+PythonAI/*.sqlite3
+
+# ── Node / Bun ─────────────────────────────────────
+node_modules/
+bun.lock
+bun.lockb
+package-lock.json
+yarn.lock
+.pnp
+.pnp.js
+
+# ── Build outputs ──────────────────────────────────
+dist/
+build/
+out/
+.next/
+coverage/
+
+# ── TypeScript ─────────────────────────────────────
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# ── IDE / OS ───────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Environment files ──────────────────────────────
+.env
+.env.local
+.env.*.local
+*.key
+
+# ── Docker ─────────────────────────────────────────
+.docker/
+
+# ── Logs ───────────────────────────────────────────
+*.log
+logs/
+
+# ── Git submodules (if any) ────────────────────────
