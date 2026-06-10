@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+import uuid
 from pathlib import Path
+from typing import Any
 
 from src.utils.models import (
     ROOT,
@@ -69,6 +71,11 @@ def run_training(args: argparse.Namespace, base_model: str, python_exe: Path) ->
         command.append("--viz")
     if args.load_in_4bit:
         command.append("--load-in-4bit")
+    if args.unsloth:
+        command.append("--use-unsloth")
+
+    if args.test_mode or args.mode == "smoke":
+        command.append("--test-mode")
     if args.gradient_clip:
         command.extend(["--gradient-clip", str(args.gradient_clip)])
 
@@ -128,23 +135,135 @@ def parse_args() -> argparse.Namespace:
                         help="Auto-find and resume from latest checkpoint")
     parser.add_argument("--load-in-4bit", action="store_true",
                         help="Enable 4-bit QLoRA quantization")
+    parser.add_argument("--unsloth", action="store_true",
+                        help="Use Unsloth for 2x faster QLoRA training (70%% less VRAM)")
     parser.add_argument("--gradient-clip", type=float, default=0.0,
                         help="Gradient clipping max norm (0 = disabled)")
     parser.add_argument("--dataset-version", default="",
                         help="Label to tag output checkpoints with")
     parser.add_argument("--test-mode", action="store_true",
                         help="Run a quick validation (2 steps, 4 examples)")
+    parser.add_argument("--capture-db", default="",
+                        help="Path to CaptureEngine SQLite DB for before/after acceptance rate tracking")
+    parser.add_argument("--record-training-run", action=argparse.BooleanOptionalAction, default=True,
+                        help="Record training run in CaptureEngine DB (default: True)")
     return parser.parse_args()
+
+
+def _init_capture_before_training(
+    args: argparse.Namespace,
+) -> tuple[Any | None, float | None, int, str]:
+    """
+    Initialize CaptureEngine and record acceptance rate before training.
+
+    Returns:
+        (capture_engine, acceptance_rate_before, signals_used, run_id)
+        capture_engine is None if capture DB is unavailable or disabled.
+    """
+    capture_db_path = args.capture_db
+    if not capture_db_path:
+        default_db = Path.home() / ".forgeai" / "signals.db"
+        if default_db.exists():
+            capture_db_path = str(default_db)
+
+    run_id = str(uuid.uuid4())
+
+    if not (args.record_training_run and capture_db_path):
+        return None, None, 0, run_id
+
+    try:
+        from src.learning.capture_engine import CaptureEngine
+
+        engine = CaptureEngine(db_path=capture_db_path)
+        stats = engine.get_statistics()
+        signals_by_type = stats.get("signals_by_type", {})
+        total_accepts = signals_by_type.get("accept", 0) + signals_by_type.get("pr_merge", 0)
+        total_rejects = signals_by_type.get("reject", 0)
+        total = total_accepts + total_rejects
+        acceptance_rate_before = (total_accepts / total) if total > 0 else 0.0
+        signals_used = sum(signals_by_type.values())
+
+        print(f"\n[CaptureEngine] Cumulative acceptance rate (before): {acceptance_rate_before:.1%} ({total_accepts}A/{total_rejects}R)")
+        print(f"[CaptureEngine] Total signals: {signals_used}")
+        return engine, acceptance_rate_before, signals_used, run_id
+    except Exception as e:
+        print(f"[CaptureEngine] Skipped (DB init failed): {e}")
+        return None, None, 0, run_id
+
+
+def _record_capture_after_training(
+    capture_engine: Any,
+    args: argparse.Namespace,
+    base_model: str,
+    run_id: str,
+    acceptance_rate_before: float | None,
+    signals_used: int,
+    ROOT: Path,
+) -> None:
+    """
+    Record acceptance rate after training and store the training run.
+
+    Called after training completes. Reads post-training acceptance rate
+    from CaptureEngine, loads training_metrics.json if available, and
+    persists the run record to the training_runs table.
+    """
+    try:
+        stats = capture_engine.get_statistics()
+        signals_by_type = stats.get("signals_by_type", {})
+        total_accepts = signals_by_type.get("accept", 0) + signals_by_type.get("pr_merge", 0)
+        total_rejects = signals_by_type.get("reject", 0)
+        total = total_accepts + total_rejects
+        acceptance_rate_after = (total_accepts / total) if total > 0 else 0.0
+
+        # Try to read training metrics from checkpoint directory
+        train_loss = None
+        eval_loss = None
+        metrics_file = ROOT / args.output_dir / "training_metrics.json"
+        if metrics_file.exists():
+            import json
+            with open(metrics_file, encoding="utf-8") as f:
+                metrics_data = json.load(f)
+            train_loss = metrics_data.get("train_loss")
+            eval_loss = metrics_data.get("eval_loss")
+
+        capture_engine.store_training_run(
+            run_id=run_id,
+            model_name=base_model,
+            signals_used=signals_used,
+            acceptance_rate_before=acceptance_rate_before or 0.0,
+            acceptance_rate_after=acceptance_rate_after,
+            train_loss=train_loss,
+            eval_loss=eval_loss,
+            adapter_path=str(ROOT / args.output_dir),
+            metrics={
+                "mode": args.mode,
+                "max_steps": args.max_steps,
+                "max_examples": args.max_examples,
+                "dataset_path": args.dataset_path,
+                "learning_rate": args.learning_rate,
+                "batch_size": args.batch_size,
+            },
+        )
+
+        print(f"\n[CaptureEngine] Training run recorded: {run_id}")
+        print(f"[CaptureEngine] Acceptance rate: {acceptance_rate_before or 0.0:.1%} → {acceptance_rate_after:.1%}")
+    except Exception as e:
+        print(f"[CaptureEngine] Failed to record training run: {e}")
 
 
 def main() -> None:
     args = parse_args()
     python_exe = project_python()
 
-    if args.test_mode:
+    if args.test_mode or args.mode == "smoke":
+        if not args.test_mode:
+            args.test_mode = True
         args.max_steps = 2
         args.max_examples = 4
-        print("[Test mode] Overriding: --max-steps 2 --max-examples 4")
+        if args.mode == "smoke":
+            print("[Smoke mode] Auto-enabled --test-mode: --max-steps 2 --max-examples 4")
+        else:
+            print("[Test mode] Overriding: --max-steps 2 --max-examples 4")
 
     print_section("Project Audit")
     audit = audit_project()
@@ -205,7 +324,18 @@ def main() -> None:
         print("Training skipped by --skip-train.")
         return
 
+    # ── CaptureEngine Integration ──
+    capture_engine, acceptance_rate_before, signals_used, run_id = _init_capture_before_training(args)
+
+    # ── Run Training ──
     run_training(args, base_model, python_exe)
+
+    # ── Post-Training: Record results ──
+    if capture_engine is not None:
+        _record_capture_after_training(
+            capture_engine, args, base_model, run_id,
+            acceptance_rate_before, signals_used, ROOT,
+        )
 
 
 if __name__ == "__main__":

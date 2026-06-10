@@ -70,6 +70,32 @@ def passes_quality(text: str, min_len: int, max_len: int) -> bool:
 
 def normalize_record(raw: dict) -> dict | None:
     """Convert ANY data format to standard format."""
+    # Handle amplified dataset records (instruction/output pairs)
+    if "instruction" in raw and "output" in raw:
+        text = f"### Instruction:\n{raw['instruction']}\n\n### Response:\n{raw['output']}"
+        return {
+            "text": text,
+            "source": raw.get("source", "amplified"),
+            "lang": "en",
+            "domain": raw.get("category", "amplified"),
+            "version": raw.get("version", ""),
+            "section": raw.get("section", ""),
+            "_original_category": raw.get("category", ""),
+        }
+
+    # Handle PyPI knowledge cards
+    if raw.get("source") == "pypi" or raw.get("type") == "library_doc":
+        text = raw.get("text", "")
+        if text:
+            return {
+                "text": text,
+                "source": "pypi_knowledge_base",
+                "lang": "en",
+                "domain": "pypi_library",
+                "library_name": raw.get("library_name", ""),
+                "version": raw.get("version", ""),
+            }
+
     text = ""
     for key in ["text", "content", "document", "body", "passage"]:
         if key in raw and raw[key]:
@@ -130,6 +156,7 @@ def run_parallel_processing(cfg: ForgeConfig) -> Path:
     clean_dir = Path(cfg.clean_data_dir)
     clean_dir.mkdir(parents=True, exist_ok=True)
     output_file = clean_dir / "all_data_clean.jsonl"
+    amplified_file = clean_dir / "amplified_data_clean.jsonl"
 
     input_files = list(raw_dir.rglob("*.jsonl"))
     if not input_files:
@@ -140,7 +167,9 @@ def run_parallel_processing(cfg: ForgeConfig) -> Path:
 
     total_raw = 0
     total_output = 0
+    total_amplified = 0
     exact_hashes: set[str] = set()
+    amplified_hashes: set[str] = set()
 
     console.print(f"\n[bold cyan]═══ PARALLEL DATA PROCESSING ═══[/bold cyan]")
     console.print(f"  Workers   : {N_WORKERS}")
@@ -160,7 +189,42 @@ def run_parallel_processing(cfg: ForgeConfig) -> Path:
 
         total_raw += len(lines)
 
-        # Chunk into batches for workers
+        # Detect if this is amplified data (instruction/output format)
+        is_amplified = False
+        if lines:
+            try:
+                sample = json.loads(lines[0])
+                if "instruction" in sample and "output" in sample:
+                    is_amplified = True
+            except (json.JSONDecodeError, IndexError):
+                pass
+
+        # ── AMPLIFIED DATA ──
+        # For amplified datasets, we keep them mostly as-is but still
+        # run text cleaning, language detection, and quality filtering.
+        if is_amplified:
+            chunk_size = max(1, len(lines) // N_WORKERS)
+            chunks = [lines[i:i+chunk_size] for i in range(0, len(lines), chunk_size)]
+
+            with multiprocessing.Pool(N_WORKERS) as pool:
+                batch_results = pool.map(process_chunk, chunks)
+
+            with open(amplified_file, "a", encoding="utf-8") as fout:
+                for batch in batch_results:
+                    for record in batch:
+                        md5 = record.pop("_md5", "")
+                        if md5 and md5 not in amplified_hashes:
+                            amplified_hashes.add(md5)
+                            # Mark as amplified for downstream
+                            record["_amplified"] = True
+                            record["_source_file"] = f.name
+                            fout.write(json.dumps(record, ensure_ascii=False) + "\n")
+                            total_amplified += 1
+
+            logger.info(f"  [AMPLIFIED] {f.name}: {len(lines):,} -> {total_amplified:,} kept")
+            continue
+
+        # ── REGULAR DATA ──
         chunk_size = max(1, len(lines) // N_WORKERS)
         chunks = [lines[i:i+chunk_size] for i in range(0, len(lines), chunk_size)]
 
@@ -181,15 +245,18 @@ def run_parallel_processing(cfg: ForgeConfig) -> Path:
         logger.info(f"  {f.name}: {len(lines):,} -> {total_output:,} kept (cumulative)")
 
     output_size_mb = output_file.stat().st_size / 1e6 if output_file.exists() else 0
+    amplified_size_mb = amplified_file.stat().st_size / 1e6 if amplified_file.exists() else 0
     dedup_rate = (1 - total_output / max(total_raw, 1)) * 100
 
     logger.success(f"""
 [bold green]Processing complete![/bold green]
-  Total raw    : {total_raw:,}
-  Final output : {total_output:,}
-  Dedup rate   : {dedup_rate:.1f}%
-  Output file  : {output_file}
-  Size         : {output_size_mb:.1f} MB
+  Total raw      : {total_raw:,}
+  Clean output   : {total_output:,} ({output_size_mb:.1f} MB)
+  Amplified      : {total_amplified:,} ({amplified_size_mb:.1f} MB)
+  Dedup rate     : {dedup_rate:.1f}%
+  Output files:
+    {output_file}
+    {amplified_file}
 """)
 
     return output_file

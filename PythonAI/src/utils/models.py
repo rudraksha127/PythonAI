@@ -8,7 +8,7 @@ import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Generator
 
 
 ROOT = Path(__file__).resolve().parent.parent.parent  # src/utils/ -> project root
@@ -52,7 +52,7 @@ def save_json(path: Path, data: Any) -> None:
         json.dump(data, handle, ensure_ascii=False, indent=2)
 
 
-def iter_project_files(root: Path = ROOT):
+def iter_project_files(root: Path = ROOT) -> Generator[Path, None, None]:
     for current, dirnames, filenames in os.walk(root):
         dirnames[:] = [name for name in dirnames if name not in IGNORED_SCAN_DIRS]
         current_path = Path(current)
@@ -154,7 +154,10 @@ def hardware_profile(python_exe: Path | None = None) -> dict[str, Any]:
     result = run_command([str(python_exe), "-c", probe], timeout=30)
     if result.returncode != 0:
         return {"error": result.stderr.strip()}
-    return json.loads(result.stdout)
+    loaded: Any = json.loads(result.stdout)
+    if not isinstance(loaded, dict):
+        return {"error": f"Unexpected hardware probe output: {type(loaded).__name__}"}
+    return loaded
 
 
 def list_ollama_models() -> list[str]:

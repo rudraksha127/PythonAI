@@ -413,7 +413,7 @@ def get_model_info(model_id: str) -> ModelDescriptor | None:
     return _ensure_registry().get_model(model_id)
 
 
-def find_models_by_capability(**kwargs) -> list[ModelDescriptor]:
+def find_models_by_capability(**kwargs: Any) -> list[ModelDescriptor]:
     """Find models matching specific capabilities."""
     return _ensure_registry().find_models_by_capability(**kwargs)
 

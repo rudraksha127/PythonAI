@@ -148,9 +148,15 @@ def _parse_lines(source_type: str, lines: list[dict[str, Any]]) -> list[dict[str
     return chunks
 
 
+def _parse_preformatted(record: dict[str, Any]) -> list[dict[str, Any]]:
+    """Pass-through parser for chunks that are already perfectly formatted."""
+    return [record]
+
 def _parse_single(source_type: str, record: dict[str, Any]) -> list[dict[str, Any]]:
     """Parse a single record from a given source type into zero or more chunks."""
-    if source_type == "openalex":
+    if source_type in ("zip_docs", "pypi"):
+        return _parse_preformatted(record)
+    elif source_type == "openalex":
         return _parse_openalex(record)
     elif source_type == "arxiv":
         return _parse_arxiv(record)
@@ -160,7 +166,6 @@ def _parse_single(source_type: str, record: dict[str, Any]) -> list[dict[str, An
         return _parse_synthetic(record)
     else:
         return _parse_generic(record)
-
 
 def _parse_openalex(record: dict[str, Any]) -> list[dict[str, Any]]:
     """Parse an OpenAlex research paper record."""
@@ -433,6 +438,8 @@ class RAGPipelineIndexer:
             "creative_writing": "synthetic",
             "data_analysis": "synthetic",
             "system_design": "synthetic",
+            "zip_docs_chunks": "zip_docs",
+            "pypi_knowledge_base": "pypi",
         }
 
     # ── Lazy init ──────────────────────────

@@ -12,7 +12,7 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Protocol
+from typing import Any, Callable, Protocol, cast
 
 
 # ═══════════════════════════════════════
@@ -276,13 +276,18 @@ class Tool(ABC):
     # ── Serialization ────────────────────────────────────────
 
     def to_openai_tool(self) -> dict[str, Any]:
-        """Convert to OpenAI tool calling format."""
+        """Convert to OpenAI tool calling format.
+
+        MCP subclasses may override input_schema() to return a raw dict;
+        this handles both standard InputSchema and raw dict returns.
+        """
         schema = self.input_schema()
+        # MCP tools may provide schema as a raw dict; cast at the call site.
+        # Use a runtime isinstance check since subclasses can return dict.
+        params: dict[str, Any]
         if isinstance(schema, dict):
-            # MCP tools: schema is already a JSON Schema dict
             params = schema
         else:
-            # Regular tools: convert InputSchema to JSON Schema
             params = schema.json_schema()
         return {
             "type": "function",
@@ -344,41 +349,52 @@ class ToolDef(Protocol):
 class SimpleTool(Tool):
     """A concrete Tool built from a ToolDef via build_tool()."""
 
-    def __init__(self, defn: Any):
+    # Typed callable references (set dynamically from defn)
+    _call_fn: Callable[..., Any]
+    _validate_fn: Callable[..., Any] | None
+    _permissions_fn: Callable[..., Any] | None
+    _user_facing_name_fn: Callable[..., Any] | None
+    _summary_fn: Callable[..., Any] | None
+    _activity_fn: Callable[..., Any] | None
+
+    def __init__(self, defn: Any) -> None:
         super().__init__(defn.name, defn.description)
-        self._input_schema = defn.input_schema
+        self._input_schema: InputSchema = defn.input_schema
         # Unwrap callable attributes — they may be bound methods from
         # dynamically created classes (e.g. type('McpToolDef', (), {...})),
         # which would pass the defn instance as 'self' on invocation.
-        self._call_fn = _unbind(defn.call)
-        self._aliases = getattr(defn, 'aliases', [])
-        self._search_hint = getattr(defn, 'search_hint', '')
-        self._max_result_size_chars = getattr(defn, 'max_result_size_chars', 100000)
-        self._is_readonly = getattr(defn, 'is_readonly', False)
-        self._is_concurrency_safe = getattr(defn, 'is_concurrency_safe', False)
-        self._is_destructive = getattr(defn, 'is_destructive', False)
-        self._validate_fn = _unbind(getattr(defn, 'validate_input', None))
-        self._permissions_fn = _unbind(getattr(defn, 'check_permissions', None))
-        self._user_facing_name_fn = _unbind(getattr(defn, 'user_facing_name', None))
-        self._summary_fn = _unbind(getattr(defn, 'get_tool_use_summary', None))
-        self._activity_fn = _unbind(getattr(defn, 'get_activity_description', None))
+        self._call_fn = cast(Callable[..., Any], _unbind(defn.call))
+        self._aliases: list[str] = getattr(defn, 'aliases', [])
+        self._search_hint: str = getattr(defn, 'search_hint', '')
+        self._max_result_size_chars: int = getattr(defn, 'max_result_size_chars', 100000)
+        self._is_readonly: bool = getattr(defn, 'is_readonly', False)
+        self._is_concurrency_safe: bool = getattr(defn, 'is_concurrency_safe', False)
+        self._is_destructive: bool = getattr(defn, 'is_destructive', False)
+        self._validate_fn = cast(Callable[..., Any] | None, _unbind(getattr(defn, 'validate_input', None)))
+        self._permissions_fn = cast(Callable[..., Any] | None, _unbind(getattr(defn, 'check_permissions', None)))
+        self._user_facing_name_fn = cast(Callable[..., Any] | None, _unbind(getattr(defn, 'user_facing_name', None)))
+        self._summary_fn = cast(Callable[..., Any] | None, _unbind(getattr(defn, 'get_tool_use_summary', None)))
+        self._activity_fn = cast(Callable[..., Any] | None, _unbind(getattr(defn, 'get_activity_description', None)))
 
     def input_schema(self) -> InputSchema:
         return self._input_schema
 
     def call(self, input_data: dict[str, Any], context: ToolUseContext) -> ToolResult:
-        return self._call_fn(input_data, context)
+        result = self._call_fn(input_data, context)
+        return cast(ToolResult, result)
 
     def validate_input(self, input_data: dict[str, Any],
                        context: ToolUseContext) -> ValidationResult:
         if self._validate_fn:
-            return self._validate_fn(input_data, context)
+            result = self._validate_fn(input_data, context)
+            return cast(ValidationResult, result)
         return super().validate_input(input_data, context)
 
     def check_permissions(self, input_data: dict[str, Any],
                           context: ToolUseContext) -> PermissionResult:
         if self._permissions_fn:
-            return self._permissions_fn(input_data, context)
+            result = self._permissions_fn(input_data, context)
+            return cast(PermissionResult, result)
         return super().check_permissions(input_data, context)
 
     def is_readonly(self, input_data: dict[str, Any] | None = None) -> bool:
@@ -392,17 +408,20 @@ class SimpleTool(Tool):
 
     def user_facing_name(self, input_data: dict[str, Any] | None = None) -> str:
         if self._user_facing_name_fn:
-            return self._user_facing_name_fn(input_data)
+            result = self._user_facing_name_fn(input_data)
+            return cast(str, result)
         return self._name
 
     def get_tool_use_summary(self, input_data: dict[str, Any] | None = None) -> str | None:
         if self._summary_fn:
-            return self._summary_fn(input_data)
+            result = self._summary_fn(input_data)
+            return cast(str | None, result)
         return None
 
     def get_activity_description(self, input_data: dict[str, Any] | None = None) -> str | None:
         if self._activity_fn:
-            return self._activity_fn(input_data)
+            result = self._activity_fn(input_data)
+            return cast(str | None, result)
         return None
 
 

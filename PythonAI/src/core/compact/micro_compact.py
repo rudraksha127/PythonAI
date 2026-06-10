@@ -30,7 +30,7 @@ DEFAULT_COUNT_KEEP_RECENT = 10   # Keep last 10 tool results
 DEFAULT_COUNT_TRIGGER = 25       # Start compacting at 25 tool results
 
 
-def estimate_tool_result_tokens(content: str | list | dict) -> int:
+def estimate_tool_result_tokens(content: str | list[Any] | dict[str, Any]) -> int:
     """Rough token estimate for tool result content."""
     if isinstance(content, str):
         return len(content) // 4

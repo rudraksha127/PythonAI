@@ -649,6 +649,114 @@ def test_extract_code_blocks_no_code() -> None:
 
 
 # ══════════════════════════════════════════════════════════════════════
+# _code_chunks_to_rag_format tests
+# ══════════════════════════════════════════════════════════════════════
+
+
+class TestCodeChunksToRagFormat:
+    """Tests for the cAST code chunk → RAG format conversion."""
+
+    def test_basic_conversion(self) -> None:
+        """A single CodeChunk should convert to the correct dict format."""
+        from src.rag.rag_engine import _code_chunks_to_rag_format
+        from src.rag.cast_chunker import CodeChunk
+
+        chunk = CodeChunk(
+            content="def foo():\n    return 42",
+            chunk_type="function",
+            start_line=1,
+            end_line=2,
+            name="foo",
+            filepath="/project/src/module.py",
+            language="python",
+            token_count=10,
+        )
+        result = _code_chunks_to_rag_format([chunk])
+        assert len(result) == 1
+        d = result[0]
+        assert d["type"] == "function"
+        assert "foo" in d["title"]
+        assert "module.py" in d["title"]
+        assert d["category"] == "code"
+        assert d["version"] == ""
+        assert "def foo" in d["text"]
+        assert d["id"].startswith("cast_")
+
+    def test_with_parent_class(self) -> None:
+        """Chunks with parent_class should include it in the title."""
+        from src.rag.rag_engine import _code_chunks_to_rag_format
+        from src.rag.cast_chunker import CodeChunk
+
+        chunk = CodeChunk(
+            content="def bar(self): pass",
+            chunk_type="method",
+            start_line=5,
+            end_line=5,
+            name="bar",
+            parent_class="MyClass",
+            filepath="test.py",
+            language="python",
+            token_count=2,
+        )
+        result = _code_chunks_to_rag_format([chunk])
+        title = result[0]["title"]
+        assert "MyClass" in title
+        assert "bar" in title
+
+    def test_empty_list(self) -> None:
+        """An empty list should return an empty list."""
+        from src.rag.rag_engine import _code_chunks_to_rag_format
+        assert _code_chunks_to_rag_format([]) == []
+
+    def test_multiple_chunks(self) -> None:
+        """Multiple chunks should all be converted."""
+        from src.rag.rag_engine import _code_chunks_to_rag_format
+        from src.rag.cast_chunker import CodeChunk
+
+        chunks = [
+            CodeChunk(
+                content="import os", chunk_type="import_block",
+                start_line=1, end_line=1, name="imports",
+                filepath="mod.py", language="python", token_count=1,
+            ),
+            CodeChunk(
+                content="def util(): pass", chunk_type="function",
+                start_line=3, end_line=3, name="util",
+                filepath="mod.py", language="python", token_count=1,
+            ),
+            CodeChunk(
+                content="class Helper: pass", chunk_type="class",
+                start_line=5, end_line=5, name="Helper",
+                filepath="mod.py", language="python", token_count=1,
+            ),
+        ]
+        result = _code_chunks_to_rag_format(chunks)
+        assert len(result) == 3
+        assert result[0]["type"] == "import_block"
+        assert result[1]["type"] == "function"
+        assert result[2]["type"] == "class"
+
+    def test_embedding_text_includes_signature_and_docstring(self) -> None:
+        """to_embedding_text() should produce multi-view content."""
+        from src.rag.rag_engine import _code_chunks_to_rag_format
+        from src.rag.cast_chunker import CodeChunk
+
+        chunk = CodeChunk(
+            content="def compute(x, y):\n    return x + y",
+            chunk_type="function",
+            start_line=1, end_line=2, name="compute",
+            signature="def compute(x, y):",
+            docstring="Add two numbers.",
+            filepath="calc.py", language="python", token_count=4,
+        )
+        result = _code_chunks_to_rag_format([chunk])
+        text = result[0]["text"]
+        assert "Signature: def compute(x, y):" in text
+        assert "Docstring: Add two numbers." in text
+        assert "return x + y" in text
+
+
+# ══════════════════════════════════════════════════════════════════════
 # load_or_build_db tests (mocked)
 # ══════════════════════════════════════════════════════════════════════
 
@@ -681,12 +789,636 @@ def test_format_sources() -> None:
     assert format_sources([]) == "", "empty sources should return empty string"
 
 
-def test_save_conversation() -> None:
-    """save_conversation should write a JSON file."""
+def test_save_conversation_with_temp_files(tmp_path: Path) -> None:
+    """save_conversation should write a JSON file with conversation data."""
+    import src.rag.rag_engine as rag
     from src.rag.rag_engine import save_conversation
-    from pathlib import Path
+    import json
 
-    # Just verify the function exists and accepts the right args
-    import inspect
-    sig = inspect.signature(save_conversation)
-    assert "history" in sig.parameters
+    history = [
+        {"role": "user", "content": "What is Python?"},
+        {"role": "assistant", "content": "Python is a programming language."},
+    ]
+
+    original_root = rag.ROOT
+    try:
+        rag.ROOT = tmp_path
+        result = save_conversation(history, export_md=False)
+        assert result is not None
+        assert result.exists()
+        assert result.suffix == ".json"
+        data = json.loads(result.read_text(encoding="utf-8"))
+        assert len(data) == 2
+        assert data[0]["role"] == "user"
+        assert data[1]["role"] == "assistant"
+    finally:
+        rag.ROOT = original_root
+
+
+def test_save_conversation_with_markdown(tmp_path: Path) -> None:
+    """save_conversation with export_md=True should also write a .md file."""
+    import src.rag.rag_engine as rag
+    from src.rag.rag_engine import save_conversation
+
+    history = [{"role": "user", "content": "Hi"}, {"role": "assistant", "content": "Hello!"}]
+    original_root = rag.ROOT
+    try:
+        rag.ROOT = tmp_path
+        result = save_conversation(history, export_md=True)
+        assert result is not None
+        conv_dir = tmp_path / "data" / "conversations"
+        md_files = list(conv_dir.glob("*.md"))
+        assert len(md_files) >= 1
+        md_content = md_files[0].read_text(encoding="utf-8")
+        assert "Question" in md_content
+        assert "Hi" in md_content
+        assert "Hello" in md_content
+    finally:
+        rag.ROOT = original_root
+
+
+# ══════════════════════════════════════════════════════════════════════
+# _to_plain_list tests
+# ══════════════════════════════════════════════════════════════════════
+
+
+class TestToPlainList:
+    """Tests for the _to_plain_list helper."""
+
+    def test_plain_list_passes_through(self) -> None:
+        from src.rag.rag_engine import _to_plain_list
+        assert _to_plain_list([1.0, 2.0, 3.0]) == [1.0, 2.0, 3.0]
+
+    def test_empty_list(self) -> None:
+        from src.rag.rag_engine import _to_plain_list
+        assert _to_plain_list([]) == []
+
+    def test_numpy_array(self) -> None:
+        from src.rag.rag_engine import _to_plain_list
+        import numpy as np
+        arr = np.array([0.5, 0.3, 0.1])
+        result = _to_plain_list(arr)
+        assert result == [0.5, 0.3, 0.1]
+        assert type(result) is list
+
+    def test_nested_numpy(self) -> None:
+        from src.rag.rag_engine import _to_plain_list
+        import numpy as np
+        arr = np.array([[0.1, 0.2], [0.3, 0.4]])
+        result = _to_plain_list(arr)
+        assert result == [[0.1, 0.2], [0.3, 0.4]]
+        assert type(result) is list
+
+    def test_tuple_input(self) -> None:
+        from src.rag.rag_engine import _to_plain_list
+        assert _to_plain_list((1, 2, 3)) == [1, 2, 3]
+
+    def test_generator_input(self) -> None:
+        from src.rag.rag_engine import _to_plain_list
+        assert _to_plain_list(x * 2 for x in [1, 2, 3]) == [2, 4, 6]
+
+
+# ══════════════════════════════════════════════════════════════════════
+# parse_args tests
+# ══════════════════════════════════════════════════════════════════════
+
+
+class TestParseArgs:
+    """Tests for the parse_args function."""
+
+    def test_default_values(self, monkeypatch: Any) -> None:
+        import sys
+        monkeypatch.setattr(sys, "argv", ["rag_engine.py", "--question", "test"])
+        from src.rag.rag_engine import parse_args
+        args = parse_args()
+        assert args.model == "qwen2.5-coder:14b"
+        assert args.question == "test"
+        assert args.rebuild is False
+        assert args.stats is False
+        assert args.no_exec is False
+        assert args.exec_timeout == 5
+        assert args.query_expansion is False
+        assert args.mmr is False
+        assert args.mmr_lambda == 0.7
+        assert args.version == ""
+        assert args.category == ""
+
+    def test_boolean_flags(self, monkeypatch: Any) -> None:
+        import sys
+        monkeypatch.setattr(sys, "argv", ["rag_engine.py", "--rebuild", "--stats", "--no-exec", "--query-expansion", "--mmr"])
+        from src.rag.rag_engine import parse_args
+        args = parse_args()
+        assert args.rebuild is True
+        assert args.stats is True
+        assert args.no_exec is True
+        assert args.query_expansion is True
+        assert args.mmr is True
+
+    def test_custom_values(self, monkeypatch: Any) -> None:
+        import sys
+        monkeypatch.setattr(sys, "argv", [
+            "rag_engine.py",
+            "--model", "llama3.2:3b",
+            "--question", "What is a list?",
+            "--exec-timeout", "10",
+            "--mmr-lambda", "0.5",
+            "--version", "3.12",
+            "--category", "library",
+            "--list-models",
+        ])
+        from src.rag.rag_engine import parse_args
+        args = parse_args()
+        assert args.model == "llama3.2:3b"
+        assert args.question == "What is a list?"
+        assert args.exec_timeout == 10
+        assert args.mmr_lambda == 0.5
+        assert args.version == "3.12"
+        assert args.category == "library"
+        assert args.list_models is True
+
+    def test_list_models_flag(self, monkeypatch: Any) -> None:
+        import sys
+        monkeypatch.setattr(sys, "argv", ["rag_engine.py", "--list-models"])
+        from src.rag.rag_engine import parse_args
+        args = parse_args()
+        assert args.list_models is True
+
+
+# ══════════════════════════════════════════════════════════════════════
+# format_sources edge cases
+# ══════════════════════════════════════════════════════════════════════
+
+
+class TestFormatSourcesExtended:
+    """Extended edge case tests for format_sources."""
+
+    def test_empty_list(self) -> None:
+        from src.rag.rag_engine import format_sources
+        assert format_sources([]) == ""
+
+    def test_single_source(self) -> None:
+        from src.rag.rag_engine import format_sources
+        docs = [{"citation_num": 1, "title": "Doc A", "version": "3.12", "category": "lib"}]
+        result = format_sources(docs)
+        assert result.startswith("\n")
+        assert "[1]" in result
+        assert "Doc A" in result
+
+    def test_multiple_sources(self) -> None:
+        from src.rag.rag_engine import format_sources
+        docs = [
+            {"citation_num": 1, "title": "Doc A", "version": "3.12", "category": "lib"},
+            {"citation_num": 2, "title": "Doc B", "version": "3.11", "category": "tutorial"},
+            {"citation_num": 3, "title": "Doc C", "version": "", "category": ""},
+        ]
+        result = format_sources(docs)
+        lines = [l for l in result.split("\n") if l.strip()]
+        assert len(lines) >= 4  # header + 3 docs
+        assert "[1]" in result
+        assert "[2]" in result
+        assert "[3]" in result
+
+    def test_none_version(self) -> None:
+        """Missing version should not cause crash."""
+        from src.rag.rag_engine import format_sources
+        docs = [{"citation_num": 1, "title": "Doc", "version": None, "category": "lib"}]
+        result = format_sources(docs)
+        assert "Doc" in result
+
+    def test_long_title_truncation(self) -> None:
+        from src.rag.rag_engine import format_sources
+        docs = [{"citation_num": 1, "title": "A" * 100, "version": "3.12", "category": "lib"}]
+        result = format_sources(docs)
+        assert len(result) < 200  # title should be truncated to 50 chars
+
+
+# ══════════════════════════════════════════════════════════════════════
+# extract_code_blocks edge cases
+# ══════════════════════════════════════════════════════════════════════
+
+
+class TestExtractCodeBlocksExtended:
+    """Extended edge case tests for extract_code_blocks."""
+
+    def test_empty_text(self) -> None:
+        from src.rag.rag_engine import extract_code_blocks
+        assert extract_code_blocks("") == []
+
+    def test_no_fence(self) -> None:
+        from src.rag.rag_engine import extract_code_blocks
+        text = "Here is some inline `code` but no fences."
+        assert extract_code_blocks(text) == []
+
+    def test_other_language_fence(self) -> None:
+        """Non-python fences should not be extracted."""
+        from src.rag.rag_engine import extract_code_blocks
+        text = """```javascript
+console.log("hello");
+```"""
+        assert extract_code_blocks(text) == []
+
+    def test_mixed_fences(self) -> None:
+        """Python fences mixed with other languages should only extract python ones."""
+        from src.rag.rag_engine import extract_code_blocks
+        text = """```python
+x = 1
+```
+```bash
+echo hello
+```"""
+        blocks = extract_code_blocks(text)
+        assert len(blocks) == 1
+        assert "x = 1" in blocks[0]
+
+    def test_empty_python_block(self) -> None:
+        from src.rag.rag_engine import extract_code_blocks
+        text = """```python
+```"""
+        blocks = extract_code_blocks(text)
+        assert len(blocks) == 1
+        assert blocks[0] == ""
+
+    def test_code_with_backticks_inside(self) -> None:
+        from src.rag.rag_engine import extract_code_blocks
+        text = """```python
+print('hello')
+```"""
+        blocks = extract_code_blocks(text)
+        assert len(blocks) == 1
+
+
+# ══════════════════════════════════════════════════════════════════════
+# execute_code edge cases
+# ══════════════════════════════════════════════════════════════════════
+
+
+class TestExecuteCodeExtended:
+    """Extended edge case tests for execute_code."""
+
+    def test_empty_code(self) -> None:
+        from src.rag.rag_engine import execute_code
+        stdout, stderr = execute_code("", timeout=5)
+        # Empty code behavior varies by platform; verify tuple is returned without crash
+        assert isinstance(stdout, (str, type(None)))
+        assert isinstance(stderr, (str, type(None)))
+
+    def test_import_socket_blocked(self) -> None:
+        from src.rag.rag_engine import execute_code
+        stdout, stderr = execute_code("import socket; s = socket.socket()", timeout=5)
+        assert stdout is None
+        assert stderr == "Skipped (safety)"
+
+    def test_dangerous_open_blocked(self) -> None:
+        from src.rag.rag_engine import execute_code
+        # 'open(' in code should be blocked
+        stdout, stderr = execute_code('open("test.txt", "w").write("data")', timeout=5)
+        assert stdout is None
+        assert stderr == "Skipped (safety)"
+
+    def test_import_shutil_blocked(self) -> None:
+        from src.rag.rag_engine import execute_code
+        stdout, stderr = execute_code("import shutil; shutil.rmtree('/')", timeout=5)
+        assert stdout is None
+        assert stderr == "Skipped (safety)"
+
+    def test_import_ctypes_blocked(self) -> None:
+        from src.rag.rag_engine import execute_code
+        stdout, stderr = execute_code("import ctypes; ctypes.CDLL('libc.so.6')", timeout=5)
+        assert stdout is None
+        assert stderr == "Skipped (safety)"
+
+    def test_import_os_inside_function(self) -> None:
+        """Even within a function definition, import os should be blocked."""
+        from src.rag.rag_engine import execute_code
+        code = """def foo():
+    import os
+    return os.getcwd()
+print(foo())"""
+        stdout, stderr = execute_code(code, timeout=5)
+        assert stdout is None
+        assert stderr == "Skipped (safety)"
+
+
+# ══════════════════════════════════════════════════════════════════════
+# export_conversation_markdown tests
+# ══════════════════════════════════════════════════════════════════════
+
+
+class TestExportConversationMarkdown:
+    """Tests for export_conversation_markdown."""
+
+    def test_basic_export(self) -> None:
+        from src.rag.rag_engine import export_conversation_markdown
+        from pathlib import Path
+
+        history = [
+            {"role": "user", "content": "What is Python?"},
+            {"role": "assistant", "content": "Python is a language."},
+        ]
+        result_path = export_conversation_markdown(history, output_path=None)
+        assert result_path is not None
+        assert result_path.endswith(".md")
+        content = Path(result_path).read_text(encoding="utf-8")
+        assert "Question" in content
+        assert "What is Python?" in content
+        assert "Answer" in content
+        assert "Python is a language." in content
+        # Cleanup
+        Path(result_path).unlink(missing_ok=True)
+
+    def test_export_with_citations(self) -> None:
+        from src.rag.rag_engine import export_conversation_markdown
+        from pathlib import Path
+
+        history = [
+            {"role": "user", "content": "What are lists?"},
+            {
+                "role": "assistant",
+                "content": "Lists are ordered.",
+                "docs": [
+                    {"citation_num": 1, "title": "Lists Guide", "version": "3.12", "category": "library",
+                     "text": "Python lists are mutable"},
+                ],
+            },
+        ]
+        result_path = export_conversation_markdown(history, output_path=None)
+        content = Path(result_path).read_text(encoding="utf-8")
+        assert "Lists Guide" in content
+        assert "[1]" in content
+        Path(result_path).unlink(missing_ok=True)
+
+    def test_export_empty_history(self) -> None:
+        from src.rag.rag_engine import export_conversation_markdown
+        from pathlib import Path
+
+        result_path = export_conversation_markdown([], output_path=None)
+        content = Path(result_path).read_text(encoding="utf-8")
+        assert "PythonAI RAG Conversation" in content
+        Path(result_path).unlink(missing_ok=True)
+
+    def test_export_to_specified_path(self, tmp_path: Path) -> None:
+        from src.rag.rag_engine import export_conversation_markdown
+        from pathlib import Path
+
+        history = [{"role": "user", "content": "Hi"}]
+        output_path = tmp_path / "test_export.md"
+        result_path = export_conversation_markdown(history, output_path=output_path)
+        assert Path(result_path).exists()
+        assert Path(result_path).read_text(encoding="utf-8") != ""
+
+    def test_export_with_docs_param(self, tmp_path: Path) -> None:
+        from src.rag.rag_engine import export_conversation_markdown
+        from pathlib import Path
+
+        history = [{"role": "user", "content": "Hi"}, {"role": "assistant", "content": "Hello"}]
+        docs = [
+            {"citation_num": 1, "title": "Doc A", "version": "3.12", "category": "lib", "text": "Content"},
+        ]
+        output_path = tmp_path / "test_docs.md"
+        result_path = export_conversation_markdown(history, output_path=output_path, docs=docs)
+        content = Path(result_path).read_text(encoding="utf-8")
+        assert "All Sources" in content or "Doc A" in content
+
+
+# ══════════════════════════════════════════════════════════════════════
+# list_conversations & search_conversations tests
+# ══════════════════════════════════════════════════════════════════════
+
+
+class TestListConversations:
+    """Tests for list_conversations and search_conversations with temp files."""
+
+    def test_no_conversations_dir(self, tmp_path: Path) -> None:
+        import src.rag.rag_engine as rag
+        from src.rag.rag_engine import list_conversations, search_conversations
+
+        original_root = rag.ROOT
+        try:
+            rag.ROOT = tmp_path / "nonexistent"
+            assert list_conversations() == []
+            assert search_conversations("anything") == []
+        finally:
+            rag.ROOT = original_root
+
+    def test_list_with_files(self, tmp_path: Path) -> None:
+        import src.rag.rag_engine as rag
+        from src.rag.rag_engine import list_conversations
+
+        original_root = rag.ROOT
+        try:
+            rag.ROOT = tmp_path
+            conv_dir = tmp_path / "data" / "conversations"
+            conv_dir.mkdir(parents=True, exist_ok=True)
+
+            # Create a test conversation file
+            conv_data = [
+                {"role": "user", "content": "What is Python?"},
+                {"role": "assistant", "content": "Python is great."},
+            ]
+            import json
+            json.dump(conv_data, (conv_dir / "conversation_20250101_120000.json").open("w"))
+
+            results = list_conversations()
+            assert len(results) >= 1
+            assert results[0]["messages"] == 2
+            assert results[0]["questions"] == 1
+            assert "Python" in results[0]["summary"]
+        finally:
+            rag.ROOT = original_root
+
+    def test_search_conversations(self, tmp_path: Path) -> None:
+        import src.rag.rag_engine as rag
+        from src.rag.rag_engine import search_conversations
+
+        original_root = rag.ROOT
+        try:
+            rag.ROOT = tmp_path
+            conv_dir = tmp_path / "data" / "conversations"
+            conv_dir.mkdir(parents=True, exist_ok=True)
+
+            conv_data = [
+                {"role": "user", "content": "What is a Python list?"},
+                {"role": "assistant", "content": "A list is a mutable sequence."},
+            ]
+            import json
+            json.dump(conv_data, (conv_dir / "conversation_20250101_120000.json").open("w"))
+
+            results = search_conversations("Python list")
+            assert len(results) >= 1
+            assert results[0]["matches"] >= 1
+            assert len(results[0]["snippets"]) >= 1
+
+            results_no_match = search_conversations("nonexistent_topic_xyz")
+            assert len(results_no_match) == 0
+        finally:
+            rag.ROOT = original_root
+
+    def test_search_with_malformed_file(self, tmp_path: Path) -> None:
+        """Malformed JSON files should be gracefully skipped."""
+        import src.rag.rag_engine as rag
+        from src.rag.rag_engine import list_conversations, search_conversations
+
+        original_root = rag.ROOT
+        try:
+            rag.ROOT = tmp_path
+            conv_dir = tmp_path / "data" / "conversations"
+            conv_dir.mkdir(parents=True, exist_ok=True)
+
+            # Create an invalid JSON file
+            (conv_dir / "conversation_bad.json").write_text("this is not json")
+
+            # Should not crash
+            results = list_conversations()
+            assert len(results) == 0
+            search_results = search_conversations("test")
+            assert len(search_results) == 0
+        finally:
+            rag.ROOT = original_root
+
+    def test_search_max_results(self, tmp_path: Path) -> None:
+        import src.rag.rag_engine as rag
+        from src.rag.rag_engine import search_conversations
+
+        original_root = rag.ROOT
+        try:
+            rag.ROOT = tmp_path
+            conv_dir = tmp_path / "data" / "conversations"
+            conv_dir.mkdir(parents=True, exist_ok=True)
+
+            import json
+            for i in range(5):
+                conv_data = [{"role": "user", "content": f"Question {i} about Python"}]
+                json.dump(conv_data, (conv_dir / f"conversation_2025010{i}_120000.json").open("w"))
+
+            results = search_conversations("Python", max_results=3)
+            assert len(results) == 3
+        finally:
+            rag.ROOT = original_root
+
+
+# ══════════════════════════════════════════════════════════════════════
+# get_answer (mocked) — lightweight smoke tests
+# ══════════════════════════════════════════════════════════════════════
+
+
+class TestGetAnswer:
+    """Tests for get_answer with mocked ollama.chat and ollama.generate."""
+
+    def test_get_answer_returns_correct_structure(self) -> None:
+        """get_answer should return (answer, docs) tuple without errors."""
+        from src.rag.rag_engine import get_answer
+
+        # Create mock collection with one doc
+        coll = MockCollection([
+            {"title": "Lists Guide", "text": "Lists are mutable (Title: Lists Guide)",
+             "version": "3.12", "category": "library", "score": 0.9, "embedding": [0.5, 0.5, 0.0]},
+        ])
+        embedder = MockEmbedder()
+
+        with _mock_ollama_generate("1. How do lists work?"):
+            with _mock_ollama_chat("Lists are ordered and mutable."):
+                answer, docs = get_answer(
+                    "What are lists?", coll, embedder, [],
+                    bm25=None, corpus_texts=None, kg=None,
+                    use_query_expansion=False,
+                )
+
+        assert isinstance(answer, str)
+        assert len(answer) > 0
+        assert isinstance(docs, list)
+
+    def test_get_answer_with_query_expansion(self) -> None:
+        """get_answer with query_expansion=True should not crash."""
+        from src.rag.rag_engine import get_answer
+
+        coll = MockCollection([
+            {"title": "Doc A", "text": "Content of Doc A (Title: Doc A)",
+             "version": "3.12", "category": "lib", "score": 0.8, "embedding": [0.5, 0.5, 0.0]},
+        ])
+        embedder = MockEmbedder()
+
+        with _mock_ollama_generate("1. Alternative query?\n2. Another query?"):
+            with _mock_ollama_chat("Here is the answer."):
+                answer, docs = get_answer(
+                    "What is Python?", coll, embedder, [],
+                    use_query_expansion=True,
+                )
+
+        assert isinstance(answer, str)
+        assert len(answer) > 0
+
+    def test_get_answer_with_empty_docs(self) -> None:
+        """get_answer should work even when no documents are found."""
+        from src.rag.rag_engine import get_answer
+
+        coll = MockCollection([])
+        embedder = MockEmbedder()
+
+        with _mock_ollama_generate(""):
+            with _mock_ollama_chat("I'll answer from my knowledge."):
+                answer, docs = get_answer(
+                    "What is Python?", coll, embedder, [],
+                    no_exec=True,
+                )
+
+        assert isinstance(answer, str)
+        assert isinstance(docs, list)
+
+
+@contextmanager
+def _mock_ollama_chat(response_text: str):
+    """Context manager to mock ollama.chat (streaming).
+
+    Returns a list of dicts matching the real ollama.chat streaming format
+    where each chunk has chunk["message"]["content"].
+    """
+    import ollama as ollama_module
+    original = ollama_module.chat
+
+    def _fake_chat(*args: object, **kwargs: object) -> list[dict[str, dict[str, str]]]:
+        return [{"message": {"content": response_text}}]
+
+    ollama_module.chat = _fake_chat  # type: ignore[assignment]
+    try:
+        yield
+    finally:
+        ollama_module.chat = original
+
+
+# ══════════════════════════════════════════════════════════════════════
+# show_model_info tests (mocked Ollama)
+# ══════════════════════════════════════════════════════════════════════
+
+
+def test_show_model_info_with_data(capsys: Any) -> None:
+    """show_model_info should print model details."""
+    with _mock_ollama_show({"modelfile": "FROM qwen", "parameters": "num_ctx 512"}):
+        from src.rag.rag_engine import show_model_info
+        show_model_info("test-model")
+        captured = capsys.readouterr()
+        assert "test-model" in captured.out
+
+
+def test_show_model_info_with_empty_response(capsys: Any) -> None:
+    """show_model_info should handle empty/error response."""
+    with _mock_ollama_show({}):
+        from src.rag.rag_engine import show_model_info
+        show_model_info("unknown-model")
+        captured = capsys.readouterr()
+        assert "unknown-model" in captured.out
+
+
+@contextmanager
+def _mock_ollama_show(return_data: dict[str, Any]):
+    """Context manager to mock ollama.show."""
+    import ollama as ollama_module
+    original = ollama_module.show
+
+    def _fake_show(model: str = "") -> dict[str, Any]:
+        return return_data
+
+    ollama_module.show = _fake_show  # type: ignore[assignment]
+    try:
+        yield
+    finally:
+        ollama_module.show = original

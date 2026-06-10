@@ -104,7 +104,7 @@ class ProviderRouter:
         # Then check PythonAI's apikeys storage
         try:
             from src.data.apikeys import resolve_key
-            return resolve_key(provider_id)
+            return resolve_key(provider_id)  # type: ignore[no-any-return]
         except ImportError:
             pass
 

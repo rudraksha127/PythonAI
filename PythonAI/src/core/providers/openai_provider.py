@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from typing import Any
 from urllib.request import Request, urlopen
 from urllib.error import URLError
@@ -131,7 +132,7 @@ def call_openai_stream(
     api_key: str = "",
     temperature: float = 0.3,
     max_tokens: int = 4096,
-    on_token: callable = None,
+    on_token: Callable[[str], None] | None = None,
 ) -> str:
     """
     Call an OpenAI-compatible API with streaming.
@@ -171,7 +172,7 @@ def call_openai_stream(
         path = "/" + "/".join(parsed_url.split("/")[1:]) if "/" in parsed_url else "/"
 
         if url.startswith("https"):
-            conn = http.client.HTTPSConnection(host, timeout=120)
+            conn: http.client.HTTPSConnection | http.client.HTTPConnection = http.client.HTTPSConnection(host, timeout=120)
         else:
             conn = http.client.HTTPConnection(host, timeout=120)
 
@@ -201,7 +202,7 @@ def call_openai_stream(
                     token = delta.get("content", "")
                     if token:
                         full_text += token
-                        if on_token:
+                        if on_token is not None:
                             on_token(token)
                 except json.JSONDecodeError:
                     pass

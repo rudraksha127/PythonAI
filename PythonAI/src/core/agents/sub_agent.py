@@ -18,7 +18,8 @@ import random
 import time
 import traceback
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 # ── Constants ────────────────────────────────────────────────
@@ -72,7 +73,7 @@ class SubAgent:
         max_tool_calls: int = 4,
         max_retries: int = MAX_LLM_RETRIES,
         registry: ToolRegistry | None = None,
-        call_llm_fn: Callable | None = None,
+        call_llm_fn: Callable[..., Any] | None = None,
         on_stream: Callable[[str], None] | None = None,
     ):
         self.name = name
@@ -432,7 +433,7 @@ once you have enough information."""
             Response dict with "content" and "tool_calls" keys, or None on failure.
         """
         if self.call_llm_fn:
-            return self.call_llm_fn(messages, tools)
+            return self.call_llm_fn(messages, tools)  # type: ignore[no-any-return]
 
         self._last_llm_error = None
 

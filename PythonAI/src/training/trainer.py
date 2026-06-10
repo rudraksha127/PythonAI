@@ -19,7 +19,16 @@ from datasets import Dataset, load_from_disk
 datasets.disable_caching()
 import datasets.fingerprint
 datasets.fingerprint.generate_fingerprint = lambda *args, **kwargs: "dummy_fingerprint"
-from peft import LoraConfig, get_peft_model
+
+# ── Unsloth (optional — 2x faster QLoRA, 70% less VRAM) ──
+_HAS_UNSLOTH: bool = False
+try:
+    from unsloth import FastLanguageModel, is_bfloat16_supported
+    from unsloth.chat_templates import get_chat_template
+    _HAS_UNSLOTH = True
+except ImportError:
+    pass
+
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -561,6 +570,173 @@ def maybe_enable_airllm_probe(model_name: str, prompt: str, max_length: int) -> 
         print(f"AirLLM probe skipped: runtime failure ({exc}).")
 
 
+# ─── Unsloth training path ───
+def train_with_unsloth(args: argparse.Namespace) -> None:
+    """
+    Train using Unsloth for 2x faster QLoRA with 70% less VRAM.
+    Mirrors the standard train() function but uses FastLanguageModel.
+    """
+    if not _HAS_UNSLOTH:
+        raise ImportError("Unsloth is not installed. Run: pip install unsloth")
+
+    random.seed(args.seed)
+    torch.manual_seed(args.seed)
+
+    if getattr(args, 'test_mode', False):
+        args.max_steps = 2
+        args.max_examples = 4
+        print("[Test mode] Overriding: --max-steps 2 --max-examples 4")
+
+    if args.base_model.startswith("ollama:"):
+        raise ValueError(
+            "Ollama/GGUF models cannot be fine-tuned. "
+            "Use an HF-format model id for Unsloth training."
+        )
+
+    print(f"\n{'='*60}")
+    print(f"  ⚡ UNSLOTH MODE — 2x faster, 70% less VRAM")
+    print(f"  Model: {args.base_model}")
+    print(f"{'='*60}\n")
+
+    # ── Load tokenizer ──
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    # ── Load examples ──
+    examples = load_examples(args.source_files, args.max_examples)
+    if not args.test_mode and len(examples) < 8:
+        raise RuntimeError(f"Not enough training examples: {len(examples)}")
+
+    random.shuffle(examples)
+    split_index = max(1, int(len(examples) * (1 - args.validation_split)))
+    train_examples = examples[:split_index]
+    eval_examples = examples[split_index:] or examples[: min(8, len(examples))]
+
+    train_dataset = make_dataset(train_examples, tokenizer, args.max_length, args.use_indra_prompt)
+    eval_dataset = make_dataset(eval_examples, tokenizer, args.max_length, args.use_indra_prompt)
+
+    print(f"Base model       : {args.base_model}")
+    print(f"Output directory : {args.output_dir}")
+    print(f"Max length       : {args.max_length}")
+    print(f"CUDA available   : {torch.cuda.is_available()}")
+    print(f"Unsloth          : enabled (FastLanguageModel)")
+
+    # ── Load model with Unsloth ──
+    max_seq_length = getattr(args, "unsloth_max_seq_length", 2048)
+    print(f"Loading model via FastLanguageModel (max_seq={max_seq_length})...")
+
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name=args.base_model,
+        max_seq_length=max_seq_length,
+        load_in_4bit=getattr(args, "load_in_4bit", True),
+        dtype=None,  # Auto-detect: bfloat16 if supported, else float16
+        trust_remote_code=True,
+        token=getattr(args, "hf_token", None) or None,
+    )
+
+    # ── Apply LoRA via Unsloth's optimized method ──
+    model = FastLanguageModel.get_peft_model(
+        model,
+        r=args.lora_rank,
+        target_modules=[
+            "q_proj", "k_proj", "v_proj", "o_proj",
+            "gate_proj", "up_proj", "down_proj",
+        ],
+        lora_alpha=args.lora_alpha,
+        lora_dropout=0,  # Unsloth recommends 0 for best performance
+        bias="none",
+        use_gradient_checkpointing=args.gradient_checkpointing,
+        random_state=args.seed,
+        max_seq_length=max_seq_length,
+    )
+    model.print_trainable_parameters()
+
+    # ── Callbacks ──
+    callbacks = []
+    throughput_cb = ThroughputCallback(max_length=args.max_length)
+    callbacks.append(throughput_cb)
+
+    curves_cb = None
+    if args.save_training_curves or args.viz:
+        if args.viz:
+            curves_cb = EnhancedTrainingCurvesCallback(args.output_dir)
+        else:
+            curves_cb = TrainingCurvesCallback(args.output_dir)
+        callbacks.append(curves_cb)
+
+    _viz_base_model = args.base_model if hasattr(args, 'base_model') else ""
+    _viz_dataset_version = args.dataset_version if hasattr(args, 'dataset_version') else ""
+
+    # ── Training arguments ──
+    training_args = TrainingArguments(
+        output_dir=args.output_dir,
+        num_train_epochs=args.epochs,
+        max_steps=args.max_steps,
+        per_device_train_batch_size=args.batch_size,
+        per_device_eval_batch_size=args.batch_size,
+        gradient_accumulation_steps=args.grad_accum,
+        learning_rate=args.learning_rate,
+        warmup_ratio=0.03,
+        logging_steps=1,
+        save_strategy=args.save_strategy,
+        save_steps=args.save_steps,
+        save_total_limit=args.save_total_limit,
+        eval_strategy=args.eval_strategy,
+        eval_steps=args.eval_steps,
+        report_to=["wandb"] if args.wandb else [],
+        remove_unused_columns=False,
+        fp16=not is_bfloat16_supported() if torch.cuda.is_available() else False,
+        bf16=is_bfloat16_supported() if torch.cuda.is_available() else False,
+        gradient_checkpointing=args.gradient_checkpointing,
+        max_grad_norm=args.gradient_clip if args.gradient_clip > 0 else 1.0,
+        lr_scheduler_type=args.lr_scheduler_type or "linear",
+        load_best_model_at_end=args.early_stopping_patience > 0,
+        metric_for_best_model="eval_loss",
+        greater_is_better=False,
+    )
+
+    if curves_cb and isinstance(curves_cb, EnhancedTrainingCurvesCallback):
+        curves_cb.metrics.base_model = _viz_base_model
+        curves_cb.metrics.dataset_version = _viz_dataset_version
+
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        data_collator=default_data_collator,
+        callbacks=callbacks,
+    )
+
+    print(f"Training examples: {len(train_dataset)}")
+    print(f"Validation examples: {len(eval_dataset)}")
+    print(f"LR scheduler: {args.lr_scheduler_type or 'linear'}")
+    if args.early_stopping_patience > 0:
+        print(f"Early stopping patience: {args.early_stopping_patience}")
+
+    train_result = trainer.train(resume_from_checkpoint=args.resume_from_checkpoint or None)
+
+    trainer.save_model(args.output_dir)
+    tokenizer.save_pretrained(args.output_dir)
+
+    metrics = train_result.metrics
+    metrics["train_examples"] = len(train_dataset)
+    metrics["validation_examples"] = len(eval_dataset)
+    trainer.save_metrics("train", metrics)
+
+    if curves_cb:
+        if isinstance(curves_cb, EnhancedTrainingCurvesCallback):
+            curves_cb.finalize(training_args)
+        else:
+            curves_cb.save_plot()
+
+    print(f"\n{'='*60}")
+    print(f"  ✅ UNSLOTH TRAINING COMPLETE")
+    print(f"  Model saved: {args.output_dir}")
+    print(f"{'='*60}\n")
+
+
 def train(args: argparse.Namespace) -> None:
     random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -575,6 +751,18 @@ def train(args: argparse.Namespace) -> None:
             "Ollama/GGUF models cannot be PEFT fine-tuned by this Trainer. "
             "Use an HF-format Qwen path/model id for LoRA training, and use Ollama for RAG/inference."
         )
+
+    # ══════════════════════════════════════════════
+    # Route to Unsloth if enabled and available
+    # ══════════════════════════════════════════════
+    use_unsloth = getattr(args, "use_unsloth", False)
+    if use_unsloth:
+        if not _HAS_UNSLOTH:
+            print("[WARN] Unsloth not installed. Falling back to standard training.")
+            print("  Install: pip install 'unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git'")
+        else:
+            train_with_unsloth(args)
+            return
 
     tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)
     if tokenizer.pad_token is None:
@@ -781,6 +969,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--viz", action="store_true",
                         help="Save comprehensive training visualization (dashboard, LR, throughput, HTML, JSON)")
     parser.add_argument("--load-in-4bit", action="store_true", help="Enable 4-bit QLoRA")
+    parser.add_argument("--use-unsloth", action="store_true",
+                        help="Use Unsloth for 2x faster QLoRA training (70%% less VRAM)")
+    parser.add_argument("--unsloth-max-seq-length", type=int, default=2048,
+                        help="Max sequence length for Unsloth (default: 2048)")
+    parser.add_argument("--hf-token", default="",
+                        help="HuggingFace token for gated models")
     parser.add_argument("--test-mode", action="store_true",
                         help="Run a quick validation (2 steps, 4 examples)")
     parser.add_argument("--use-indra-prompt", action="store_true",

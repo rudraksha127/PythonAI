@@ -47,9 +47,9 @@ def expand_env_vars(value: str) -> tuple[str, list[str]]:
     """
     missing: list[str] = []
 
-    def replacer(match: re.Match) -> str:
+    def replacer(match: re.Match[str]) -> str:
         var_name = match.group(1) or match.group(2)
-        env_val = os.environ.get(var_name)
+        env_val: str | None = os.environ.get(var_name)
         if env_val is None:
             if var_name not in missing:
                 missing.append(var_name)
@@ -108,7 +108,7 @@ def _expand_headers(
 ) -> dict[str, str] | None:
     if not headers:
         return headers
-    expanded = {}
+    expanded: dict[str, str] = {}
     for k, v in headers.items():
         ev, m = expand_env_vars(v)
         expanded[k] = ev

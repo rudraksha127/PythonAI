@@ -82,7 +82,7 @@ def _glob_call(input_data: dict[str, Any],
     search_path = search_path.replace("\\", "/")
 
     try:
-        results = glob_module.glob(search_path, recursive=True, include_hidden=True)
+        results = glob_module.glob(search_path, recursive=True)
 
         # Sort by modification time (most recent first)
         def get_mtime(p):

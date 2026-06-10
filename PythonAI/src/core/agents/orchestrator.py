@@ -19,7 +19,8 @@ import re
 import time
 import traceback
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from ..registry import ToolRegistry, get_registry
 from .sub_agent import SubAgent, SubAgentResult
@@ -53,7 +54,7 @@ class AgentOrchestrator:
     def __init__(
         self,
         registry: ToolRegistry | None = None,
-        call_llm_fn: Callable | None = None,
+        call_llm_fn: Callable[..., Any] | None = None,
         on_stream: Callable[[str], None] | None = None,
         on_plan: Callable[[list[PlanStep]], None] | None = None,
         max_concurrent: int = 4,
@@ -124,14 +125,14 @@ class AgentOrchestrator:
         for step in self.plan:
             if step.agent_name == agent_name:
                 step.status = "running"
-        if self.on_stream:
+        if self.on_stream is not None:
             self.on_stream(f"\n[Orchestrator] Starting agent: {agent_name}\n")
 
     def _on_agent_complete(self, agent_name: str, result: SubAgentResult) -> None:
         for step in self.plan:
             if step.agent_name == agent_name:
                 step.status = "done" if result.success else "failed"
-        if self.on_stream:
+        if self.on_stream is not None:
             status = "done" if result.success else "failed"
             self.on_stream(
                 f"\n[Orchestrator] Agent '{agent_name}' {status}: "
@@ -147,11 +148,12 @@ class AgentOrchestrator:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
-        
-        if self.call_llm_fn:
+        if self.call_llm_fn is not None:
             try:
                 result = self.call_llm_fn(messages, [])
-                return result.get("content", "") if result else None
+                if result is not None:
+                    return result.get("content", "")  # type: ignore[no-any-return]
+                return None
             except Exception as e:
                 logger.debug(f"Planning LLM call via injected fn failed: {e}")
                 return None
@@ -200,8 +202,9 @@ class AgentOrchestrator:
                 logger.debug(f"Planning LLM API error: {result['error']}")
                 return None
                 
-            return result.get("content", "")
-            
+            # Mypy: api_fn returns Any, cast to str for return type
+            return result.get("content", "")  # type: ignore[no-any-return]
+
         except Exception as e:
             logger.debug(f"Planning LLM exception: {e}")
             return None
@@ -216,27 +219,29 @@ class AgentOrchestrator:
             steps = llm_steps
         else:
             # 2. Fallback to keyword-based planning
-            if self.on_stream:
+            if self.on_stream is not None:
                 self.on_stream("[Orchestrator] LLM planning unavailable/failed. Falling back to keyword matching.\n")
             steps = self._plan_task_keyword_fallback(user_request)
 
         self.plan = steps
 
-        if self.on_plan:
+        if self.on_plan is not None:
             self.on_plan(steps)
 
-        if self.verbose or self.on_stream:
-            self.on_stream("\n[Orchestrator] Plan:\n")
-            for s in steps:
-                deps = f" (after: {', '.join(s.depends_on)})" if s.depends_on else ""
-                self.on_stream(f"  {s.id}: [{s.agent_name}] {s.task[:60]}...{deps}\n")
-            self.on_stream("\n")
+        if self.verbose or self.on_stream is not None:
+            stream = self.on_stream
+            if stream is not None:
+                stream("\n[Orchestrator] Plan:\n")
+                for s in steps:
+                    deps = f" (after: {', '.join(s.depends_on)})" if s.depends_on else ""
+                    stream(f"  {s.id}: [{s.agent_name}] {s.task[:60]}...{deps}\n")
+                stream("\n")
 
         return steps
 
     def _plan_task_llm(self, user_request: str) -> list[PlanStep] | None:
         """Use an LLM to decompose the request into a JSON array of PlanSteps."""
-        if self.on_stream:
+        if self.on_stream is not None:
             self.on_stream("  [LLM] Planning...\n")
             
         agents_info = [
@@ -420,7 +425,7 @@ Expected JSON schema:
         Returns:
             Number of MCP tools registered.
         """
-        if self.on_stream:
+        if self.on_stream is not None:
             self.on_stream("[Orchestrator] Discovering MCP servers...\n")
 
         # 1. Close any previous connections (before import, so it runs even if MCP is unavailable)
@@ -436,7 +441,7 @@ Expected JSON schema:
             if not configured:
                 return 0
 
-            if self.on_stream:
+            if self.on_stream is not None:
                 names = ", ".join(configured.keys())
                 self.on_stream(f"  Configs found: {len(configured)} ({names})\n")
 
@@ -456,16 +461,16 @@ Expected JSON schema:
                     count = self.registry.register_mcp_server(conn)
                     connected_count += 1
                     tool_count += count
-                    if self.on_stream:
+                    if self.on_stream is not None:
                         self.on_stream(
                             f"  [OK] {name}: {len(conn.tools)} tools, "
                             f"{len(conn.resources)} resources\n"
                         )
                 else:
-                    if self.on_stream:
+                    if self.on_stream is not None:
                         self.on_stream(f"  [--] {name}: {conn.error or 'failed'}\n")
 
-            if connected_count and self.on_stream:
+            if connected_count and self.on_stream is not None:
                 self.on_stream(
                     f"  Total: {connected_count}/{len(connections)} connected, "
                     f"{tool_count} tools registered\n"
@@ -484,7 +489,7 @@ Expected JSON schema:
 
         except Exception as e:
             logger.debug(f"MCP auto-connect failed: {e}\n{traceback.format_exc()}")
-            if self.on_stream:
+            if self.on_stream is not None:
                 self.on_stream(f"  [MCP] Auto-connect skipped: {e}\n")
             return 0
 
@@ -525,7 +530,7 @@ Expected JSON schema:
         if self._mcp_client is not None:
             try:
                 self._mcp_client.close_all()
-                if self.on_stream:
+                if self.on_stream is not None:
                     self.on_stream("[Orchestrator] MCP connections closed\n")
             except Exception as e:
                 logger.debug(f"MCP cleanup error: {e}")
@@ -553,24 +558,24 @@ Expected JSON schema:
         start_time = time.time()
 
         # Phase 0: Auto-connect MCP servers
-        if self.on_stream:
+        if self.on_stream is not None:
             self.on_stream("\n[Orchestrator] Agentic Mode (Phase 6)\n")
         mcp_tools = self._auto_connect_mcp()
 
-        if self.on_stream:
+        if self.on_stream is not None:
             self.on_stream(
                 f"  Tools: {self.registry.total_count} registered "
                 f"({mcp_tools} MCP)\n"
             )
 
         # Phase 1: Plan
-        if self.on_stream:
+        if self.on_stream is not None:
             self.on_stream("\n[Orchestrator] Planning...\n")
 
         self.plan_task(user_request)
 
         # Phase 2: Execute with dependency ordering
-        if self.on_stream:
+        if self.on_stream is not None:
             self.on_stream("[Orchestrator] Executing...\n")
 
         # Group by dependency level
@@ -619,14 +624,14 @@ Expected JSON schema:
                 del pending[step.id]
 
         # Phase 3: Synthesize
-        if self.on_stream:
+        if self.on_stream is not None:
             self.on_stream("[Orchestrator] Synthesizing results...\n")
 
         synthesis = self._synthesize(user_request)
 
         elapsed = time.time() - start_time
 
-        if self.on_stream:
+        if self.on_stream is not None:
             self.on_stream(
                 f"\n[Orchestrator] Complete: {len(self.results)} agents, "
                 f"{sum(r.tool_calls_used for r in self.results.values())} tools, "
@@ -656,13 +661,13 @@ Expected JSON schema:
             return llm_synthesis
 
         # 2. Fallback to concatenation
-        if self.on_stream:
+        if self.on_stream is not None:
             self.on_stream("  [Orchestrator] LLM synthesis unavailable/failed. Falling back to concatenation.\n")
         return self._synthesize_concat_fallback(user_request, successful)
 
     def _synthesize_llm(self, user_request: str, successful: dict[str, SubAgentResult]) -> str | None:
         """Use LLM to synthesize agent results into a cohesive final answer."""
-        if self.on_stream:
+        if self.on_stream is not None:
             self.on_stream("  [LLM] Synthesizing...\n")
             
         system_prompt = """You are an elite orchestrator AI. You have delegated a complex user request to several specialized sub-agents.

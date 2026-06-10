@@ -110,6 +110,10 @@ class TrainingConfig:
     eval_strategy: str = "steps"        # "no", "steps", "epoch"
     eval_steps: int = 25
 
+    # ── Unsloth (Optional — 2x faster QLoRA, 70% less VRAM) ────
+    use_unsloth: bool = False
+    unsloth_max_seq_length: int = 2048
+
     # ── Advanced ────────────────────────────────────────────────
     gradient_checkpointing: bool = False
     gradient_clip: float = 0.0          # 0 = disabled
@@ -142,6 +146,11 @@ class TrainingConfig:
             raise ValueError(f"lora_rank must be >= 1, got {self.lora_rank}")
         if self.lr_scheduler_type not in ("linear", "cosine", "constant"):
             raise ValueError(f"Unknown lr_scheduler_type: {self.lr_scheduler_type}")
+        if self.use_unsloth and not self.load_in_4bit:
+            import warnings
+            warnings.warn(
+                "Unsloth is optimized for 4-bit QLoRA. Consider setting --load-in-4bit for best results."
+            )
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "TrainingConfig":
@@ -217,9 +226,10 @@ class TrainingConfig:
     @property
     def summary(self) -> str:
         """Human-readable summary of key training parameters."""
+        un = "[Unsloth] " if self.use_unsloth else ""
         return (
             f"Model: {self.base_model}\n"
-            f"  Steps: {self.effective_steps} | LR: {self.learning_rate:.2e}\n"
+            f"  {un}Steps: {self.effective_steps} | LR: {self.learning_rate:.2e}\n"
             f"  LoRA: r={self.lora_rank}, alpha={self.lora_alpha}\n"
             f"  Batch: {self.batch_size} x {self.grad_accum} accum\n"
             f"  Max length: {self.max_length} | Max examples: {self.max_examples}\n"
@@ -298,6 +308,7 @@ def production_config() -> TrainingConfig:
         lora_alpha=32,
         lora_dropout=0.05,
         load_in_4bit=True,
+        use_unsloth=True,
         save_strategy="steps",
         save_steps=50,
         eval_strategy="steps",
@@ -306,7 +317,7 @@ def production_config() -> TrainingConfig:
         dataset_path="data/training/training_dataset.json",
         dataset_version="v2.0",
         experiment_name="production_v2",
-        tags=["production", "qwen", "v2"],
+        tags=["production", "qwen", "v2", "unsloth"],
         viz=True,
     )
 

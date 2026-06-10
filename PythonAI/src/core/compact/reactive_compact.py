@@ -14,7 +14,8 @@ compaction didn't catch the issue.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 MAX_REACTIVE_RETRIES = 2
 
@@ -36,7 +37,7 @@ def is_prompt_too_long_error(response: dict[str, Any]) -> bool:
 def reactive_compact_if_needed(
     response: dict[str, Any],
     messages: list[dict[str, Any]],
-    compact_fn: Callable | None = None,
+    compact_fn: Callable[..., Any] | None = None,
     retry_count: int = 0,
     max_retries: int = MAX_REACTIVE_RETRIES,
 ) -> dict[str, Any]:

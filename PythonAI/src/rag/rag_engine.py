@@ -19,6 +19,7 @@ from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
 from src.rag.models import DEFAULT_MODEL, list_configured_models, list_ollama_models, resolve_model
+from src.rag.cast_chunker import CastChunker, CodeChunk
 from src.rag.knowledge_graph import KnowledgeGraph
 from src.rag.reasoning import ReasoningEngine
 from src.rag.verifier import AnswerVerifier
@@ -30,6 +31,11 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 # ═══════════════════════════════
 CHUNKS_FILE = ROOT / "data" / "raw" / "raw_chunks_godmode.json"
 DB_PATH = ROOT / "python_brain_godmode"
+
+# Directories to scan with cAST structural chunking during --rebuild
+CODE_DIRS = [
+    ROOT / "src",
+]
 
 SYSTEM_PROMPT = """You are PYTHON MASTER, a Python-specialist assistant for offline RAG.
 
@@ -597,6 +603,32 @@ def get_answer(
 # DATABASE BUILD
 # ═══════════════════════════════
 
+def _code_chunks_to_rag_format(chunks: list[CodeChunk]) -> list[dict[str, Any]]:
+    """Convert cAST CodeChunk objects to RAG build_db dict format."""
+    result: list[dict[str, Any]] = []
+    for c in chunks:
+        # Build a semantic title from chunk metadata
+        title_parts = [c.name]
+        if c.parent_class:
+            title_parts.insert(0, c.parent_class)
+        title = ".".join(title_parts)
+        file_name = Path(c.filepath).name
+        full_title = f"{c.chunk_type}: {title} ({file_name})"
+
+        # Unique ID based on file path + location
+        chunk_id = f"cast_{abs(hash(f'{c.filepath}:{c.name}:{c.start_line}:{c.end_line}'))}"
+
+        result.append({
+            "id": chunk_id,
+            "text": c.to_embedding_text(),
+            "type": c.chunk_type,
+            "title": full_title,
+            "version": "",
+            "category": "code",
+        })
+    return result
+
+
 def build_db(chunks_file: Path) -> tuple[Any, SentenceTransformer, SimpleBM25 | None, list[str], KnowledgeGraph]:
     import chromadb
 
@@ -612,6 +644,26 @@ def build_db(chunks_file: Path) -> tuple[Any, SentenceTransformer, SimpleBM25 | 
     ]
 
     print(f"[OK] Valid chunks: {len(valid):,}")
+
+    # ── cAST code chunking (structural AST-aware chunking for Python files) ──
+    print("[cAST] Chunking source code files with structural awareness...")
+    chunker = CastChunker(language="python")
+    all_code_chunks: list[dict[str, Any]] = []
+    for code_dir in CODE_DIRS:
+        if code_dir.exists():
+            try:
+                raw_chunks = chunker.chunk_directory(code_dir, extensions=[".py"])
+                rag_chunks = _code_chunks_to_rag_format(raw_chunks)
+                all_code_chunks.extend(rag_chunks)
+                print(f"  [cAST] {code_dir}: {len(rag_chunks)} chunks")
+            except Exception as e:
+                print(f"  [cAST] Error chunking {code_dir}: {e}")
+    code_valid = [
+        c for c in all_code_chunks
+        if len(c.get("text", "")) > 80
+    ]
+    print(f"[cAST] Code chunks after filtering: {len(code_valid):,}")
+    valid.extend(code_valid)
     print(f"\n[Build] Building GOD MODE database...")
 
     embedder = SentenceTransformer("all-MiniLM-L6-v2")

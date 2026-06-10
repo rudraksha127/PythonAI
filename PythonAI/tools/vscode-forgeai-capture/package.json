@@ -1,0 +1,97 @@
+{
+  "name": "forgeai-capture",
+  "displayName": "ForgeAI Capture",
+  "description": "Captures AI coding assistant accept/reject/edit signals and writes them to the ForgeAI CaptureEngine SQLite database for self-improving fine-tuning.",
+  "version": "0.1.0",
+  "publisher": "forgeai",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Machine Learning",
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "forgeai",
+    "capture",
+    "signals",
+    "training",
+    "fine-tuning",
+    "seal"
+  ],
+  "icon": "icon.png",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "ForgeAI Capture",
+      "properties": {
+        "forgeai.dbPath": {
+          "type": "string",
+          "default": "~/.forgeai/signals.db",
+          "description": "Path to the ForgeAI CaptureEngine SQLite database. Accepts ~ for home directory."
+        },
+        "forgeai.projectName": {
+          "type": "string",
+          "default": "",
+          "description": "Project name for session identification. If empty, uses the workspace folder name."
+        },
+        "forgeai.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable signal capture."
+        },
+        "forgeai.captureRejects": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture reject signals (when user dismisses or ignores a suggestion)."
+        },
+        "forgeai.captureEdits": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture edit signals (when user modifies a suggestion before accepting)."
+        },
+        "forgeai.developerId": {
+          "type": "string",
+          "default": "",
+          "description": "Optional anonymized developer ID. If empty, auto-generated from machine ID."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "forgeai.showStatus",
+        "title": "ForgeAI: Show Capture Status"
+      },
+      {
+        "command": "forgeai.exportSignals",
+        "title": "ForgeAI: Export Captured Signals"
+      },
+      {
+        "command": "forgeai.toggleCapture",
+        "title": "ForgeAI: Toggle Signal Capture"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@types/uuid": "^9.0.7",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "sql.js": "^1.10.0",
+    "uuid": "^9.0.0"
+  }
+}

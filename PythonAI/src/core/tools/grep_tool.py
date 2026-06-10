@@ -108,7 +108,7 @@ def _grep_call(input_data: dict[str, Any],
             if part.startswith("."):
                 include_extensions.add(part)
 
-    matches = []
+    matches: list[dict[str, Any]] = []
     total_files_searched = 0
 
     try:

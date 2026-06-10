@@ -170,6 +170,192 @@ def tokenize_record(record: dict, tokenizer, max_length: int) -> dict | None:
         return None
 
 
+# ═══════════════════════════════════════════════════════════════
+# UNSLOTH TRAINING (Optional — 2x faster, 70% less VRAM)
+# ═══════════════════════════════════════════════════════════════
+
+_HAS_UNSLOTH = False
+try:
+    from unsloth import FastLanguageModel, is_bfloat16_supported
+    _HAS_UNSLOTH = True
+except ImportError:
+    pass
+
+
+def train_with_unsloth(cfg: ForgeConfig, test_mode: bool = False):
+    """Train using Unsloth FastLanguageModel for 2x speed."""
+    if not _HAS_UNSLOTH:
+        logger.error("Unsloth not installed. Run: pip install unsloth")
+        return None
+
+    # Load records
+    try:
+        raw_records = load_raw_records(cfg, test_mode=test_mode)
+    except (FileNotFoundError, ValueError) as e:
+        logger.error(str(e))
+        return None
+
+    # Load model via FastLanguageModel
+    max_seq_length = 4096 if cfg.hardware_profile.get("vram_gb", 0) >= 24 else 2048
+    logger.info(f"Loading via FastLanguageModel (max_seq={max_seq_length})...")
+
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name=cfg.base_model,
+        max_seq_length=max_seq_length,
+        load_in_4bit=True,
+        dtype=None,  # Auto-detect
+        trust_remote_code=True,
+        token=cfg.hf_token or None,
+    )
+
+    model = FastLanguageModel.get_peft_model(
+        model,
+        r=cfg.lora_rank,
+        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        lora_alpha=cfg.lora_alpha or 16,
+        lora_dropout=0,
+        bias="none",
+        use_gradient_checkpointing=True,
+        random_state=42,
+        max_seq_length=max_seq_length,
+    )
+    model.print_trainable_parameters()
+
+    # Tokenize data
+    max_length = 2048 if cfg.hardware_profile.get("vram_gb", 12) < 16 else 4096
+    tokenized = []
+    for record in raw_records:
+        result = tokenize_record(record, tokenizer, max_length)
+        if result:
+            tokenized.append(result)
+
+    if not tokenized:
+        raise ValueError("No records survived tokenization!")
+
+    import random
+    random.shuffle(tokenized)
+    split_idx = int(len(tokenized) * 0.98)
+    train_data = Dataset.from_list(tokenized[:split_idx])
+    eval_data = Dataset.from_list(tokenized[split_idx:])
+
+    logger.success(f"Unsloth: {len(tokenized)} records — Train: {len(train_data)}, Eval: {len(eval_data)}")
+
+    # Training args
+    hw = auto_detect_config(cfg)
+    output_dir = str(Path(cfg.checkpoint_dir) / f"forge_unsloth_{time.strftime('%Y%m%d_%H%M')}")
+    max_steps = 2 if test_mode else -1
+    num_epochs = 1 if not torch.cuda.is_available() and not test_mode else (cfg.num_epochs or 1)
+
+    use_bf16 = is_bfloat16_supported()
+    training_args = TrainingArguments(
+        output_dir=output_dir,
+        num_train_epochs=num_epochs,
+        max_steps=max_steps,
+        per_device_train_batch_size=hw["batch"],
+        per_device_eval_batch_size=max(1, hw["batch"] // 2),
+        gradient_accumulation_steps=hw["accum"],
+        optim="adamw_8bit",
+        save_steps=500,
+        logging_steps=10,
+        eval_steps=500,
+        learning_rate=cfg.learning_rate,
+        weight_decay=cfg.weight_decay,
+        fp16=not use_bf16,
+        bf16=use_bf16,
+        max_grad_norm=0.3,
+        warmup_ratio=cfg.warmup_ratio,
+        lr_scheduler_type="cosine",
+        eval_strategy="steps",
+        save_strategy="steps",
+        save_total_limit=2,
+        load_best_model_at_end=not test_mode,
+        metric_for_best_model="eval_loss",
+        greater_is_better=False,
+        gradient_checkpointing=True,
+        report_to="none",
+        ddp_find_unused_parameters=False if torch.cuda.device_count() > 1 else None,
+        dataloader_num_workers=0,
+        remove_unused_columns=True,
+    )
+
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_data,
+        eval_dataset=eval_data,
+        data_collator=default_data_collator,
+    )
+
+    # Resume logic
+    last_checkpoint = None
+    checkpoint_dir = Path(output_dir)
+    if checkpoint_dir.exists():
+        checkpoints = sorted(checkpoint_dir.glob("checkpoint-*"))
+        if checkpoints:
+            last_checkpoint = str(checkpoints[-1])
+            logger.info(f"Resuming from: {last_checkpoint}")
+
+    effective_batch = hw["batch"] * hw["accum"]
+    total_steps = (len(train_data) // effective_batch) * num_epochs
+    logger.info(f"""
+{'='*60}
+⚡ UNSLOTH TRAINING START
+  Model:      {cfg.base_model}
+  Train rows: {len(train_data):,}
+  Eval rows:  {len(eval_data):,}
+  Epochs:     {num_epochs}
+  Batch:      {hw['batch']} x {hw['accum']} = {effective_batch}
+  Est steps:  {total_steps:,}
+  Precision:  {'bf16' if use_bf16 else 'fp16'}
+  Seq len:    {max_length}
+  LoRA rank:  {cfg.lora_rank}
+  Output:     {output_dir}
+{'='*60}
+""")
+
+    trainer.train(resume_from_checkpoint=last_checkpoint)
+
+    # Save
+    final_dir = Path(cfg.final_model_dir)
+    final_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Saving Unsloth model to: {final_dir}")
+    trainer.save_model(str(final_dir))
+    tokenizer.save_pretrained(str(final_dir))
+
+    metrics = trainer.state.log_history
+    train_losses = [m.get("loss") for m in metrics if "loss" in m]
+    final_loss = train_losses[-1] if train_losses else None
+    eval_losses = [m.get("eval_loss") for m in metrics if "eval_loss" in m]
+    final_eval_loss = eval_losses[-1] if eval_losses else None
+
+    summary = {
+        "train_loss": final_loss,
+        "eval_loss": final_eval_loss,
+        "total_steps": trainer.state.global_step,
+        "base_model": cfg.base_model,
+        "lora_rank": cfg.lora_rank,
+        "batch_size": hw["batch"],
+        "grad_accum": hw["accum"],
+        "max_length": max_length,
+        "num_epochs": num_epochs,
+        "learning_rate": cfg.learning_rate,
+        "hardware": cfg.hardware_profile,
+        "engine": "unsloth",
+    }
+    (final_dir / "training_metrics.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False))
+
+    logger.success(f"""
+{'='*60}
+✅ UNSLOTH TRAINING COMPLETE
+  Final train loss: {final_loss or 'N/A'}
+  Final eval loss:  {final_eval_loss or 'N/A'}
+  Total steps:      {trainer.state.global_step:,}
+  Model saved:      {final_dir}
+{'='*60}
+""")
+    return final_dir
+
+
 def train(cfg: ForgeConfig, test_mode: bool = False):
     """Run the full training pipeline."""
     if not HAS_TRAIN_DEPS:
@@ -404,15 +590,24 @@ TRAINING COMPLETE
     return final_dir
 
 
-def run_training(cfg: ForgeConfig, test_mode: bool = False):
+def run_training(cfg: ForgeConfig, test_mode: bool = False, use_unsloth: bool = False):
     """Entry point for training."""
-    console.print("\n[bold cyan]═══ PHASE 5: MODEL TRAINING ═══[/bold cyan]")
+    engine = "⚡ Unsloth" if use_unsloth else "Standard"
+    console.print(f"\n[bold cyan]═══ PHASE 5: MODEL TRAINING [b]{engine}[/b] ═══[/bold cyan]")
 
     if test_mode:
         console.print("[yellow]Running in TEST MODE (2 steps, 10 examples)[/yellow]")
 
     try:
-        model_path = train(cfg, test_mode=test_mode)
+        if use_unsloth and _HAS_UNSLOTH:
+            model_path = train_with_unsloth(cfg, test_mode=test_mode)
+        elif use_unsloth and not _HAS_UNSLOTH:
+            console.print("[yellow]Unsloth not installed. Falling back to standard training.[/yellow]")
+            console.print("  Install: pip install 'unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git'")
+            model_path = train(cfg, test_mode=test_mode)
+        else:
+            model_path = train(cfg, test_mode=test_mode)
+
         if model_path:
             console.print(f"\n[bold green]Training complete! Model: {model_path}[/bold green]")
             console.print("Run: python forge_step6_evaluate.py")
@@ -426,7 +621,9 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", action="store_true", help="Test mode (2 steps)")
+    parser.add_argument("--unsloth", action="store_true",
+                        help="Use Unsloth for 2x faster training (requires pip install unsloth)")
     args = parser.parse_args()
 
     cfg = ForgeConfig.load()
-    run_training(cfg, test_mode=args.test)
+    run_training(cfg, test_mode=args.test, use_unsloth=args.unsloth)

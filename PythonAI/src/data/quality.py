@@ -57,8 +57,8 @@ BOILERPLATE_PATTERNS = [
 # PII patterns (for detection/masking)
 PII_PATTERNS = {
     "email": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b",
-    "phone": r"\b\+?\d{1,3}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9}\b",
     "ssn": r"\b\d{3}-\d{2}-\d{4}\b",
+    "phone": r"\b\+?\d{1,3}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9}\b",
     "ip": r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b",
     "credit_card": r"\b(?:\d{4}[-\s]?){3}\d{4}\b",
     "aadhaar": r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}\b",
@@ -482,10 +482,17 @@ class QualityPipeline:
             label = f"{lower:.2f}-{upper:.2f}"
             distribution[label] = sum(1 for s in scores if lower <= s < upper)
 
+        sorted_scores = sorted(scores)
+        n = len(sorted_scores)
+        if n % 2 == 0:
+            median_val = (sorted_scores[n // 2 - 1] + sorted_scores[n // 2]) / 2
+        else:
+            median_val = sorted_scores[n // 2]
+
         return {
             "count": len(scores),
             "mean": round(sum(scores) / len(scores), 3),
-            "median": round(sorted(scores)[len(scores) // 2], 3),
+            "median": round(median_val, 3),
             "min": round(min(scores), 3),
             "max": round(max(scores), 3),
             "distribution": distribution,

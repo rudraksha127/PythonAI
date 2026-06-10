@@ -13,6 +13,8 @@ Individual provider API modules:
   mistral_provider  — Mistral AI models
 """
 
+from typing import Any
+
 from .registry import (
     ModelRegistry,
     ModelCapabilities,
@@ -68,7 +70,7 @@ PROVIDER_API_CALLS = {
 }
 
 
-def get_provider_api(provider_id: str):
+def get_provider_api(provider_id: str) -> Any:
     """Get the API call function for a provider."""
     return PROVIDER_API_CALLS.get(provider_id, call_openai)
 

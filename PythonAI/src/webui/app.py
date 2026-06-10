@@ -301,7 +301,7 @@ with st.sidebar:
     st.divider()
 
     # ── Navigation ──
-    pages = ["RAG Chat", "Agent Workspace", "Dataset Generation", "Dashboard Home", "Tool System", "Provider Routing", "MCP Servers"]
+    pages = ["RAG Chat", "Agent Workspace", "Dataset Generation", "Dashboard Home", "Tool System", "Provider Routing", "MCP Servers", "ForgeAI Dashboard"]
     page = st.radio(
         "Navigation",
         pages,
@@ -440,6 +440,10 @@ elif page == "Provider Routing":
 elif page == "MCP Servers":
     from src.webui.views.mcp_dashboard import render as render_mcp
     render_mcp()
+
+elif page == "ForgeAI Dashboard":
+    from src.webui.views.forge_dashboard import render as render_forge
+    render_forge()
 
 elif page == "RAG Chat":
 

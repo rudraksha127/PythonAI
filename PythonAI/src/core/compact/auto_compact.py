@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import json
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 # Default thresholds
 DEFAULT_CONTEXT_WINDOW = 128_000    # Default model context window
@@ -70,7 +71,7 @@ def should_auto_compact(
 def auto_compact_if_needed(
     messages: list[dict[str, Any]],
     model_context_window: int = DEFAULT_CONTEXT_WINDOW,
-    compact_fn: Callable | None = None,
+    compact_fn: Callable[..., Any] | None = None,
     consecutive_failures: int = 0,
 ) -> dict[str, Any]:
     """

@@ -1,34 +1,74 @@
+# ═══════════════════════════════════════════════
+# PythonAI — .gitignore
+# ═══════════════════════════════════════════════
+
+# ── Environment ──
 .env
+.env.local
+.env.production
+
+# ── Python ──
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
-.pytest_cache/
-.ipynb_checkpoints/
-.sixth/
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
 
-# Virtual environment is local machine state.
+# ── Virtual Environment ──
 .venv/
+venv/
+env/
 
-# Keep final adapter folders, but ignore resumable trainer internals.
-checkpoints/**/checkpoint-*/
-checkpoints/local_50.json
+# ── Testing ──
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.ruff_cache/
+.mypy_cache/
 
-# Large regeneratable data (can be re-scraped)
-data/raw/
-data/processed/
-extra_data/
+# ── IDE / Editor ──
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
 
-# Chroma vector database (can be re-embedded)
-python_brain_godmode/
-
-# OS files
+# ── OS files ──
 Thumbs.db
 .DS_Store
 *.log
 
+# ── Checkpoints (keep final adapter, ignore intermediate) ──
+checkpoints/**/checkpoint-*/
+checkpoints/local_50.json
+
+# ── Regeneratable Data ──
+data/raw/
+data/processed/
+extra_data/
+
+# ── Vector DB (can be re-embedded) ──
+python_brain_godmode/
+
+# ── Large Binary / Model Files ──
 *.safetensors
 *.bin
 *.gpickle
 *.jsonl
+*.gguf
+*.onnx
 
+# ── Docker ──
+.docker/
+docker-compose.override.yml  # Dev override — not for production
+
+# ── Notebooks with secrets ──
+*.ipynb_checkpoints/
+
+# ── Other ──
+.sixth/
 nul

@@ -7,7 +7,7 @@ Central registry for all tools with filtering and assembly logic.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from .tool import Tool, ToolUseContext, PermissionDecision
 
@@ -49,7 +49,8 @@ class ToolRegistry:
         """
         from .mcp.tool_adapter import MCPToolAdapter
         adapter = MCPToolAdapter(connection)
-        return adapter.register_all(self)
+        result = adapter.register_all(self)
+        return cast(int, result)
 
     def unregister(self, name: str) -> None:
         """Unregister a tool by name."""

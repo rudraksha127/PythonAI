@@ -151,7 +151,7 @@ def login_cmd(args: argparse.Namespace) -> int:
 
 @requires_auth
 def train(args: argparse.Namespace) -> int:
-    return run([
+    cmd = [
         str(project_python()),
         "-m", "src.training.run",
         "--mode", args.mode,
@@ -160,7 +160,12 @@ def train(args: argparse.Namespace) -> int:
         "--max-length", str(args.max_length),
         "--output-dir", args.output_dir,
         "--dataset-path", args.dataset_path,
-    ] + (["--skip-train"] if args.skip_train else []))
+    ]
+    if getattr(args, 'unsloth', False):
+        cmd.append("--unsloth")
+    if args.skip_train:
+        cmd.append("--skip-train")
+    return run(cmd)
 
 
 @requires_auth
@@ -437,6 +442,115 @@ def graph_cmd(args: argparse.Namespace) -> int:
     return run(cmd)
 
 
+def cast_cmd(args: argparse.Namespace) -> int:
+    """
+    cAST: AST-aware code chunking for RAG (EMNLP 2025).
+
+    Chunks source code files into semantically complete units
+    (functions, classes, import blocks) by parsing the AST,
+    rather than splitting by arbitrary line counts.
+    """
+
+    path = Path(args.path)
+    if not path.exists():
+        print(f"[Error] Path not found: {path}")
+        return 1
+
+    if args.mode == "index":
+        # Index mode: chunk + embed into ChromaDB
+        try:
+            from src.rag.cast_chunker import CastChunker
+            import chromadb
+            from sentence_transformers import SentenceTransformer
+            from src.rag.rag_engine import ROOT, DB_PATH
+
+            print(f"[cAST] Indexing {path} into code-aware RAG database...")
+            chunker = CastChunker(language=args.language)
+
+            if path.is_file():
+                raw_chunks = chunker.chunk_file(path)
+            elif path.is_dir():
+                raw_chunks = chunker.chunk_directory(path)
+            else:
+                print(f"[Error] Unknown path type: {path}")
+                return 1
+
+            if not raw_chunks:
+                print("[cAST] No code chunks produced.")
+                return 0
+
+            print(f"[cAST] {len(raw_chunks)} semantic chunks produced")
+
+            # Embed and index into ChromaDB
+            embedder = SentenceTransformer("all-MiniLM-L6-v2")
+            client = chromadb.PersistentClient(path=str(DB_PATH))
+
+            try:
+                collection = client.get_collection("python_godmode")
+            except Exception:
+                collection = client.create_collection(
+                    name="python_godmode",
+                    metadata={"hnsw:space": "cosine"},
+                )
+
+            batch_size = 50
+            added = 0
+            for i in range(0, len(raw_chunks), batch_size):
+                batch = raw_chunks[i:i + batch_size]
+                texts = [c.to_embedding_text() for c in batch]
+                ids = [f"cAST_{abs(hash(c.content)) % 10**12}" for c in batch]
+                metadatas = [
+                    {
+                        "title": c.name or c.chunk_type,
+                        "type": c.chunk_type,
+                        "language": c.language,
+                        "filepath": str(c.filepath)[:200],
+                        "start_line": c.start_line,
+                        "end_line": c.end_line,
+                        "source": "cAST_chunker",
+                        "category": f"code_{c.chunk_type}",
+                    }
+                    for c in batch
+                ]
+                embs = embedder.encode(texts, batch_size=16, show_progress_bar=False).tolist()
+                collection.add(documents=texts, embeddings=embs, ids=ids, metadatas=metadatas)
+                added += len(batch)
+
+            total = collection.count()
+            print(f"[cAST] Indexed {added} chunks into RAG DB ({total:,} total)")
+
+            if args.stats:
+                print(f"\n{'='*50}")
+                print(f"cAST Indexing Statistics")
+                print(f"{'='*50}")
+                print(f"Path          : {path}")
+                print(f"Language      : {args.language}")
+                print(f"Chunks        : {len(raw_chunks)}")
+                types = {}
+                for c in raw_chunks:
+                    t = c.chunk_type
+                    types[t] = types.get(t, 0) + 1
+                for t, count in sorted(types.items(), key=lambda x: -x[1]):
+                    print(f"  {t}: {count}")
+                avg_len = sum(len(c.content) for c in raw_chunks) / len(raw_chunks) if raw_chunks else 0
+                print(f"Avg chunk len : {avg_len:.0f} chars")
+                print(f"{'='*50}\n")
+
+        except ImportError as e:
+            print(f"[Error] Missing dependency: {e}")
+            print("  Install: pip install sentence-transformers chromadb")
+            return 1
+
+        return 0
+
+    # Default mode: chunk only (CLI output)
+    return run([
+        str(project_python()),
+        "-m", "src.rag.cast_chunker",
+        str(path),
+        "--language", args.language,
+    ] + (["--output", args.output] if args.output else []) + (["--stats"] if args.stats else []))
+
 
 def apikeys_cmd(args: argparse.Namespace) -> int:
     """Manage API keys for dataset generation."""
@@ -680,6 +794,50 @@ def dashboard_cmd(args: argparse.Namespace) -> int:
     return 0
 
 
+def forge_cmd(args: argparse.Namespace) -> int:
+    """
+    ForgeAI: Acceptance rate tracking & dashboard (MIT SEAL architecture).
+
+    Generates interactive HTML dashboards from CaptureEngine signal data,
+    showing acceptance rate curves, signal breakdown, and training history.
+    """
+    from src.learning.forge_dashboard import generate_dashboard, _get_db_path
+    from src.learning.capture_engine import CaptureEngine
+    import json
+
+    if args.action == "dashboard":
+        html = generate_dashboard(
+            output_path=args.output,
+            weeks=args.weeks,
+            demo=args.demo,
+        )
+        if args.open:
+            import webbrowser
+            path = Path(args.output).resolve()
+            webbrowser.open(f"file:///{path}")
+            print(f"[ForgeAI] Opened dashboard: {path}")
+        return 0
+
+    elif args.action == "stats":
+        engine = CaptureEngine()
+        stats = engine.get_statistics()
+        print(json.dumps(stats, indent=2, default=str))
+
+        # Also show daily rate for last 7 days
+        rates = engine.get_acceptance_rate(days=7)
+        if rates:
+            print(f"\nLast 7 days acceptance rate:")
+            print(f"  {'Date':14s} {'Rate':8s} {'Accept':8s} {'Reject':8s} {'Edit':8s}")
+            print(f"  {'-'*14} {'-'*8} {'-'*8} {'-'*8} {'-'*8}")
+            for r in rates:
+                print(f"  {r['date']:14s} {r['acceptance_rate']:6.1f}%  {r['accepts']:5d}   {r['rejects']:5d}   {r['edits']:5d}")
+        else:
+            print("\n  No recent data. Use CaptureEngine to start collecting signals.")
+        return 0
+
+    return 1
+
+
 def collect_data_cmd(args: argparse.Namespace) -> int:
     """Collect data and store on D: drive."""
     cmd = [str(project_python()), "-m", "src.data.d_drive_collector"]
@@ -739,6 +897,191 @@ def export_cmd(args: argparse.Namespace) -> int:
     print("  - ONNX Runtime for cross-platform deployment")
     print("  - vLLM for high-throughput serving")
     return 0
+
+
+def grpo_cmd(args: argparse.Namespace) -> int:
+    """
+    GRPO: Group Relative Policy Optimization training (DeepSeek-R1 2025).
+
+    Trains a policy model using accept/reject pairs with PPO-style clipped
+    surrogate objectives and group-relative advantages. No reward model needed.
+    """
+    if args.action == "train":
+        from src.training.grpo_trainer import GRPOTrainer, GRPOPair
+        import json
+
+        # Load pairs
+        pairs_path = Path(args.data)
+        if not pairs_path.exists():
+            print(f"[Error] GRPO pairs file not found: {pairs_path}")
+            return 1
+
+        pairs = []
+        with open(pairs_path, encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        data = json.loads(line)
+                        pairs.append(GRPOPair.from_dict(data))
+                    except json.JSONDecodeError:
+                        pass
+
+        print(f"Loaded {len(pairs)} GRPO pairs from {pairs_path}")
+
+        if not pairs:
+            print("[Error] No valid GRPO pairs found.")
+            return 1
+
+        trainer = GRPOTrainer(
+            model_name=args.model,
+            lora_rank=args.lora_rank,
+            learning_rate=args.lr,
+            kl_coef=args.kl_coef,
+            epsilon=args.epsilon,
+        )
+
+        metrics = trainer.train(
+            pairs=pairs,
+            output_dir=args.output,
+            num_epochs=args.epochs,
+            batch_size=args.batch_size,
+        )
+        print(json.dumps(metrics, indent=2))
+        return 0
+
+    elif args.action == "export-pairs":
+        """Export GRPO pairs from CaptureEngine DB."""
+        from src.training.grpo_trainer import create_grpo_pairs_from_signals
+        from src.learning.capture_engine import CaptureEngine, SignalType
+        import json
+
+        db_path = Path(args.db).expanduser()
+        if not db_path.exists():
+            print(f"[Error] CaptureEngine DB not found: {db_path}")
+            return 1
+
+        engine = CaptureEngine(db_path=db_path)
+
+        accepts = engine.get_signals(signal_type=SignalType.ACCEPT, limit=args.max_pairs)
+        rejects = engine.get_signals(signal_type=SignalType.REJECT, limit=args.max_pairs)
+        edits = engine.get_signals(signal_type=SignalType.EDIT, limit=args.max_pairs)
+
+        pairs = create_grpo_pairs_from_signals(
+            accept_signals=[s.to_dict() for s in accepts],
+            reject_signals=[s.to_dict() for s in rejects],
+            edit_signals=[s.to_dict() for s in edits],
+        )
+
+        output_path = Path(args.output)
+        with open(output_path, "w", encoding="utf-8") as f:
+            for pair in pairs:
+                f.write(json.dumps(pair.to_dict()) + "\n")
+
+        print(f"Exported {len(pairs)} GRPO pairs to {output_path}")
+        print(f"  Source: {len(accepts)} accepts, {len(rejects)} rejects, {len(edits)} edits")
+        return 0
+
+    elif args.action == "stats":
+        """Show training runs with acceptance rate deltas."""
+        from src.learning.capture_engine import CaptureEngine
+        from datetime import datetime
+        import json
+
+        db_path = Path(args.db).expanduser()
+        if not db_path.exists():
+            print(f"[Error] CaptureEngine DB not found: {db_path}")
+            print("  Tip: Run 'python -m src.cli train --capture-db <path>' to start recording training runs.")
+            return 1
+
+        engine = CaptureEngine(db_path=db_path)
+        runs = engine.get_training_runs(limit=args.limit)
+
+        if not runs:
+            print(f"[Empty] No training runs found in {db_path}")
+            print("  Run 'python -m src.cli train --capture-db <path>' after some signal data is collected.")
+            return 0
+
+        if getattr(args, 'json', False):
+            print(json.dumps(runs, indent=2, default=str))
+            return 0
+
+        # Table header
+        print(f"\n[GRPO] Recent Training Runs")
+        print(f"{'='*80}")
+        print(f"  {'Run ID':12s} {'Date':14s} {'Model':20s} {'Signals':>8s} {'Loss':>8s} {'Rate Before':>12s} {'Rate After':>11s} {'Change':>6s}")
+        print(f"  {'-'*12} {'-'*14} {'-'*20} {'-'*8} {'-'*8} {'-'*12} {'-'*11} {'-'*6}")
+
+        for r in runs:
+            ts = datetime.fromtimestamp(r["timestamp"]).strftime("%Y-%m-%d %H:%M")
+            model = r["model_name"][:18] + ".." if len(r["model_name"]) > 20 else r["model_name"]
+            loss = f"{r['train_loss']:.4f}" if r["train_loss"] else "-"
+            rate_before = f"{r['acceptance_rate_before']:.1%}"
+            rate_after = f"{r['acceptance_rate_after']:.1%}"
+            delta = r["acceptance_delta"]
+            delta_str = f"{delta:+.1%}"
+            # Color-like indicator: green for positive, red for negative
+            delta_indicator = "[+]" if delta > 0 else ("[-]" if delta < 0 else "[=]")
+
+            print(f"  {r['run_id'][:10]:12s} {ts:14s} {model:20s} {r['signals_used']:8d} {loss:>8s} {rate_before:>12s} {rate_after:>11s} {delta_indicator} {delta_str:>4s}")
+
+        # Summary
+        total_runs = len(runs)
+        positive_deltas = sum(1 for r in runs if r["acceptance_delta"] > 0)
+        negative_deltas = sum(1 for r in runs if r["acceptance_delta"] < 0)
+        print(f"\n  Summary: {total_runs} runs | {positive_deltas} improved [+] | {negative_deltas} regressed [-]")
+        print()
+        return 0
+
+    elif args.action == "create-pairs":
+        """Create GRPO pairs directly from manual inputs (for testing)."""
+        from src.training.grpo_trainer import create_grpo_pairs_from_signals, GRPOPair
+        import json
+
+        # Read accept, reject, edit JSONL files
+        accept_signals = []
+        reject_signals = []
+        edit_signals = []
+
+        if args.accepts:
+            acc_path = Path(args.accepts)
+            if acc_path.exists():
+                with open(acc_path, encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip():
+                            accept_signals.append(json.loads(line))
+
+        if args.rejects:
+            rej_path = Path(args.rejects)
+            if rej_path.exists():
+                with open(rej_path, encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip():
+                            reject_signals.append(json.loads(line))
+
+        if args.edits:
+            edit_path = Path(args.edits)
+            if edit_path.exists():
+                with open(edit_path, encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip():
+                            edit_signals.append(json.loads(line))
+
+        pairs = create_grpo_pairs_from_signals(
+            accept_signals=accept_signals,
+            reject_signals=reject_signals,
+            edit_signals=edit_signals,
+        )
+
+        output_path = Path(args.output)
+        with open(output_path, "w", encoding="utf-8") as f:
+            for pair in pairs:
+                f.write(json.dumps(pair.to_dict()) + "\n")
+
+        print(f"Created {len(pairs)} GRPO pairs from {len(accept_signals)} accepts, {len(reject_signals)} rejects, {len(edit_signals)} edits")
+        print(f"Output: {output_path}")
+        return 0
+
+    return 1
 
 
 
@@ -1162,6 +1505,8 @@ def build_parser() -> argparse.ArgumentParser:
     train_parser.add_argument("--max-length", type=int, default=384)
     train_parser.add_argument("--output-dir", default="checkpoints/local_auto_model")
     train_parser.add_argument("--dataset-path", default="data/training/training_dataset.json")
+    train_parser.add_argument("--unsloth", action="store_true",
+                              help="Use Unsloth for 2x faster QLoRA training (70%% less VRAM)")
     train_parser.add_argument("--skip-train", action="store_true")
     train_parser.add_argument("--no-auth", action="store_true", help="Skip authentication check")
     train_parser.add_argument("--viz", action="store_true", help="Save comprehensive training visualization (dashboard, LR, throughput, HTML, JSON)")
@@ -1304,6 +1649,19 @@ def build_parser() -> argparse.ArgumentParser:
     gen_api_parser.add_argument("--workers", type=int, default=4, help="Parallel workers")
     gen_api_parser.set_defaults(func=generate_api)
 
+    # == cAST Chunking =========================================
+    cast_parser = sub.add_parser("cast", help="cAST: AST-aware code chunking for RAG (EMNLP 2025).")
+    cast_parser.add_argument("path", help="File or directory to chunk")
+    cast_parser.add_argument("--output", "-o", default="",
+                             help="Output JSON file (default: stdout)")
+    cast_parser.add_argument("--language", "-l", default="python",
+                             help="Language (default: python)")
+    cast_parser.add_argument("--stats", action="store_true",
+                             help="Print chunking statistics")
+    cast_parser.add_argument("--mode", choices=["chunk", "index"], default="chunk",
+                             help="'chunk' = just chunk code, 'index' = chunk + index into ChromaDB")
+    cast_parser.set_defaults(func=cast_cmd)
+
     graph_parser = sub.add_parser("graph", help="Manage the knowledge graph.")
     graph_sub = graph_parser.add_subparsers(dest="action", required=True)
     graph_build = graph_sub.add_parser("build", help="Build graph from raw chunks")
@@ -1321,6 +1679,55 @@ def build_parser() -> argparse.ArgumentParser:
     tools_list = tools_sub.add_parser("list", help="List registered tools")
     tools_list.add_argument("--verbose", action="store_true", help="Show parameters")
     tools_list.set_defaults(func=tools_cmd)
+
+    # == GRPO Commands ==========================================
+    grpo_parser = sub.add_parser("grpo", help="GRPO: Group Relative Policy Optimization (DeepSeek-R1 2025).")
+    grpo_sub = grpo_parser.add_subparsers(dest="action", required=True)
+
+    grpo_train = grpo_sub.add_parser("train", help="Run GRPO training from accept/reject pairs")
+    grpo_train.add_argument("--model", required=True, help="Base model or SFT-trained model path")
+    grpo_train.add_argument("--data", required=True, help="GRPO pairs file (JSONL)")
+    grpo_train.add_argument("--output", default="checkpoints/grpo", help="Output directory")
+    grpo_train.add_argument("--epochs", type=int, default=1)
+    grpo_train.add_argument("--batch-size", type=int, default=4)
+    grpo_train.add_argument("--lr", type=float, default=1e-5)
+    grpo_train.add_argument("--kl-coef", type=float, default=0.04, help="KL penalty coefficient")
+    grpo_train.add_argument("--epsilon", type=float, default=0.2, help="PPO clipping range")
+    grpo_train.add_argument("--lora-rank", type=int, default=16)
+    grpo_train.set_defaults(func=grpo_cmd)
+
+    grpo_export = grpo_sub.add_parser("export-pairs", help="Export GRPO pairs from CaptureEngine DB")
+    grpo_export.add_argument("--db", default="~/.forgeai/signals.db", help="CaptureEngine DB path")
+    grpo_export.add_argument("--output", "-o", default="grpo_pairs.jsonl", help="Output JSONL file")
+    grpo_export.add_argument("--max-pairs", type=int, default=10000, help="Max pairs to export")
+    grpo_export.set_defaults(func=grpo_cmd)
+
+    grpo_create = grpo_sub.add_parser("create-pairs", help="Create GRPO pairs from accept/reject/edit signal files")
+    grpo_create.add_argument("--accepts", help="JSONL file of accept signals")
+    grpo_create.add_argument("--rejects", help="JSONL file of reject signals")
+    grpo_create.add_argument("--edits", help="JSONL file of edit signals")
+    grpo_create.add_argument("--output", "-o", default="grpo_pairs.jsonl", help="Output JSONL file")
+    grpo_create.set_defaults(func=grpo_cmd)
+
+    grpo_stats = grpo_sub.add_parser("stats", help="Show training runs with acceptance rate deltas from CaptureEngine DB")
+    grpo_stats.add_argument("--db", default="~/.forgeai/signals.db", help="CaptureEngine DB path")
+    grpo_stats.add_argument("--limit", "-n", type=int, default=10, help="Number of recent runs to show")
+    grpo_stats.add_argument("--json", action="store_true", help="Output as JSON")
+    grpo_stats.set_defaults(func=grpo_cmd)
+
+    # == ForgeAI Commands ========================================
+    forge_parser = sub.add_parser("forge", help="ForgeAI: Acceptance rate tracking & dashboard.")
+    forge_sub = forge_parser.add_subparsers(dest="action", required=True)
+
+    f_dash = forge_sub.add_parser("dashboard", help="Generate acceptance rate dashboard HTML")
+    f_dash.add_argument("--output", "-o", default="forge_dashboard.html", help="Output HTML file")
+    f_dash.add_argument("--weeks", "-w", type=int, default=12, help="Weeks of data to show")
+    f_dash.add_argument("--demo", action="store_true", help="Use synthetic demo data")
+    f_dash.add_argument("--open", action="store_true", help="Open in browser after generating")
+    f_dash.set_defaults(func=forge_cmd)
+
+    f_stats = forge_sub.add_parser("stats", help="Show capture statistics")
+    f_stats.set_defaults(func=forge_cmd)
 
     dash_parser = sub.add_parser("dashboard", help="Open live OMNISCIENT AI dashboard.")
     dash_parser.set_defaults(func=dashboard_cmd)
@@ -1915,6 +2322,9 @@ def models_cmd(args: argparse.Namespace) -> int:
 
 
 def main() -> None:
+    from src.utils.logging_config import setup_logging
+    setup_logging()
+
     args = parse_args()
 
     # Handle --version

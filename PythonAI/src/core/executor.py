@@ -18,7 +18,8 @@ import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any, cast
 
 from .tool import (
     Tool,
@@ -60,11 +61,11 @@ class QueryDeps:
     """Injectable dependencies for the engine.
     Enables unit testing with mock implementations.
     """
-    call_llm: Callable | None = None
-    microcompact: Callable | None = None
-    autocompact: Callable | None = None
-    reactive_compact: Callable | None = None
-    check_token_budget: Callable | None = None
+    call_llm: Callable[..., Any] | None = None
+    microcompact: Callable[..., Any] | None = None
+    autocompact: Callable[..., Any] | None = None
+    reactive_compact: Callable[..., Any] | None = None
+    check_token_budget: Callable[..., Any] | None = None
 
 
 # =======================================
@@ -137,7 +138,7 @@ def parse_tool_calls(response_text: str) -> list[dict[str, Any]]:
                 })
                 return tool_calls
             if "tool_calls" in data:
-                return data["tool_calls"]
+                return data["tool_calls"]  # type: ignore[no-any-return]
         if isinstance(data, list):
             for item in data:
                 if isinstance(item, dict) and "name" in item:
@@ -287,7 +288,7 @@ class ToolCallingEngine:
         self._fallback_providers: list[str] = []
 
         # Statistics
-        self.stats = {
+        self.stats: dict[str, Any] = {
             "total_rounds": 0,
             "total_tool_calls": 0,
             "total_tokens": 0,
@@ -313,7 +314,7 @@ class ToolCallingEngine:
         """Call LLM with model fallback support."""
         # Use injected deps first
         if self.deps.call_llm:
-            return self.deps.call_llm(messages, tools)
+            return self.deps.call_llm(messages, tools)  # type: ignore[no-any-return]
 
         try:
             from .providers import ProviderRouter, get_provider_api, ProfileManager
@@ -393,7 +394,7 @@ class ToolCallingEngine:
             from src.utils.llm import generate_with_provider
             return self._call_llm_legacy(messages, tools, generate_with_provider)
 
-    def _call_with_fallback(self, messages, tools, router) -> dict[str, Any]:
+    def _call_with_fallback(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], router: Any) -> dict[str, Any]:
         """Try fallback providers when primary fails."""
         if not self.config.enable_model_fallback:
             from src.utils.llm import generate_with_provider
@@ -459,7 +460,7 @@ class ToolCallingEngine:
         from src.utils.llm import generate_with_provider
         return self._call_llm_legacy(messages, tools, generate_with_provider)
 
-    def _call_llm_legacy(self, messages, tools, generate_fn):
+    def _call_llm_legacy(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], generate_fn: Any) -> dict[str, Any]:
         """Fallback using legacy system."""
         system_prompt = self._build_system_prompt(tools)
 
@@ -569,9 +570,10 @@ Think step by step about which tools to use and in what order."""
     def _execute_parallel_batch(self, blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Execute read-only tools in parallel."""
         self.stats["total_parallel_batches"] += 1
-        results = [None] * len(blocks)
+        results: list[dict[str, Any]] = []
+        results_map: dict[int, dict[str, Any]] = {}
         with ThreadPoolExecutor(max_workers=min(len(blocks), 10)) as executor:
-            future_map = {}
+            future_map: dict[Any, int] = {}
             for i, tc in enumerate(blocks):
                 future = executor.submit(self._execute_tool, tc)
                 future_map[future] = i
@@ -583,13 +585,13 @@ Think step by step about which tools to use and in what order."""
                 except Exception as e:
                     result_content = json.dumps({"error": f"Parallel tool execution failed: {e}"})
                 fn_info = blocks[idx].get("function", blocks[idx])
-                results[idx] = {
+                results_map[idx] = {
                     "tool_call_id": blocks[idx].get("id", "call_unknown"),
                     "name": fn_info.get("name", "unknown"),
                     "content": result_content,
                 }
 
-        return results
+        return [results_map[i] for i in sorted(results_map.keys())]
 
     def _execute_serial_batch(self, blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Execute tools serially (for write tools)."""
@@ -634,7 +636,7 @@ Think step by step about which tools to use and in what order."""
                     if d.get("tool_calls"):
                         msg.tool_calls = d["tool_calls"]
                     self.messages.append(msg)
-                return result
+                return result  # type: ignore[no-any-return]
         except ImportError:
             pass
         return None
@@ -666,7 +668,7 @@ Think step by step about which tools to use and in what order."""
                     if d.get("tool_calls"):
                         msg.tool_calls = d["tool_calls"]
                     self.messages.append(msg)
-                return result
+                return result  # type: ignore[no-any-return]
         except ImportError:
             pass
         return None
@@ -698,7 +700,7 @@ Think step by step about which tools to use and in what order."""
                     if d.get("tool_calls"):
                         msg.tool_calls = d["tool_calls"]
                     self.messages.append(msg)
-                return result
+                return result  # type: ignore[no-any-return]
         except ImportError:
             pass
         return None
@@ -831,7 +833,7 @@ Think step by step about which tools to use and in what order."""
         assistant_messages = [m for m in self.messages if m.role == "assistant"]
         return assistant_messages[-1].content if assistant_messages else response_text
 
-    def stream_run(self, user_input: str, **kwargs) -> str:
+    def stream_run(self, user_input: str, **kwargs: Any) -> str:
         return self.run(user_input, stream=True, **kwargs)
 
     def reset(self) -> None:

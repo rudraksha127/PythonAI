@@ -13,6 +13,8 @@ from .grep_tool import GrepTool
 from .web_fetch_tool import WebFetchTool
 from .web_search_tool import WebSearchTool
 
+from ..registry import ToolRegistry
+
 # All tools in a single list for easy registration
 ALL_CORE_TOOLS = [
     BashTool,
@@ -26,7 +28,7 @@ ALL_CORE_TOOLS = [
 ]
 
 
-def register_all_tools(registry) -> None:
+def register_all_tools(registry: ToolRegistry) -> None:
     """Register all core tools with the given registry."""
     for tool in ALL_CORE_TOOLS:
         registry.register(tool)

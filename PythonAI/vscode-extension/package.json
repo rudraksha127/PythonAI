@@ -1,0 +1,90 @@
+{
+  "name": "forgeai-capture",
+  "displayName": "ForgeAI Capture",
+  "description": "Capture accept/reject/edit signals from VS Code for ForgeAI training pipeline",
+  "version": "0.1.0",
+  "publisher": "forgeai",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Machine Learning",
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "forgeai",
+    "capture",
+    "training",
+    "acceptance rate"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "forgeai.showStats",
+        "title": "ForgeAI: Show Capture Statistics"
+      },
+      {
+        "command": "forgeai.exportTrainingData",
+        "title": "ForgeAI: Export Training Data"
+      }
+    ],
+    "configuration": {
+      "title": "ForgeAI Capture",
+      "properties": {
+        "forgeai.dbPath": {
+          "type": "string",
+          "default": "~/.forgeai/signals.db",
+          "description": "Path to ForgeAI CaptureEngine SQLite database"
+        },
+        "forgeai.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable signal capture"
+        },
+        "forgeai.captureRejects": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture rejection events (backspace/dismiss of inline completions)"
+        },
+        "forgeai.captureEdits": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture edit events (modifications after accept)"
+        },
+        "forgeai.developerId": {
+          "type": "string",
+          "default": "",
+          "description": "Anonymized developer identifier. Leave empty for auto-generated."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/extension.test.js",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "sql.js": "^1.11.0",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^10.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.5.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/PythonAI"
+  }
+}
