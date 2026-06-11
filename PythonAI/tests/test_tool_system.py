@@ -18,9 +18,9 @@ SUITE = ""
 def section(name):
     global SUITE
     SUITE = name
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  {name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 def check(desc, condition, detail=""):
@@ -41,21 +41,27 @@ def check(desc, condition, detail=""):
 # ═══════════════════════════════════════
 section("1. Tool Class Creation")
 
-from src.core.tool import InputSchema, Parameter, ToolUseContext, build_tool
+from src.core.tool import InputSchema, Parameter, ToolUseContext, build_tool  # noqa: E402
 
 # Create context
 ctx = ToolUseContext(cwd=os.path.dirname(os.path.abspath(__file__)))
 
 # Create a test tool
-TestTool = build_tool(type("TestToolDef", (), {
-    "name": "test",
-    "description": "A test tool",
-    "input_schema": InputSchema(
-        msg=Parameter(type="string", description="A message", required=True),
-    ),
-    "call": lambda i, c: type("R", (), {"data": {"echo": i.get("msg", ""), "success": True}})(),
-    "is_readonly": True,
-}))
+TestTool = build_tool(
+    type(
+        "TestToolDef",
+        (),
+        {
+            "name": "test",
+            "description": "A test tool",
+            "input_schema": InputSchema(
+                msg=Parameter(type="string", description="A message", required=True),
+            ),
+            "call": lambda i, c: type("R", (), {"data": {"echo": i.get("msg", ""), "success": True}})(),
+            "is_readonly": True,
+        },
+    )
+)
 
 check("build_tool creates tool", TestTool.name == "test")
 check("Tool has name", TestTool.name == "test")
@@ -97,7 +103,7 @@ check("to_dict has readonly", td.get("readonly") is True)
 # ═══════════════════════════════════════
 section("2. ToolRegistry")
 
-from src.core.registry import ToolRegistry
+from src.core.registry import ToolRegistry  # noqa: E402
 
 registry = ToolRegistry()
 check("New registry has 0 tools", registry.builtin_count == 0)
@@ -121,7 +127,7 @@ check("assemble_pool has tools", len(pool) > 0)
 # ═══════════════════════════════════════
 section("3. BashTool")
 
-from src.core.tools.bash_tool import BashTool
+from src.core.tools.bash_tool import BashTool  # noqa: E402
 
 check("BashTool has name", BashTool.name == "bash")
 check("BashTool is destructive", BashTool.is_destructive() is True)
@@ -159,7 +165,7 @@ check("bash empty input fails", validation.success is False)
 # ═══════════════════════════════════════
 section("4. FileReadTool")
 
-from src.core.tools.file_read_tool import FileReadTool
+from src.core.tools.file_read_tool import FileReadTool  # noqa: E402
 
 check("FileReadTool name", FileReadTool.name == "read")
 check("FileReadTool is readonly", FileReadTool.is_readonly() is True)
@@ -192,7 +198,7 @@ check("empty file_path fails", validation.success is False)
 # ═══════════════════════════════════════
 section("5. FileWriteTool")
 
-from src.core.tools.file_write_tool import FileWriteTool
+from src.core.tools.file_write_tool import FileWriteTool  # noqa: E402
 
 check("FileWriteTool name", FileWriteTool.name == "write")
 check("FileWriteTool is destructive", FileWriteTool.is_destructive() is True)
@@ -217,17 +223,20 @@ check("  file content matches", content == "Hello World!\nLine 2\n")
 # ═══════════════════════════════════════
 section("6. FileEditTool")
 
-from src.core.tools.file_edit_tool import FileEditTool
+from src.core.tools.file_edit_tool import FileEditTool  # noqa: E402
 
 check("FileEditTool name", FileEditTool.name == "edit")
 check("FileEditTool is destructive", FileEditTool.is_destructive() is True)
 
 # Edit the test file
-result = FileEditTool.call({
-    "file_path": temp_file,
-    "old_string": "Hello World!",
-    "new_string": "Hello PythonAI!",
-}, ctx)
+result = FileEditTool.call(
+    {
+        "file_path": temp_file,
+        "old_string": "Hello World!",
+        "new_string": "Hello PythonAI!",
+    },
+    ctx,
+)
 check("edit file works", result.error is None)
 check("  message confirms", "Applied edit" in result.data.get("message", ""))
 
@@ -238,11 +247,14 @@ check("  edited content correct", "Hello PythonAI!" in content)
 check("  original string gone", "Hello World!" not in content)
 
 # Edit with non-existent old_string
-result = FileEditTool.call({
-    "file_path": temp_file,
-    "old_string": "This does not exist",
-    "new_string": "anything",
-}, ctx)
+result = FileEditTool.call(
+    {
+        "file_path": temp_file,
+        "old_string": "This does not exist",
+        "new_string": "anything",
+    },
+    ctx,
+)
 check("edit non-existent string returns error", result.error is not None)
 check("  error mentions not found", "not found" in result.error or "find" in result.error)
 
@@ -256,7 +268,7 @@ os.rmdir(temp_dir)
 # ═══════════════════════════════════════
 section("7. GlobTool")
 
-from src.core.tools.glob_tool import GlobTool
+from src.core.tools.glob_tool import GlobTool  # noqa: E402
 
 check("GlobTool name", GlobTool.name == "glob")
 check("GlobTool is readonly", GlobTool.is_readonly() is True)
@@ -285,7 +297,7 @@ check("empty pattern fails", validation.success is False)
 # ═══════════════════════════════════════
 section("8. GrepTool")
 
-from src.core.tools.grep_tool import GrepTool
+from src.core.tools.grep_tool import GrepTool  # noqa: E402
 
 check("GrepTool name", GrepTool.name == "grep")
 check("GrepTool is readonly", GrepTool.is_readonly() is True)
@@ -318,7 +330,7 @@ check("invalid regex fails", validation.success is False)
 # ═══════════════════════════════════════
 section("9. WebFetchTool")
 
-from src.core.tools.web_fetch_tool import WebFetchTool
+from src.core.tools.web_fetch_tool import WebFetchTool  # noqa: E402
 
 check("WebFetchTool name", WebFetchTool.name == "web_fetch")
 check("WebFetch is readonly", WebFetchTool.is_readonly() is True)
@@ -333,9 +345,7 @@ check("invalid URL fails", validation.success is False)
 validation = WebFetchTool.validate_input({"url": ""}, ctx)
 check("empty URL fails", validation.success is False)
 
-# Try actual fetch (may fail if no network)
 try:
-    import requests
     result = WebFetchTool.call({"url": "https://example.com", "max_chars": 500}, ctx)
     if result.error:
         check(f"web fetch: {result.error[:60]}", True)
@@ -352,7 +362,7 @@ except ImportError:
 # ═══════════════════════════════════════
 section("10. WebSearchTool")
 
-from src.core.tools.web_search_tool import WebSearchTool
+from src.core.tools.web_search_tool import WebSearchTool  # noqa: E402
 
 check("WebSearchTool name", WebSearchTool.name == "web_search")
 check("WebSearch is readonly", WebSearchTool.is_readonly() is True)
@@ -370,7 +380,7 @@ check("empty query fails", validation.success is False)
 # ═══════════════════════════════════════
 section("11. ToolCallingEngine")
 
-from src.core.executor import ToolCallingEngine, parse_tool_calls
+from src.core.executor import ToolCallingEngine, parse_tool_calls  # noqa: E402
 
 # Test tool call parser
 tc = parse_tool_calls('{"name": "test", "arguments": {"msg": "hello"}}')
@@ -403,11 +413,14 @@ check("stats report has fields", "total_rounds" in stats)
 section("12. Real-World Integration")
 
 # Glob for Python files → Read the first one → Grep inside it
-glob_result = GlobTool.call({
-    "pattern": "**/*.py",
-    "cwd": os.path.join(os.path.dirname(__file__), "src/core"),
-    "max_results": 5,
-}, ctx)
+glob_result = GlobTool.call(
+    {
+        "pattern": "**/*.py",
+        "cwd": os.path.join(os.path.dirname(__file__), "src/core"),
+        "max_results": 5,
+    },
+    ctx,
+)
 
 files = glob_result.data.get("files", [])
 check(f"globbing finds {len(files)} files in src/core", len(files) > 0)
@@ -421,15 +434,18 @@ if files:
     check(f"read {first_file} returns content", len(content) > 0)
     check("  has line numbers", "|" in content)
 
-    grep_result = GrepTool.call({
-        "pattern": "class\\s+\\w+",
-        "cwd": os.path.join(os.path.dirname(__file__), "src/core"),
-        "max_results": 10,
-    }, ctx)
+    grep_result = GrepTool.call(
+        {
+            "pattern": "class\\s+\\w+",
+            "cwd": os.path.join(os.path.dirname(__file__), "src/core"),
+            "max_results": 10,
+        },
+        ctx,
+    )
     check("grep finds classes in src/core", grep_result.data.get("total_matches", 0) > 0)
 
 # Final: ToolRegistry with ALL tools
-from src.core.tools import register_all_tools
+from src.core.tools import register_all_tools  # noqa: E402
 
 registry2 = ToolRegistry()
 register_all_tools(registry2)
@@ -449,9 +465,9 @@ section("RESULTS")
 print(f"  PASSED: {PASS}")
 print(f"  FAILED: {FAIL}")
 print(f"  TOTAL:  {PASS + FAIL}")
-print(f"  {'='*50}")
+print(f"  {'=' * 50}")
 if FAIL == 0:
     print("  *** ALL TESTS PASSED! ***")
 else:
     print(f"  ** {FAIL} test(s) failed **")
-print(f"  {'='*50}")
+print(f"  {'=' * 50}")

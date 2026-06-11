@@ -79,11 +79,13 @@ def call_anthropic(
         anthropic_tools = []
         for tool in tools:
             fn = tool.get("function", tool)
-            anthropic_tools.append({
-                "name": fn.get("name", ""),
-                "description": fn.get("description", ""),
-                "input_schema": fn.get("parameters", {}),
-            })
+            anthropic_tools.append(
+                {
+                    "name": fn.get("name", ""),
+                    "description": fn.get("description", ""),
+                    "input_schema": fn.get("parameters", {}),
+                }
+            )
         payload["tools"] = anthropic_tools
 
     headers = {
@@ -112,14 +114,16 @@ def call_anthropic(
             if block_type == "text":
                 content += block.get("text", "")
             elif block_type == "tool_use":
-                tool_calls.append({
-                    "id": block.get("id", ""),
-                    "type": "function",
-                    "function": {
-                        "name": block.get("name", ""),
-                        "arguments": json.dumps(block.get("input", {})),
-                    },
-                })
+                tool_calls.append(
+                    {
+                        "id": block.get("id", ""),
+                        "type": "function",
+                        "function": {
+                            "name": block.get("name", ""),
+                            "arguments": json.dumps(block.get("input", {})),
+                        },
+                    }
+                )
 
         usage = body.get("usage", {})
 
@@ -182,17 +186,19 @@ def _convert_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if role == "tool":
             # Convert tool results to Anthropic tool_result blocks
             tool_call_id = msg.get("tool_call_id", "")
-            name = msg.get("name", "")
-            anthropic_messages.append({
-                "role": "user",
-                "content": [
-                    {
-                        "type": "tool_result",
-                        "tool_use_id": tool_call_id,
-                        "content": content if isinstance(content, str) else json.dumps(content),
-                    }
-                ],
-            })
+            msg.get("name", "")
+            anthropic_messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": tool_call_id,
+                            "content": content if isinstance(content, str) else json.dumps(content),
+                        }
+                    ],
+                }
+            )
 
         elif role == "assistant":
             tool_calls = msg.get("tool_calls", [])
@@ -203,28 +209,38 @@ def _convert_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     blocks.append({"type": "text", "text": content})
                 for tc in tool_calls:
                     fn_info = tc.get("function", tc)
-                    blocks.append({
-                        "type": "tool_use",
-                        "id": tc.get("id", "tool_unknown"),
-                        "name": fn_info.get("name", ""),
-                        "input": json.loads(fn_info.get("arguments", "{}")) if isinstance(fn_info.get("arguments"), str) else fn_info.get("arguments", {}),
-                    })
-                anthropic_messages.append({
-                    "role": "assistant",
-                    "content": blocks,
-                })
+                    blocks.append(
+                        {
+                            "type": "tool_use",
+                            "id": tc.get("id", "tool_unknown"),
+                            "name": fn_info.get("name", ""),
+                            "input": json.loads(fn_info.get("arguments", "{}"))
+                            if isinstance(fn_info.get("arguments"), str)
+                            else fn_info.get("arguments", {}),
+                        }
+                    )
+                anthropic_messages.append(
+                    {
+                        "role": "assistant",
+                        "content": blocks,
+                    }
+                )
             else:
                 # Plain text assistant message
-                anthropic_messages.append({
-                    "role": "assistant",
-                    "content": [{"type": "text", "text": content}],
-                })
+                anthropic_messages.append(
+                    {
+                        "role": "assistant",
+                        "content": [{"type": "text", "text": content}],
+                    }
+                )
 
         else:
             # User message
-            anthropic_messages.append({
-                "role": "user",
-                "content": [{"type": "text", "text": content}],
-            })
+            anthropic_messages.append(
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": content}],
+                }
+            )
 
     return anthropic_messages

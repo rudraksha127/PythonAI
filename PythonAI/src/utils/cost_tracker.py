@@ -2,6 +2,7 @@
 Tracks API costs across multiple LLM providers.
 Estimates token counts using tiktoken (for OpenAI) or character length heuristics.
 """
+
 import json
 import os
 from datetime import datetime, timezone
@@ -16,13 +17,14 @@ except ImportError:
 # Rough cost estimates per 1k tokens (in USD)
 # Note: prices change frequently, these are heuristics
 PRICING = {
-    "openai": {"in": 0.005, "out": 0.015}, # e.g. gpt-4o
-    "anthropic": {"in": 0.003, "out": 0.015}, # e.g. claude 3.5 sonnet
-    "google": {"in": 0.0035, "out": 0.0105}, # e.g. gemini 1.5 pro
+    "openai": {"in": 0.005, "out": 0.015},  # e.g. gpt-4o
+    "anthropic": {"in": 0.003, "out": 0.015},  # e.g. claude 3.5 sonnet
+    "google": {"in": 0.0035, "out": 0.0105},  # e.g. gemini 1.5 pro
     "nvidia": {"in": 0.001, "out": 0.002},
     "grok": {"in": 0.005, "out": 0.015},
-    "qwen": {"in": 0.0, "out": 0.0} # Local is free
+    "qwen": {"in": 0.0, "out": 0.0},  # Local is free
 }
+
 
 class CostTracker:
     def __init__(self, log_path: str = "python_brain_godmode/cost_log.json"):
@@ -53,7 +55,7 @@ class CostTracker:
             "provider": provider,
             "in_tokens": in_tokens,
             "out_tokens": out_tokens,
-            "cost_usd": cost
+            "cost_usd": cost,
         }
 
         # Append to log
@@ -72,6 +74,7 @@ class CostTracker:
 
         if cost > 0.01:
             logger.info(f"💰 API Cost ({provider}): ${cost:.4f}")
+
 
 # Global instance
 tracker = CostTracker()

@@ -121,10 +121,14 @@ class TestMultiAgentKeyManager:
         assert km.get_key("nonexistent") is None
 
     def test_premium_providers_filter(self):
-        km = MultiAgentKeyManager(providers={
-            "groq": "test_key_1", "openai": "sk-test-key-12345678",
-            "anthropic": "sk-ant-test-key-123", "together": "test_key_2",
-        })
+        km = MultiAgentKeyManager(
+            providers={
+                "groq": "test_key_1",
+                "openai": "sk-test-key-12345678",
+                "anthropic": "sk-ant-test-key-123",
+                "together": "test_key_2",
+            }
+        )
         premium = km.premium_providers
         assert "openai" in premium
         assert "anthropic" in premium
@@ -132,9 +136,12 @@ class TestMultiAgentKeyManager:
         assert "together" not in premium
 
     def test_standard_providers_filter(self):
-        km = MultiAgentKeyManager(providers={
-            "groq": "test_key_1", "openai": "sk-test-key-12345678",
-        })
+        km = MultiAgentKeyManager(
+            providers={
+                "groq": "test_key_1",
+                "openai": "sk-test-key-12345678",
+            }
+        )
         standard = km.standard_providers
         assert "groq" in standard
         assert "openai" not in standard
@@ -189,19 +196,25 @@ class TestMultiAgentKeyManager:
         assert selected == []
 
     def test_select_providers_returns_available(self):
-        km = MultiAgentKeyManager(providers={
-            "groq": "key1", "cerebras": "key2",
-        })
+        km = MultiAgentKeyManager(
+            providers={
+                "groq": "key1",
+                "cerebras": "key2",
+            }
+        )
         selected = km.select_providers(n=2)
         assert len(selected) == 2
         assert "groq" in selected
         assert "cerebras" in selected
 
     def test_select_providers_premium_only(self):
-        km = MultiAgentKeyManager(providers={
-            "groq": "key1", "openai": "sk-test-12345678",
-            "anthropic": "sk-ant-test-12345",
-        })
+        km = MultiAgentKeyManager(
+            providers={
+                "groq": "key1",
+                "openai": "sk-test-12345678",
+                "anthropic": "sk-ant-test-12345",
+            }
+        )
         selected = km.select_providers(n=2, preferred_tier="premium")
         assert len(selected) == 2
         assert "groq" not in selected
@@ -209,18 +222,25 @@ class TestMultiAgentKeyManager:
         assert "anthropic" in selected
 
     def test_select_providers_exclude(self):
-        km = MultiAgentKeyManager(providers={
-            "groq": "key1", "cerebras": "key2", "together": "key3",
-        })
+        km = MultiAgentKeyManager(
+            providers={
+                "groq": "key1",
+                "cerebras": "key2",
+                "together": "key3",
+            }
+        )
         selected = km.select_providers(n=2, exclude={"groq"})
         assert "groq" not in selected
         assert len(selected) == 2
 
     def test_select_providers_fair_scheduling(self):
         """Providers with fewer calls should be preferred."""
-        km = MultiAgentKeyManager(providers={
-            "groq": "key1", "cerebras": "key2",
-        })
+        km = MultiAgentKeyManager(
+            providers={
+                "groq": "key1",
+                "cerebras": "key2",
+            }
+        )
         # Give groq more usage
         km._usage["groq"]["calls"] = 100
 
@@ -244,9 +264,13 @@ class TestMultiAgentKeyManager:
         assert report["providers"]["openai"]["tokens"] == 1000
 
     def test_next_openai_compatible(self):
-        km = MultiAgentKeyManager(providers={
-            "groq": "key1", "cerebras": "key2", "anthropic": "key3",
-        })
+        km = MultiAgentKeyManager(
+            providers={
+                "groq": "key1",
+                "cerebras": "key2",
+                "anthropic": "key3",
+            }
+        )
         # Should return groq or cerebras, never anthropic
         result = km.next_openai_compatible()
         assert result in ("groq", "cerebras")
@@ -282,11 +306,15 @@ class TestIntegration:
     """Integration-like tests that exercise the full system."""
 
     @patch("src.data.apikeys._load", return_value={})
-    @patch.dict(os.environ, {
-        "GROQ_API_KEY": "gsk_test_key_12345678",
-        "OPENAI_API_KEY": "sk-test-key-1234567890",
-        "ANTHROPIC_API_KEY": "sk-ant-test-key-123456789",
-    }, clear=True)
+    @patch.dict(
+        os.environ,
+        {
+            "GROQ_API_KEY": "gsk_test_key_12345678",
+            "OPENAI_API_KEY": "sk-test-key-1234567890",
+            "ANTHROPIC_API_KEY": "sk-ant-test-key-123456789",
+        },
+        clear=True,
+    )
     def test_resolve_all_from_env(self, mock_load):
         """resolve_all should find keys from environment variables."""
         keys = resolve_all()
@@ -296,9 +324,13 @@ class TestIntegration:
         assert keys["groq"] == "gsk_test_key_12345678"
 
     @patch("src.data.apikeys._load", return_value={})
-    @patch.dict(os.environ, {
-        "GROQ_API_KEY": "gsk_test_key_12345678",
-    }, clear=True)
+    @patch.dict(
+        os.environ,
+        {
+            "GROQ_API_KEY": "gsk_test_key_12345678",
+        },
+        clear=True,
+    )
     def test_get_available_providers(self, mock_load):
         """get_available_providers should return only providers with keys."""
         available = get_available_providers()
@@ -306,10 +338,14 @@ class TestIntegration:
         assert "openai" not in available
 
     @patch("src.data.apikeys._load", return_value={})
-    @patch.dict(os.environ, {
-        "ANTHROPIC_API_KEY": "sk-ant-test-key-12345",
-        "OPENAI_API_KEY": "sk-test-key-1234567890",
-    }, clear=True)
+    @patch.dict(
+        os.environ,
+        {
+            "ANTHROPIC_API_KEY": "sk-ant-test-key-12345",
+            "OPENAI_API_KEY": "sk-test-key-1234567890",
+        },
+        clear=True,
+    )
     def test_get_available_providers_premium(self, mock_load):
         available = get_available_providers(min_tier="premium")
         assert "anthropic" in available
@@ -317,9 +353,13 @@ class TestIntegration:
         assert "groq" not in available
 
     @patch("src.data.apikeys._load", return_value={})
-    @patch.dict(os.environ, {
-        "GROQ_API_KEY": "gsk_test_key_12345678",
-    }, clear=True)
+    @patch.dict(
+        os.environ,
+        {
+            "GROQ_API_KEY": "gsk_test_key_12345678",
+        },
+        clear=True,
+    )
     def test_get_provider_info(self, mock_load):
         info = get_provider_info("groq")
         assert info["name"] == "groq"

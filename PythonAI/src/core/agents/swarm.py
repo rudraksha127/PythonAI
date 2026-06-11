@@ -71,8 +71,11 @@ class AgentSwarm:
                 agent = self.agents.get(agent_name)
                 if not agent:
                     self.results[agent_name] = SubAgentResult(
-                        agent_name=agent_name, role="",
-                        success=False, output="", error=f"Agent '{agent_name}' not found",
+                        agent_name=agent_name,
+                        role="",
+                        success=False,
+                        output="",
+                        error=f"Agent '{agent_name}' not found",
                     )
                     continue
 
@@ -90,8 +93,11 @@ class AgentSwarm:
                     self.results[agent_name] = result
                 except Exception as e:
                     self.results[agent_name] = SubAgentResult(
-                        agent_name=agent_name, role="",
-                        success=False, output="", error=str(e),
+                        agent_name=agent_name,
+                        role="",
+                        success=False,
+                        output="",
+                        error=str(e),
                     )
 
                 if self.on_agent_complete:
@@ -120,8 +126,11 @@ class AgentSwarm:
             agent = self.agents.get(agent_name)
             if not agent:
                 self.results[agent_name] = SubAgentResult(
-                    agent_name=agent_name, role="",
-                    success=False, output="", error=f"Agent '{agent_name}' not found",
+                    agent_name=agent_name,
+                    role="",
+                    success=False,
+                    output="",
+                    error=f"Agent '{agent_name}' not found",
                 )
                 continue
 
@@ -141,11 +150,7 @@ class AgentSwarm:
 
     def collect_outputs(self) -> dict[str, str]:
         """Collect successful outputs from all agents."""
-        return {
-            name: result.output
-            for name, result in self.results.items()
-            if result.success
-        }
+        return {name: result.output for name, result in self.results.items() if result.success}
 
     def summary(self) -> str:
         """Get a human-readable summary of all agent results."""

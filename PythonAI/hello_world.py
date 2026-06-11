@@ -1,2 +1,2 @@
-# hello_world.py
+# Basic Hello World program in Python
 print("Hello, World!")

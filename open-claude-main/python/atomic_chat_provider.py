@@ -111,17 +111,19 @@ async def atomic_chat_stream(
     }
 
     yield "event: message_start\n"
-    yield f'data: {json.dumps({"type": "message_start", "message": {"id": "msg_atomic_chat_stream", "type": "message", "role": "assistant", "content": [], "model": model, "stop_reason": None, "usage": {"input_tokens": 0, "output_tokens": 0}}})}\n\n'
+    yield f"data: {json.dumps({'type': 'message_start', 'message': {'id': 'msg_atomic_chat_stream', 'type': 'message', 'role': 'assistant', 'content': [], 'model': model, 'stop_reason': None, 'usage': {'input_tokens': 0, 'output_tokens': 0}}})}\n\n"
     yield "event: content_block_start\n"
-    yield f'data: {json.dumps({"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}})}\n\n'
+    yield f"data: {json.dumps({'type': 'content_block_start', 'index': 0, 'content_block': {'type': 'text', 'text': ''}})}\n\n"
 
     async with httpx.AsyncClient(timeout=120.0) as client:
-        async with client.stream("POST", _api_url("/chat/completions"), json=payload) as resp:
+        async with client.stream(
+            "POST", _api_url("/chat/completions"), json=payload
+        ) as resp:
             resp.raise_for_status()
             async for line in resp.aiter_lines():
                 if not line or not line.startswith("data: "):
                     continue
-                raw = line[len("data: "):]
+                raw = line[len("data: ") :]
                 if raw.strip() == "[DONE]":
                     break
                 try:
@@ -130,17 +132,17 @@ async def atomic_chat_stream(
                     delta_text = delta.get("content", "")
                     if delta_text:
                         yield "event: content_block_delta\n"
-                        yield f'data: {json.dumps({"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": delta_text}})}\n\n'
+                        yield f"data: {json.dumps({'type': 'content_block_delta', 'index': 0, 'delta': {'type': 'text_delta', 'text': delta_text}})}\n\n"
 
                     finish_reason = chunk.get("choices", [{}])[0].get("finish_reason")
                     if finish_reason:
                         usage = chunk.get("usage", {})
                         yield "event: content_block_stop\n"
-                        yield f'data: {json.dumps({"type": "content_block_stop", "index": 0})}\n\n'
+                        yield f"data: {json.dumps({'type': 'content_block_stop', 'index': 0})}\n\n"
                         yield "event: message_delta\n"
-                        yield f'data: {json.dumps({"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_sequence": None}, "usage": {"output_tokens": usage.get("completion_tokens", 0)}})}\n\n'
+                        yield f"data: {json.dumps({'type': 'message_delta', 'delta': {'stop_reason': 'end_turn', 'stop_sequence': None}, 'usage': {'output_tokens': usage.get('completion_tokens', 0)}})}\n\n"
                         yield "event: message_stop\n"
-                        yield f'data: {json.dumps({"type": "message_stop"})}\n\n'
+                        yield f"data: {json.dumps({'type': 'message_stop'})}\n\n"
                         break
                 except json.JSONDecodeError:
                     continue

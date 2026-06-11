@@ -75,6 +75,7 @@ def test_auth_stage() -> None:
     _r["tests"] += 1
     import tempfile
     from pathlib import Path
+
     with tempfile.TemporaryDirectory() as tmp:
         cfg = AuthConfig(Path(tmp) / ".pythonai" / "config.json")
         assert cfg.get_user() is None, "user not None on fresh config"
@@ -138,6 +139,7 @@ def test_auth_stage() -> None:
         no_auth = False
 
     from unittest.mock import patch
+
     with patch("src.auth.decorators.AuthConfig.is_logged_in", return_value=True):
         assert _dummy(_FakeArgs()) == 99, "decorator blocked valid user"
     with patch("src.auth.decorators.AuthConfig.is_logged_in", return_value=False):
@@ -341,8 +343,11 @@ def test_swarm_stage() -> None:
     # --- 5b. GenerationTask frozen dataclass ---
     _r["tests"] += 1
     task = GenerationTask(
-        task_id="t1", task_type="basic", prompt="Test",
-        max_retries=2, timeout=30.0,
+        task_id="t1",
+        task_type="basic",
+        prompt="Test",
+        max_retries=2,
+        timeout=30.0,
     )
     assert task.task_id == "t1"
     assert task.max_retries == 2
@@ -408,7 +413,9 @@ def test_swarm_stage() -> None:
     monitor.start()
 
     r1 = TaskResult(task_id="t1", task_type="basic", success=True, data={"ok": True}, duration=0.1, worker_name="w1")
-    r2 = TaskResult(task_id="t2", task_type="advanced", success=False, data={}, error="fail", duration=0.2, worker_name="w2")
+    r2 = TaskResult(
+        task_id="t2", task_type="advanced", success=False, data={}, error="fail", duration=0.2, worker_name="w2"
+    )
     monitor.record(r1)
     monitor.record(r2)
 
@@ -510,12 +517,12 @@ def _get_stage_result(name: str) -> dict[str, int]:
 
 def main() -> int:
     stages = [
-        ("🔐 Auth System",     test_auth_stage),
-        ("📊 Data Pipeline",   test_data_stage),
+        ("🔐 Auth System", test_auth_stage),
+        ("📊 Data Pipeline", test_data_stage),
         ("🔧 Training Pipeline", test_training_stage),
-        ("🧠 RAG Engine",      test_rag_stage),
-        ("🐝 Agent Swarm",     test_swarm_stage),
-        ("🖥️  CLI Parsing",    test_cli_stage),
+        ("🧠 RAG Engine", test_rag_stage),
+        ("🐝 Agent Swarm", test_swarm_stage),
+        ("🖥️  CLI Parsing", test_cli_stage),
         ("🔗 Integration Flow", test_integration_flow),
     ]
 

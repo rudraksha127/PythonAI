@@ -6,6 +6,7 @@ caller-supplied session id, so without an ownership gate a user could target
 another tenant's session and leak their chat history, session-scoped LLM
 credentials, or session title.
 """
+
 import asyncio
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -29,7 +30,10 @@ def _router(monkeypatch, caller):
     sm = MagicMock()
     sm.sessions = {}
     sm.get_session = lambda sid: SimpleNamespace(
-        owner="alice", name="Secret project", endpoint_url="http://x", model="m",
+        owner="alice",
+        name="Secret project",
+        endpoint_url="http://x",
+        model="m",
         headers={"Authorization": "Bearer victim-secret"},
         get_context_messages=lambda: [],
     )

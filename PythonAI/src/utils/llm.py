@@ -16,6 +16,7 @@ from loguru import logger
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass
@@ -38,6 +39,7 @@ class ProviderConfig:
     last_error_time: float = 0
     consecutive_errors: int = 0
     extra_payload: dict = field(default_factory=dict)
+
 
 PROVIDERS: dict[str, ProviderConfig] = {
     # ── NVIDIA NIM FLEET (Priority 1 - Fastest & Highest Quality) ──
@@ -78,9 +80,8 @@ PROVIDERS: dict[str, ProviderConfig] = {
         max_tokens=16384,
         temperature=1.0,
         priority=1,
-        extra_payload={"chat_template_kwargs": {"thinking": True}}
+        extra_payload={"chat_template_kwargs": {"thinking": True}},
     ),
-
     # ── OPENAI & GROQ (Priority 1) ──
     "openai": ProviderConfig(
         name="openai",
@@ -96,7 +97,6 @@ PROVIDERS: dict[str, ProviderConfig] = {
         model="llama-3.3-70b-versatile",
         priority=1,
     ),
-
     # ── FREE / MID-TIER FALLBACKS (Priority 2) ──
     "mistral": ProviderConfig(
         name="mistral",
@@ -126,7 +126,6 @@ PROVIDERS: dict[str, ProviderConfig] = {
         model="meta-llama/llama-3.3-70b-instruct:free",
         priority=2,
     ),
-
     # ── LOCAL FALLBACK (always available, priority 99) ──
     "local": ProviderConfig(
         name="local",
@@ -139,14 +138,18 @@ PROVIDERS: dict[str, ProviderConfig] = {
 
 _provider_lock = threading.Lock()
 
+
 def _get_api_key(provider: ProviderConfig) -> str | None:
     if not provider.api_key_env:
         return None
     return os.environ.get(provider.api_key_env, "")
 
+
 def _is_provider_available(provider: ProviderConfig) -> bool:
-    if provider.name == "local": return True
-    if not _get_api_key(provider): return False
+    if provider.name == "local":
+        return True
+    if not _get_api_key(provider):
+        return False
     if provider.rate_limit_cooldown > 0:
         if time.time() - provider.last_error_time < provider.rate_limit_cooldown:
             return False
@@ -155,9 +158,11 @@ def _is_provider_available(provider: ProviderConfig) -> bool:
             provider.consecutive_errors = 0
     return True
 
+
 def _call_api_provider(provider: ProviderConfig, prompt: str, system_prompt: str = "") -> str:
     key = _get_api_key(provider)
-    if not key: raise ValueError(f"No API key for {provider.name}")
+    if not key:
+        raise ValueError(f"No API key for {provider.name}")
 
     messages = []
     if system_prompt:
@@ -176,7 +181,7 @@ def _call_api_provider(provider: ProviderConfig, prompt: str, system_prompt: str
         "messages": messages,
         "temperature": provider.temperature,
         "max_tokens": provider.max_tokens,
-        **provider.extra_payload
+        **provider.extra_payload,
     }
 
     start = time.time()
@@ -186,12 +191,13 @@ def _call_api_provider(provider: ProviderConfig, prompt: str, system_prompt: str
     if response.status_code == 429:
         with _provider_lock:
             provider.consecutive_errors += 1
-            provider.rate_limit_cooldown = min(60 * (2 ** provider.consecutive_errors), 300)
+            provider.rate_limit_cooldown = min(60 * (2**provider.consecutive_errors), 300)
             provider.last_error_time = time.time()
         raise ConnectionError(f"{provider.name} rate limited (429). Cooldown: {provider.rate_limit_cooldown}s")
 
     if response.status_code != 200:
-        with _provider_lock: provider.consecutive_errors += 1
+        with _provider_lock:
+            provider.consecutive_errors += 1
         raise ConnectionError(f"{provider.name} returned {response.status_code}: {response.text[:200]}")
 
     with _provider_lock:
@@ -207,35 +213,47 @@ def _call_api_provider(provider: ProviderConfig, prompt: str, system_prompt: str
     logger.debug(f"[LLM] {provider.name} responded in {elapsed:.2f}s ({len(text)} chars)")
     return text
 
+
 def _call_local(prompt: str, system_prompt: str = "") -> str:
     try:
         import ollama
+
         messages = []
-        if system_prompt: messages.append({"role": "system", "content": system_prompt})
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
         r = ollama.chat(model="qwen2.5-coder:14b", messages=messages, options={"temperature": 0.2})
         return r["message"]["content"]
     except Exception as e:
         return f"[Local Ollama Failed]: {e}"
 
+
 def generate_with_provider(prompt: str, provider: str = "auto", system_prompt: str = "") -> str:
-    if provider == "auto": return generate_auto(prompt, system_prompt)
-    if provider == "local": return _call_local(prompt, system_prompt)
+    if provider == "auto":
+        return generate_auto(prompt, system_prompt)
+    if provider == "local":
+        return _call_local(prompt, system_prompt)
     cfg = PROVIDERS.get(provider)
-    if not cfg or not _is_provider_available(cfg): return generate_auto(prompt, system_prompt)
+    if not cfg or not _is_provider_available(cfg):
+        return generate_auto(prompt, system_prompt)
     try:
         return _call_api_provider(cfg, prompt, system_prompt)
     except Exception as e:
         logger.warning(f"{provider} failed: {e}. Falling back to auto.")
         return generate_auto(prompt, system_prompt)
 
+
 def generate_auto(prompt: str, system_prompt: str = "") -> str:
     available = sorted([p for p in PROVIDERS.values() if _is_provider_available(p)], key=lambda p: p.priority)
     for cfg in available:
-        if cfg.name == "local": continue
-        try: return _call_api_provider(cfg, prompt, system_prompt)
-        except Exception: continue
+        if cfg.name == "local":
+            continue
+        try:
+            return _call_api_provider(cfg, prompt, system_prompt)
+        except Exception:
+            continue
     return _call_local(prompt, system_prompt)
+
 
 def generate_parallel(prompt: str, providers: list[str] = None, system_prompt: str = "") -> str:
     """Fire all high-priority APIs simultaneously, first one to respond wins."""
@@ -269,37 +287,33 @@ def generate_parallel(prompt: str, providers: list[str] = None, system_prompt: s
 
     return _call_local(prompt, system_prompt)
 
+
 def get_provider_status() -> list[dict]:
     statuses = []
     for name, cfg in PROVIDERS.items():
-        statuses.append({
-            "name": name, "model": cfg.model, "priority": cfg.priority,
-            "has_key": bool(_get_api_key(cfg)) if cfg.name != "local" else True,
-            "available": _is_provider_available(cfg),
-            "cooldown_remaining": max(0, cfg.rate_limit_cooldown - (time.time() - cfg.last_error_time)) if cfg.rate_limit_cooldown > 0 else 0,
-            "consecutive_errors": cfg.consecutive_errors,
-        })
+        statuses.append(
+            {
+                "name": name,
+                "model": cfg.model,
+                "priority": cfg.priority,
+                "has_key": bool(_get_api_key(cfg)) if cfg.name != "local" else True,
+                "available": _is_provider_available(cfg),
+                "cooldown_remaining": max(0, cfg.rate_limit_cooldown - (time.time() - cfg.last_error_time))
+                if cfg.rate_limit_cooldown > 0
+                else 0,
+                "consecutive_errors": cfg.consecutive_errors,
+            }
+        )
     return sorted(statuses, key=lambda s: (not s["available"], PROVIDERS[s["name"]].priority))
+
 
 async def generate_async(prompt: str, provider: str = "auto", system_prompt: str = "") -> str:
     """Async wrapper for generate_with_provider using run_in_executor."""
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(
-        None,
-        generate_with_provider,
-        prompt,
-        provider,
-        system_prompt
-    )
+    return await loop.run_in_executor(None, generate_with_provider, prompt, provider, system_prompt)
+
 
 async def generate_parallel_async(prompt: str, providers: list[str] = None, system_prompt: str = "") -> str:
     """Async wrapper for generate_parallel using run_in_executor."""
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(
-        None,
-        generate_parallel,
-        prompt,
-        providers,
-        system_prompt
-    )
-
+    return await loop.run_in_executor(None, generate_parallel, prompt, providers, system_prompt)

@@ -342,6 +342,7 @@ INDRA_CORE_TENETS = """The 7 Core Tenets of INDRA:
 # SECTION I: HELPER FUNCTIONS
 # ═══════════════════════════════════════════════════════════════
 
+
 def build_training_system_prompt(
     base_prompt: str = "",
     include_constitution: bool = True,
@@ -363,8 +364,10 @@ def build_training_system_prompt(
     prompt = base_prompt or INDRA_SYSTEM_PROMPT
 
     if model_type == "code_specialist":
-        prompt += "\n\nYou are operating in CODE SPECIALIST mode. Prioritize writing correct, "\
-                  "production-quality code with tests above all else."
+        prompt += (
+            "\n\nYou are operating in CODE SPECIALIST mode. Prioritize writing correct, "
+            "production-quality code with tests above all else."
+        )
     elif model_type == "assistant":
         prompt += "\n\nYou are operating in GENERAL ASSISTANT mode. Be helpful, concise, and friendly."
 
@@ -432,8 +435,7 @@ def setup_indra_training(
         "output_dir": output_dir or "checkpoints/indra_training",
         "model_name": model_name or "sshleifer/tiny-gpt2",
         "experiment_notes": (
-            "INDRA Generalist AI Training — "
-            "Powered by the INDRA system prompt, constitution, and core tenets."
+            "INDRA Generalist AI Training — Powered by the INDRA system prompt, constitution, and core tenets."
         ),
     }
 

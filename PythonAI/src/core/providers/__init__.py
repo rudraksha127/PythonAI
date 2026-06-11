@@ -57,16 +57,16 @@ PROVIDER_API_CALLS = {
     "ollama": call_ollama,
     "mistral": call_mistral,
     "anthropic": call_anthropic,
-    "groq": call_openai,          # Uses OpenAI-compatible API
-    "xai": call_openai,           # Uses OpenAI-compatible API
-    "openrouter": call_openai,    # Uses OpenAI-compatible API
-    "sambanova": call_openai,     # Uses OpenAI-compatible API
-    "cerebras": call_openai,      # Uses OpenAI-compatible API
-    "together": call_openai,      # Uses OpenAI-compatible API
-    "huggingface": call_openai,   # Uses OpenAI-compatible API
-    "fireworks": call_openai,     # Uses OpenAI-compatible API
-    "deepinfra": call_openai,     # Uses OpenAI-compatible API
-    "novita": call_openai,        # Uses OpenAI-compatible API
+    "groq": call_openai,  # Uses OpenAI-compatible API
+    "xai": call_openai,  # Uses OpenAI-compatible API
+    "openrouter": call_openai,  # Uses OpenAI-compatible API
+    "sambanova": call_openai,  # Uses OpenAI-compatible API
+    "cerebras": call_openai,  # Uses OpenAI-compatible API
+    "together": call_openai,  # Uses OpenAI-compatible API
+    "huggingface": call_openai,  # Uses OpenAI-compatible API
+    "fireworks": call_openai,  # Uses OpenAI-compatible API
+    "deepinfra": call_openai,  # Uses OpenAI-compatible API
+    "novita": call_openai,  # Uses OpenAI-compatible API
 }
 
 

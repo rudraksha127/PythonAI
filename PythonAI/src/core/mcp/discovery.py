@@ -28,6 +28,7 @@ logger = logging.getLogger("pythonai.mcp.discovery")
 #  File Discovery
 # ═══════════════════════════════════════
 
+
 def find_mcp_json_files(start_dir: str | None = None) -> list[Path]:
     """Find all .mcp.json files walking up from start_dir."""
     start = Path(start_dir or os.getcwd())
@@ -74,9 +75,7 @@ def discover_mcp_servers(
 
         if connection.state == ConnectionState.CONNECTED:
             logger.info(
-                f"  Connected to '{name}': "
-                f"{len(connection.tools)} tools, "
-                f"{len(connection.resources)} resources"
+                f"  Connected to '{name}': {len(connection.tools)} tools, {len(connection.resources)} resources"
             )
         else:
             logger.warning(f"  Failed to connect '{name}': {connection.error}")
@@ -87,6 +86,7 @@ def discover_mcp_servers(
 # ═══════════════════════════════════════
 #  Ollama MCP Discovery
 # ═══════════════════════════════════════
+
 
 def discover_ollama_mcp() -> dict[str, ServerConfig] | None:
     """Check if Ollama is running and expose it as an MCP server.
@@ -117,6 +117,7 @@ def discover_ollama_mcp() -> dict[str, ServerConfig] | None:
 #  Environment-based Discovery
 # ═══════════════════════════════════════
 
+
 def discover_from_env() -> dict[str, ServerConfig]:
     """Discover MCP servers from environment variables.
 
@@ -139,7 +140,7 @@ def discover_from_env() -> dict[str, ServerConfig]:
     # Per-server env vars: PYTHONAI_MCP_<NAME>_COMMAND
     for key, value in os.environ.items():
         if key.startswith("PYTHONAI_MCP_") and key.endswith("_COMMAND"):
-            name = key[len("PYTHONAI_MCP_"):-len("_COMMAND")].lower()
+            name = key[len("PYTHONAI_MCP_") : -len("_COMMAND")].lower()
             if name in servers:
                 continue
 

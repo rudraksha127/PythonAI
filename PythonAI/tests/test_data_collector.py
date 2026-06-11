@@ -252,8 +252,8 @@ class TestCrawlIndexPage:
         sub_html = self._make_mock_html("Appetite", "Real Python content here")
 
         mock_get.side_effect = [
-            MagicMock(text=index_html),   # Index page
-            MagicMock(text=sub_html),      # Sub page
+            MagicMock(text=index_html),  # Index page
+            MagicMock(text=sub_html),  # Sub page
         ]
 
         with patch("src.data.collector.save_cache"):
@@ -297,11 +297,13 @@ class TestCrawlIndexPage:
         """link_filter should exclude non-matching links."""
         mock_load_cache.return_value = {}
 
-        index_html = self._make_index_html([
-            "tutorial/appetite.html",
-            "http://external.com/",
-            "#anchor",
-        ])
+        index_html = self._make_index_html(
+            [
+                "tutorial/appetite.html",
+                "http://external.com/",
+                "#anchor",
+            ]
+        )
         # index call succeeds; no sub-pages pass the filter that also need to be fetched
         mock_get.return_value = MagicMock(text=index_html)
 
@@ -328,7 +330,7 @@ class TestCrawlIndexPage:
 
         index_html = self._make_index_html(["tutorial/appetite.html"])
         mock_get.side_effect = [
-            MagicMock(text=index_html),   # Index succeeds
+            MagicMock(text=index_html),  # Index succeeds
             requests.exceptions.ConnectionError("Connection error"),  # Sub-page fails
         ]
 
@@ -395,10 +397,12 @@ class TestCrawlIndexPage:
         """Multiple sub-pages should all be crawled."""
         mock_load_cache.return_value = {}
 
-        index_html = self._make_index_html([
-            "tutorial/page1.html",
-            "tutorial/page2.html",
-        ])
+        index_html = self._make_index_html(
+            [
+                "tutorial/page1.html",
+                "tutorial/page2.html",
+            ]
+        )
         page1_html = self._make_mock_html("Page 1", "Content 1")
         page2_html = self._make_mock_html("Page 2", "Content 2")
 

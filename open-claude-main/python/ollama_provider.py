@@ -45,7 +45,7 @@ async def list_ollama_models() -> list[str]:
 
 def normalize_ollama_model(model_name: str) -> str:
     if model_name.startswith("ollama/"):
-        return model_name[len("ollama/"):]
+        return model_name[len("ollama/") :]
     return model_name
 
 
@@ -135,6 +135,7 @@ async def ollama_chat_stream(
     temperature: float = 1.0,
 ) -> AsyncIterator[str]:
     import json
+
     model = normalize_ollama_model(model)
     ollama_messages = anthropic_to_ollama_messages(messages)
     if system:
@@ -146,11 +147,13 @@ async def ollama_chat_stream(
         "options": {"num_predict": max_tokens, "temperature": temperature},
     }
     yield "event: message_start\n"
-    yield f'data: {json.dumps({"type": "message_start", "message": {"id": "msg_ollama_stream", "type": "message", "role": "assistant", "content": [], "model": model, "stop_reason": None, "usage": {"input_tokens": 0, "output_tokens": 0}}})}\n\n'
+    yield f"data: {json.dumps({'type': 'message_start', 'message': {'id': 'msg_ollama_stream', 'type': 'message', 'role': 'assistant', 'content': [], 'model': model, 'stop_reason': None, 'usage': {'input_tokens': 0, 'output_tokens': 0}}})}\n\n"
     yield "event: content_block_start\n"
-    yield f'data: {json.dumps({"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}})}\n\n'
+    yield f"data: {json.dumps({'type': 'content_block_start', 'index': 0, 'content_block': {'type': 'text', 'text': ''}})}\n\n"
     async with httpx.AsyncClient(timeout=120.0) as client:
-        async with client.stream("POST", f"{OLLAMA_BASE_URL}/api/chat", json=payload) as resp:
+        async with client.stream(
+            "POST", f"{OLLAMA_BASE_URL}/api/chat", json=payload
+        ) as resp:
             resp.raise_for_status()
             async for line in resp.aiter_lines():
                 if not line:
@@ -160,14 +163,14 @@ async def ollama_chat_stream(
                     delta_text = chunk.get("message", {}).get("content", "")
                     if delta_text:
                         yield "event: content_block_delta\n"
-                        yield f'data: {json.dumps({"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": delta_text}})}\n\n'
+                        yield f"data: {json.dumps({'type': 'content_block_delta', 'index': 0, 'delta': {'type': 'text_delta', 'text': delta_text}})}\n\n"
                     if chunk.get("done"):
                         yield "event: content_block_stop\n"
-                        yield f'data: {json.dumps({"type": "content_block_stop", "index": 0})}\n\n'
+                        yield f"data: {json.dumps({'type': 'content_block_stop', 'index': 0})}\n\n"
                         yield "event: message_delta\n"
-                        yield f'data: {json.dumps({"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_sequence": None}, "usage": {"output_tokens": chunk.get("eval_count", 0)}})}\n\n'
+                        yield f"data: {json.dumps({'type': 'message_delta', 'delta': {'stop_reason': 'end_turn', 'stop_sequence': None}, 'usage': {'output_tokens': chunk.get('eval_count', 0)}})}\n\n"
                         yield "event: message_stop\n"
-                        yield f'data: {json.dumps({"type": "message_stop"})}\n\n'
+                        yield f"data: {json.dumps({'type': 'message_stop'})}\n\n"
                         break
                 except json.JSONDecodeError:
                     continue

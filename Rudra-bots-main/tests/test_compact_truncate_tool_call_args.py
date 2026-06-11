@@ -8,6 +8,7 @@ upstream call 400'd. This pins that oversized args are bounded (so the message
 fits) while id/type/function.name are preserved, and that small args / plain text
 are untouched.
 """
+
 import json
 import sys
 from unittest.mock import MagicMock
@@ -15,10 +16,16 @@ from unittest.mock import MagicMock
 import pytest
 
 for mod in [
-    'sqlalchemy', 'sqlalchemy.orm', 'sqlalchemy.ext', 'sqlalchemy.ext.declarative',
-    'sqlalchemy.ext.hybrid', 'sqlalchemy.sql', 'sqlalchemy.sql.expression',
-    'src.database',
-    'core.models', 'core.database',
+    "sqlalchemy",
+    "sqlalchemy.orm",
+    "sqlalchemy.ext",
+    "sqlalchemy.ext.declarative",
+    "sqlalchemy.ext.hybrid",
+    "sqlalchemy.sql",
+    "sqlalchemy.sql.expression",
+    "src.database",
+    "core.models",
+    "core.database",
 ]:
     if mod not in sys.modules:
         sys.modules[mod] = MagicMock()
@@ -31,10 +38,13 @@ def _tool_msg(arg_len):
     return {
         "role": "assistant",
         "content": None,
-        "tool_calls": [{
-            "id": "c1", "type": "function",
-            "function": {"name": "create_document", "arguments": "x" * arg_len},
-        }],
+        "tool_calls": [
+            {
+                "id": "c1",
+                "type": "function",
+                "function": {"name": "create_document", "arguments": "x" * arg_len},
+            }
+        ],
     }
 
 
@@ -58,5 +68,7 @@ def test_small_tool_call_args_are_left_untouched():
 
 
 def test_plain_text_content_still_truncates():
-    out = _truncate_message_to_token_budget({"role": "user", "content": "y" * 40000}, 200)
+    out = _truncate_message_to_token_budget(
+        {"role": "user", "content": "y" * 40000}, 200
+    )
     assert len(out["content"]) < 2000  # truncated, not left at 40k

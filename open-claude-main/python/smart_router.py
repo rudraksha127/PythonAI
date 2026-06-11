@@ -36,19 +36,20 @@ logger = logging.getLogger(__name__)
 
 # ── Provider definitions ──────────────────────────────────────────────────────
 
+
 @dataclass
 class Provider:
-    name: str                        # e.g. "openai", "gemini", "ollama"
-    ping_url: str                    # URL used to check health
-    api_key_env: str                 # env var name for API key
-    cost_per_1k_tokens: float        # estimated cost USD per 1k tokens
-    big_model: str                   # model for sonnet/large requests
-    small_model: str                 # model for haiku/small requests
-    latency_ms: float = 9999.0       # updated by benchmark
-    healthy: bool = True             # updated by health checks
-    request_count: int = 0           # total requests routed here
-    error_count: int = 0             # total errors from this provider
-    avg_latency_ms: float = 9999.0   # rolling average from real requests
+    name: str  # e.g. "openai", "gemini", "ollama"
+    ping_url: str  # URL used to check health
+    api_key_env: str  # env var name for API key
+    cost_per_1k_tokens: float  # estimated cost USD per 1k tokens
+    big_model: str  # model for sonnet/large requests
+    small_model: str  # model for haiku/small requests
+    latency_ms: float = 9999.0  # updated by benchmark
+    healthy: bool = True  # updated by health checks
+    request_count: int = 0  # total requests routed here
+    error_count: int = 0  # total errors from this provider
+    avg_latency_ms: float = 9999.0  # rolling average from real requests
 
     @property
     def api_key(self) -> Optional[str]:
@@ -75,9 +76,9 @@ class Provider:
         if not self.healthy or not self.is_configured:
             return float("inf")
 
-        latency_score = self.avg_latency_ms / 1000.0   # normalize to seconds
-        cost_score = self.cost_per_1k_tokens * 100      # normalize to similar scale
-        error_penalty = self.error_rate * 500           # heavy penalty for errors
+        latency_score = self.avg_latency_ms / 1000.0  # normalize to seconds
+        cost_score = self.cost_per_1k_tokens * 100  # normalize to similar scale
+        error_penalty = self.error_rate * 500  # heavy penalty for errors
 
         if strategy == "latency":
             return latency_score + error_penalty
@@ -88,6 +89,7 @@ class Provider:
 
 
 # ── Default provider catalogue ────────────────────────────────────────────────
+
 
 def build_default_providers() -> list[Provider]:
     big = os.getenv("BIG_MODEL", "gpt-4.1")
@@ -113,33 +115,38 @@ def build_default_providers() -> list[Provider]:
             small_model=small if "gemini" in small else "gemini-2.0-flash",
         ),
         Provider(
-          name="mistral",
-          ping_url="",
-          api_key_env="MISTRAL_API_KEY",
-          cost_per_1k_tokens=0.0001,
-          big_model=big if "mistral" in big else "devstral-latest",
-          small_model=small if "small" in small else "ministral-3b-latest",  
+            name="mistral",
+            ping_url="",
+            api_key_env="MISTRAL_API_KEY",
+            cost_per_1k_tokens=0.0001,
+            big_model=big if "mistral" in big else "devstral-latest",
+            small_model=small if "small" in small else "ministral-3b-latest",
         ),
         Provider(
             name="ollama",
             ping_url=f"{ollama_url}/api/tags",
             api_key_env="",
-            cost_per_1k_tokens=0.0,   # free — local
+            cost_per_1k_tokens=0.0,  # free — local
             big_model=big if "gemini" not in big and "gpt" not in big else "llama3:8b",
-            small_model=small if "gemini" not in small and "gpt" not in small else "llama3:8b",
+            small_model=small
+            if "gemini" not in small and "gpt" not in small
+            else "llama3:8b",
         ),
         Provider(
             name="atomic-chat",
             ping_url=f"{atomic_chat_url}/v1/models",
             api_key_env="",
-            cost_per_1k_tokens=0.0,   # free — local (Apple Silicon)
+            cost_per_1k_tokens=0.0,  # free — local (Apple Silicon)
             big_model=big if "gemini" not in big and "gpt" not in big else "llama3:8b",
-            small_model=small if "gemini" not in small and "gpt" not in small else "llama3:8b",
+            small_model=small
+            if "gemini" not in small and "gpt" not in small
+            else "llama3:8b",
         ),
     ]
 
 
 # ── Smart Router ──────────────────────────────────────────────────────────────
+
 
 class SmartRouter:
     """
@@ -173,13 +180,11 @@ class SmartRouter:
         )
         available = [p for p in self.providers if p.healthy and p.is_configured]
         logger.info(
-            f"SmartRouter ready. Available providers: "
-            f"{[p.name for p in available]}"
+            f"SmartRouter ready. Available providers: {[p.name for p in available]}"
         )
         if not available:
             logger.warning(
-                "SmartRouter: no providers available! "
-                "Check your API keys in .env"
+                "SmartRouter: no providers available! Check your API keys in .env"
             )
         self._initialized = True
 
@@ -226,10 +231,7 @@ class SmartRouter:
         Pick the best available provider for this request.
         Returns None if no providers are available.
         """
-        available = [
-            p for p in self.providers
-            if p.healthy and p.is_configured
-        ]
+        available = [p for p in self.providers if p.healthy and p.is_configured]
         if not available:
             return None
 
@@ -252,9 +254,7 @@ class SmartRouter:
 
     def is_large_request(self, messages: list[dict]) -> bool:
         """Estimate if this is a large request based on message length."""
-        total_chars = sum(
-            len(str(m.get("content", ""))) for m in messages
-        )
+        total_chars = sum(len(str(m.get("content", ""))) for m in messages)
         return total_chars > 2000  # >2000 chars = treat as large
 
     def _update_latency(self, provider: Provider, duration_ms: float) -> None:
@@ -291,7 +291,8 @@ class SmartRouter:
         large = self.is_large_request(messages)
 
         available = [
-            p for p in self.providers
+            p
+            for p in self.providers
             if p.healthy and p.is_configured and p.name not in exclude
         ]
 
@@ -330,9 +331,7 @@ class SmartRouter:
         Record the outcome of a request.
         Called after each proxied request to update provider scores.
         """
-        provider = next(
-            (p for p in self.providers if p.name == provider_name), None
-        )
+        provider = next((p for p in self.providers if p.name == provider_name), None)
         if not provider:
             return
 
@@ -353,17 +352,12 @@ class SmartRouter:
                 # Schedule re-check after 60s
                 asyncio.create_task(self._recheck_provider(provider, delay=60))
 
-    async def _recheck_provider(
-        self, provider: Provider, delay: float = 60
-    ) -> None:
+    async def _recheck_provider(self, provider: Provider, delay: float = 60) -> None:
         """Re-ping a provider after a delay and restore if healthy."""
         await asyncio.sleep(delay)
         await self._ping_provider(provider)
         if provider.healthy:
-            logger.info(
-                f"SmartRouter: {provider.name} recovered, "
-                f"re-adding to pool"
-            )
+            logger.info(f"SmartRouter: {provider.name} recovered, re-adding to pool")
 
     # ── Status report ─────────────────────────────────────────────────────────
 

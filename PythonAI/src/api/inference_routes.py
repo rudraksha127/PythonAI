@@ -10,6 +10,7 @@ logger = logging.getLogger("forgeai.api.inference")
 
 router = APIRouter(prefix="/inference", tags=["Inference & Autocomplete"])
 
+
 class AutocompleteRequest(BaseModel):
     prefix: str = Field(..., description="The code snippet immediately before the cursor")
     suffix: str = Field(..., description="The code snippet immediately after the cursor")
@@ -17,6 +18,7 @@ class AutocompleteRequest(BaseModel):
     filepath: str | None = Field(default=None, description="Path of the file being edited")
     max_tokens: int = Field(default=128, description="Maximum tokens to generate")
     temperature: float = Field(default=0.1, description="Temperature for generation (low for code)")
+
 
 def query_ollama_fim(prefix: str, suffix: str, max_tokens: int, temperature: float) -> str:
     """
@@ -37,10 +39,10 @@ def query_ollama_fim(prefix: str, suffix: str, max_tokens: int, temperature: flo
                 "options": {
                     "temperature": temperature,
                     "num_predict": max_tokens,
-                    "stop": ["<|file_separator|>", "<|endoftext|>"]
-                }
+                    "stop": ["<|file_separator|>", "<|endoftext|>"],
+                },
             },
-            timeout=5.0
+            timeout=5.0,
         )
         resp.raise_for_status()
         return resp.json().get("response", "")
@@ -48,6 +50,7 @@ def query_ollama_fim(prefix: str, suffix: str, max_tokens: int, temperature: flo
         logger.error(f"FIM Ollama Request Failed: {e}")
         # Return empty string instead of crashing, so the editor just shows no ghost text
         return ""
+
 
 @router.post("/autocomplete")
 def autocomplete(req: AutocompleteRequest) -> dict[str, Any]:
@@ -64,18 +67,9 @@ def autocomplete(req: AutocompleteRequest) -> dict[str, Any]:
     suffix = req.suffix[:max_suffix_len] if len(req.suffix) > max_suffix_len else req.suffix
 
     # Fetch completion
-    completion = query_ollama_fim(
-        prefix=prefix,
-        suffix=suffix,
-        max_tokens=req.max_tokens,
-        temperature=req.temperature
-    )
+    completion = query_ollama_fim(prefix=prefix, suffix=suffix, max_tokens=req.max_tokens, temperature=req.temperature)
 
     elapsed_ms = round((time.time() - start_time) * 1000, 2)
     logger.info(f"[Autocomplete] Generated {len(completion)} chars in {elapsed_ms}ms")
 
-    return {
-        "status": "success",
-        "completion": completion,
-        "elapsed_ms": elapsed_ms
-    }
+    return {"status": "success", "completion": completion, "elapsed_ms": elapsed_ms}

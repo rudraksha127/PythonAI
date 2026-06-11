@@ -8,8 +8,7 @@ import types
 import torch
 
 DEFAULT_PROMPT = (
-    "You are PYTHON MASTER. Explain Python list comprehensions with one runnable "
-    "example and one common pitfall."
+    "You are PYTHON MASTER. Explain Python list comprehensions with one runnable example and one common pitfall."
 )
 
 

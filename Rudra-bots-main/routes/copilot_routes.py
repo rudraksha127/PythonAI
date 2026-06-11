@@ -106,6 +106,7 @@ def _provision_endpoint(token: str, base: str, owner: Optional[str]) -> Dict:
     # Best-effort: refresh the model cache so the new endpoint shows up.
     try:
         from routes.model_routes import _invalidate_models_cache
+
         _invalidate_models_cache()
     except Exception:
         pass
@@ -127,7 +128,9 @@ def setup_copilot_routes() -> APIRouter:
             data = copilot.request_device_code(host)
         except httpx.HTTPStatusError as e:
             status = e.response.status_code if e.response is not None else "unknown"
-            raise HTTPException(502, f"GitHub device-code request failed (HTTP {status})")
+            raise HTTPException(
+                502, f"GitHub device-code request failed (HTTP {status})"
+            )
         except Exception as e:
             raise HTTPException(502, f"GitHub device-code request failed: {e}")
 
@@ -181,14 +184,20 @@ def setup_copilot_routes() -> APIRouter:
 
         token = data.get("access_token")
         if token:
-            base = copilot.enterprise_base(pending["enterprise_url"]) if pending["enterprise_url"] else copilot.COPILOT_BASE
+            base = (
+                copilot.enterprise_base(pending["enterprise_url"])
+                if pending["enterprise_url"]
+                else copilot.COPILOT_BASE
+            )
             try:
                 result = _provision_endpoint(token, base, pending["owner"])
             except Exception as e:
                 logger.exception("Copilot endpoint provisioning failed")
                 with _PENDING_LOCK:
                     _PENDING.pop(poll_id, None)
-                raise HTTPException(500, f"Login succeeded but provisioning failed: {e}")
+                raise HTTPException(
+                    500, f"Login succeeded but provisioning failed: {e}"
+                )
             with _PENDING_LOCK:
                 _PENDING.pop(poll_id, None)
             return {"status": "authorized", "endpoint": result}

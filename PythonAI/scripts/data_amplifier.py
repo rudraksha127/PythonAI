@@ -45,8 +45,8 @@ from typing import Any
 import requests
 
 # Fix Windows console encoding for Unicode characters
-if hasattr(sys.stdout, 'buffer'):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 from rich.console import Console
 from rich.progress import (
@@ -73,15 +73,24 @@ from src.data.apikeys import resolve_all
 
 API_PROVIDERS: dict[str, dict[str, str]] = {
     "groq": {"url": "https://api.groq.com/openai/v1/chat/completions", "model": "llama-3.3-70b-versatile"},
-    "openrouter": {"url": "https://openrouter.ai/api/v1/chat/completions", "model": "meta-llama/llama-3.3-70b-instruct:free"},
+    "openrouter": {
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "model": "meta-llama/llama-3.3-70b-instruct:free",
+    },
     "openai": {"url": "https://api.openai.com/v1/chat/completions", "model": "gpt-4o-mini"},
     "deepseek": {"url": "https://api.deepseek.com/v1/chat/completions", "model": "deepseek-chat"},
-    "fireworks": {"url": "https://api.fireworks.ai/inference/v1/chat/completions", "model": "accounts/fireworks/models/llama-v3p3-70b-instruct"},
+    "fireworks": {
+        "url": "https://api.fireworks.ai/inference/v1/chat/completions",
+        "model": "accounts/fireworks/models/llama-v3p3-70b-instruct",
+    },
     "nvidia": {"url": "https://integrate.api.nvidia.com/v1/chat/completions", "model": "meta/llama-3.1-70b-instruct"},
     "cerebras": {"url": "https://api.cerebras.ai/v1/chat/completions", "model": "llama-3.3-70b"},
     "sambanova": {"url": "https://api.sambanova.ai/v1/chat/completions", "model": "Meta-Llama-3.3-70B-Instruct"},
     "mistral": {"url": "https://api.mistral.ai/v1/chat/completions", "model": "mistral-large-latest"},
-    "huggingface": {"url": "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct/v1/chat/completions", "model": "Qwen/Qwen2.5-72B-Instruct"},
+    "huggingface": {
+        "url": "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct/v1/chat/completions",
+        "model": "Qwen/Qwen2.5-72B-Instruct",
+    },
 }
 
 
@@ -94,12 +103,12 @@ OUTPUT_PYPI = RAW_DATA_DIR / "pypi_knowledge_base.jsonl"
 STATE_FILE = TRAIN_DATA_DIR / "amplifier_state.json"
 
 # Amplification factors (per strategy)
-QA_PAIRS_PER_CHUNK = 4        # Basic Q&A pairs
-VARIANT_PER_QA = 3            # Question variants per Q&A
-KEYWORD_TASKS = 3             # Keyword/topic expansion tasks
-CODE_TASKS = 2                # Code-only tasks per chunk with code
-PYPI_CONCURRENCY = 10         # Parallel PyPI fetches
-PYPI_BATCH_SIZE = 500         # Batch size for PyPI processing
+QA_PAIRS_PER_CHUNK = 4  # Basic Q&A pairs
+VARIANT_PER_QA = 3  # Question variants per Q&A
+KEYWORD_TASKS = 3  # Keyword/topic expansion tasks
+CODE_TASKS = 2  # Code-only tasks per chunk with code
+PYPI_CONCURRENCY = 10  # Parallel PyPI fetches
+PYPI_BATCH_SIZE = 500  # Batch size for PyPI processing
 
 # Quality thresholds
 MIN_INSTRUCTION_LEN = 15
@@ -107,7 +116,7 @@ MIN_OUTPUT_LEN = 40
 MAX_OUTPUT_LEN = 2000
 
 # Rate limiting
-PYPI_RATE_LIMIT = 0.1    # Seconds between PyPI API calls
+PYPI_RATE_LIMIT = 0.1  # Seconds between PyPI API calls
 
 console = Console()
 
@@ -196,8 +205,7 @@ def _qualify_pair(instruction: str, output: str) -> bool:
         len(instruction) >= MIN_INSTRUCTION_LEN
         and len(output) >= MIN_OUTPUT_LEN
         and not any(
-            skip in instruction.lower() or skip in output.lower()
-            for skip in ["[insert", "[your", "[placeholder"]
+            skip in instruction.lower() or skip in output.lower() for skip in ["[insert", "[your", "[placeholder"]
         )
     )
 
@@ -231,9 +239,7 @@ def extract_keywords(text: str, max_keywords: int = 8) -> list[str]:
     return list(keywords)[:max_keywords]
 
 
-def generate_keyword_tasks(
-    chunk: dict[str, Any], keywords: list[str]
-) -> list[dict[str, Any]]:
+def generate_keyword_tasks(chunk: dict[str, Any], keywords: list[str]) -> list[dict[str, Any]]:
     """
     Generate learning tasks from keywords extracted from a chunk.
     This is purely rule-based — no LLM needed.
@@ -256,22 +262,22 @@ def generate_keyword_tasks(
             f"From the documentation:\n{_truncate(texts[:600])}"
         )
         if _qualify_pair(instruction, output):
-            tasks.append({
-                "id": _make_id("keyword", source, len(tasks)),
-                "instruction": instruction,
-                "output": output,
-                "source": source,
-                "version": version,
-                "category": "keyword_explanation",
-                "section": chunk.get("section", ""),
-            })
+            tasks.append(
+                {
+                    "id": _make_id("keyword", source, len(tasks)),
+                    "instruction": instruction,
+                    "output": output,
+                    "source": source,
+                    "version": version,
+                    "category": "keyword_explanation",
+                    "section": chunk.get("section", ""),
+                }
+            )
 
     # Task 2: Compare & contrast
     if len(keywords) >= 2:
         kw_a, kw_b = keywords[0], keywords[1]
-        instruction = (
-            f"What is the difference between '{kw_a}' and '{kw_b}' in Python {version}?"
-        )
+        instruction = f"What is the difference between '{kw_a}' and '{kw_b}' in Python {version}?"
         output = (
             f"Both '{kw_a}' and '{kw_b}' are concepts in Python {version} "
             f"covered under '{title}'. "
@@ -280,15 +286,17 @@ def generate_keyword_tasks(
             f"**{kw_b}**: ...context from the same section..."
         )
         if _qualify_pair(instruction, output):
-            tasks.append({
-                "id": _make_id("compare", source, 0),
-                "instruction": instruction,
-                "output": output,
-                "source": source,
-                "version": version,
-                "category": "comparison",
-                "section": chunk.get("section", ""),
-            })
+            tasks.append(
+                {
+                    "id": _make_id("compare", source, 0),
+                    "instruction": instruction,
+                    "output": output,
+                    "source": source,
+                    "version": version,
+                    "category": "comparison",
+                    "section": chunk.get("section", ""),
+                }
+            )
 
     return tasks
 
@@ -346,15 +354,17 @@ def generate_qa_pairs(
             output = _truncate(texts[:QA_OUTPUT_LEN])
 
         if _qualify_pair(instruction, output):
-            pairs.append({
-                "id": _make_id("qa", source, i),
-                "instruction": instruction,
-                "output": output,
-                "source": source,
-                "version": version,
-                "category": "qa_direct",
-                "section": section,
-            })
+            pairs.append(
+                {
+                    "id": _make_id("qa", source, i),
+                    "instruction": instruction,
+                    "output": output,
+                    "source": source,
+                    "version": version,
+                    "category": "qa_direct",
+                    "section": section,
+                }
+            )
 
     return pairs
 
@@ -473,23 +483,22 @@ def generate_variants(pair: dict[str, Any]) -> list[dict[str, Any]]:
         f"Teaching me about: {instruction.lower()}",
     ]
 
-    selected = random.sample(
-        rephrase_templates,
-        min(VARIANT_PER_QA, len(rephrase_templates))
-    )
+    selected = random.sample(rephrase_templates, min(VARIANT_PER_QA, len(rephrase_templates)))
 
     for i, new_instruction in enumerate(selected):
         if _qualify_pair(new_instruction, output):
-            variants.append({
-                "id": _make_id("variant", base_id, i),
-                "instruction": new_instruction,
-                "output": output,
-                "source": source,
-                "version": version,
-                "category": "variant",
-                "section": section,
-                "original_instruction": instruction,
-            })
+            variants.append(
+                {
+                    "id": _make_id("variant", base_id, i),
+                    "instruction": new_instruction,
+                    "output": output,
+                    "source": source,
+                    "version": version,
+                    "category": "variant",
+                    "section": section,
+                    "original_instruction": instruction,
+                }
+            )
 
     return variants
 
@@ -537,16 +546,18 @@ def generate_code_tasks(chunk: dict[str, Any]) -> list[dict[str, Any]]:
             f"demonstrates:\n\n{_truncate(texts[:500])}"
         )
         if _qualify_pair(instruction, output):
-            tasks.append({
-                "id": _make_id("code_explain", source, i),
-                "instruction": instruction,
-                "output": output,
-                "source": source,
-                "version": version,
-                "category": "code_explanation",
-                "section": title_section,
-                "code": code[:500],
-            })
+            tasks.append(
+                {
+                    "id": _make_id("code_explain", source, i),
+                    "instruction": instruction,
+                    "output": output,
+                    "source": source,
+                    "version": version,
+                    "category": "code_explanation",
+                    "section": title_section,
+                    "code": code[:500],
+                }
+            )
 
         # Task: what does this code do?
         instruction = f"What is the output of this Python code?\n\n```python\n{code[:200]}\n```"
@@ -556,15 +567,17 @@ def generate_code_tasks(chunk: dict[str, Any]) -> list[dict[str, Any]]:
             f"The code above demonstrates the concepts described."
         )
         if _qualify_pair(instruction, output):
-            tasks.append({
-                "id": _make_id("code_output", source, len(tasks)),
-                "instruction": instruction,
-                "output": output,
-                "source": source,
-                "version": version,
-                "category": "code_analysis",
-                "section": title_section,
-            })
+            tasks.append(
+                {
+                    "id": _make_id("code_output", source, len(tasks)),
+                    "instruction": instruction,
+                    "output": output,
+                    "source": source,
+                    "version": version,
+                    "category": "code_analysis",
+                    "section": title_section,
+                }
+            )
 
     return tasks
 
@@ -616,81 +629,251 @@ def load_top_pypi_libraries() -> list[str]:
     # expand to millions via the PyPI Simple API in production.
     core_libraries = [
         # Web frameworks
-        "django", "flask", "fastapi", "bottle", "tornado", "aiohttp", "sanic",
-        "pyramid", "web2py", "cherrypy", "hug", "falcon", "starlette",
-        "responder", "masonite", "quart", "litestar",
-
+        "django",
+        "flask",
+        "fastapi",
+        "bottle",
+        "tornado",
+        "aiohttp",
+        "sanic",
+        "pyramid",
+        "web2py",
+        "cherrypy",
+        "hug",
+        "falcon",
+        "starlette",
+        "responder",
+        "masonite",
+        "quart",
+        "litestar",
         # Data science & ML
-        "numpy", "pandas", "scipy", "scikit-learn", "matplotlib", "seaborn",
-        "plotly", "bokeh", "statsmodels", "nltk", "spacy", "gensim",
-        "transformers", "datasets", "accelerate", "tokenizers",
-        "tensorflow", "torch", "jax", "keras", "mxnet", "paddlepaddle",
-        "xgboost", "lightgbm", "catboost", "optuna", "ray", "dask",
-        "vaex", "modin", "polars", "cuDF", "numba", "cython",
-        "sympy", "networkx", "igraph", "opencv-python", "pillow",
-        "scikit-image", "mahotas", "simplecv",
-
+        "numpy",
+        "pandas",
+        "scipy",
+        "scikit-learn",
+        "matplotlib",
+        "seaborn",
+        "plotly",
+        "bokeh",
+        "statsmodels",
+        "nltk",
+        "spacy",
+        "gensim",
+        "transformers",
+        "datasets",
+        "accelerate",
+        "tokenizers",
+        "tensorflow",
+        "torch",
+        "jax",
+        "keras",
+        "mxnet",
+        "paddlepaddle",
+        "xgboost",
+        "lightgbm",
+        "catboost",
+        "optuna",
+        "ray",
+        "dask",
+        "vaex",
+        "modin",
+        "polars",
+        "cuDF",
+        "numba",
+        "cython",
+        "sympy",
+        "networkx",
+        "igraph",
+        "opencv-python",
+        "pillow",
+        "scikit-image",
+        "mahotas",
+        "simplecv",
         # Database & ORM
-        "sqlalchemy", "django-orm", "peewee", "pony", "tortoise-orm",
-        "psycopg2", "asyncpg", "aiomysql", "pymongo", "motor",
-        "redis", "redis-py", "aioredis", "hiredis",
-        "sqlite3", "sqlparse", "alembic", "migrate",
-        "elasticsearch", "elasticsearch-dsl", "pymemcache",
-
+        "sqlalchemy",
+        "django-orm",
+        "peewee",
+        "pony",
+        "tortoise-orm",
+        "psycopg2",
+        "asyncpg",
+        "aiomysql",
+        "pymongo",
+        "motor",
+        "redis",
+        "redis-py",
+        "aioredis",
+        "hiredis",
+        "sqlite3",
+        "sqlparse",
+        "alembic",
+        "migrate",
+        "elasticsearch",
+        "elasticsearch-dsl",
+        "pymemcache",
         # Async & concurrency
-        "asyncio", "anyio", "trio", "curio", "uvloop",
-        "concurrent", "multiprocessing", "threading",
-        "celery", "huey", "rq", "dramatiq", "arq",
-
+        "asyncio",
+        "anyio",
+        "trio",
+        "curio",
+        "uvloop",
+        "concurrent",
+        "multiprocessing",
+        "threading",
+        "celery",
+        "huey",
+        "rq",
+        "dramatiq",
+        "arq",
         # CLI & system
-        "click", "rich", "typer", "argparse", "python-fire",
-        "colorama", "termcolor", "blessed", "prompt-toolkit",
-        "psutil", "shutil", "pathlib", "os", "sys",
-        "invoke", "fabric", "pyshell", "plumbum",
-
+        "click",
+        "rich",
+        "typer",
+        "argparse",
+        "python-fire",
+        "colorama",
+        "termcolor",
+        "blessed",
+        "prompt-toolkit",
+        "psutil",
+        "shutil",
+        "pathlib",
+        "os",
+        "sys",
+        "invoke",
+        "fabric",
+        "pyshell",
+        "plumbum",
         # Testing
-        "pytest", "unittest", "nose2", "hypothesis", "tox", "nox",
-        "coverage", "mock", "vcrpy", "responses", "factory-boy",
-        "faker", "freezegun", "time-machine",
-
+        "pytest",
+        "unittest",
+        "nose2",
+        "hypothesis",
+        "tox",
+        "nox",
+        "coverage",
+        "mock",
+        "vcrpy",
+        "responses",
+        "factory-boy",
+        "faker",
+        "freezegun",
+        "time-machine",
         # HTTP & networking
-        "requests", "httpx", "urllib3", "aiohttp", "grequests",
-        "websockets", "socketio", "zeroconf", "dnspython",
-        "paramiko", "fabric", "asyncssh", "telnetlib3",
-
+        "requests",
+        "httpx",
+        "urllib3",
+        "aiohttp",
+        "grequests",
+        "websockets",
+        "socketio",
+        "zeroconf",
+        "dnspython",
+        "paramiko",
+        "fabric",
+        "asyncssh",
+        "telnetlib3",
         # Parsing & serialization
-        "beautifulsoup4", "lxml", "html5lib", "pyquery",
-        "json", "orjson", "ujson", "simplejson", "rapidjson",
-        "yaml", "pyyaml", "ruamel.yaml", "toml", "tomli",
-        "pickle", "cloudpickle", "dill", "joblib",
-        "protobuf", "flatbuffers", "msgpack", "cbor2",
-
+        "beautifulsoup4",
+        "lxml",
+        "html5lib",
+        "pyquery",
+        "json",
+        "orjson",
+        "ujson",
+        "simplejson",
+        "rapidjson",
+        "yaml",
+        "pyyaml",
+        "ruamel.yaml",
+        "toml",
+        "tomli",
+        "pickle",
+        "cloudpickle",
+        "dill",
+        "joblib",
+        "protobuf",
+        "flatbuffers",
+        "msgpack",
+        "cbor2",
         # API & schema
-        "pydantic", "attrs", "dataclasses", "msgspec",
-        "marshmallow", "schema", "cerberus", "voluptuous",
-        "strawberry-graphql", "graphene", "ariadne",
-
+        "pydantic",
+        "attrs",
+        "dataclasses",
+        "msgspec",
+        "marshmallow",
+        "schema",
+        "cerberus",
+        "voluptuous",
+        "strawberry-graphql",
+        "graphene",
+        "ariadne",
         # DevOps & infra
-        "docker", "kubernetes", "ansible", "salt", "puppet",
-        "terraform", "boto3", "google-cloud", "azure",
-        "fabric", "pyinvoke", "supervisor", "superlance",
-
+        "docker",
+        "kubernetes",
+        "ansible",
+        "salt",
+        "puppet",
+        "terraform",
+        "boto3",
+        "google-cloud",
+        "azure",
+        "fabric",
+        "pyinvoke",
+        "supervisor",
+        "superlance",
         # Image & video
-        "opencv-python", "pillow", "scikit-image",
-        "moviepy", "ffmpeg-python", "imageio", "pydub",
-        "python-pptx", "python-docx", "openpyxl", "xlrd",
-
+        "opencv-python",
+        "pillow",
+        "scikit-image",
+        "moviepy",
+        "ffmpeg-python",
+        "imageio",
+        "pydub",
+        "python-pptx",
+        "python-docx",
+        "openpyxl",
+        "xlrd",
         # Other notable
-        "loguru", "structlog", "logging",
-        "sentry-sdk", "rollbar", "bugsnag",
-        "sphinx", "mkdocs", "pdoc", "pydoc",
-        "black", "ruff", "isort", "autoflake", "pyflakes",
-        "mypy", "pylint", "pyright", "bandit",
-        "pip", "poetry", "pipenv", "hatch", "pdm",
-        "wheel", "setuptools", "build", "twine",
-        "cryptography", "bcrypt", "passlib", "jwcrypto",
-        "python-jose", "pyjwt", "oauthlib", "authlib",
-        "email-validator", "phonenumbers", "validate-email",
+        "loguru",
+        "structlog",
+        "logging",
+        "sentry-sdk",
+        "rollbar",
+        "bugsnag",
+        "sphinx",
+        "mkdocs",
+        "pdoc",
+        "pydoc",
+        "black",
+        "ruff",
+        "isort",
+        "autoflake",
+        "pyflakes",
+        "mypy",
+        "pylint",
+        "pyright",
+        "bandit",
+        "pip",
+        "poetry",
+        "pipenv",
+        "hatch",
+        "pdm",
+        "wheel",
+        "setuptools",
+        "build",
+        "twine",
+        "cryptography",
+        "bcrypt",
+        "passlib",
+        "jwcrypto",
+        "python-jose",
+        "pyjwt",
+        "oauthlib",
+        "authlib",
+        "email-validator",
+        "phonenumbers",
+        "validate-email",
     ]
 
     return sorted(set(core_libraries))
@@ -704,7 +887,7 @@ def build_pypi_knowledge_card(lib_info: dict) -> dict[str, Any] | None:
     name = lib_info["name"]
     version = lib_info.get("version", "")
     desc = (lib_info.get("description", "") or "")[:2000]
-    summary = (lib_info.get("summary", "") or "")
+    summary = lib_info.get("summary", "") or ""
 
     # Categorise based on classifiers
     cats = ["pypi_library"]
@@ -823,7 +1006,9 @@ def _generate_qa_via_api(chunk: dict[str, Any]) -> list[dict[str, Any]]:
     return []
 
 
-def _parse_qa_response(content: str, source: str, version: str, chunk: dict[str, Any], provider: str) -> list[dict[str, Any]]:
+def _parse_qa_response(
+    content: str, source: str, version: str, chunk: dict[str, Any], provider: str
+) -> list[dict[str, Any]]:
     """Parse API response JSON into QA pairs with quality checks."""
     clean = content.strip()
     if clean.startswith("```json"):
@@ -957,9 +1142,7 @@ def process_amplification(
     categories: dict[str, int] = {}
 
     # Process each chunk
-    for idx, chunk in enumerate(
-        tqdm(chunks, desc="Amplifying", unit="chunk")
-    ):
+    for idx, chunk in enumerate(tqdm(chunks, desc="Amplifying", unit="chunk")):
         chunk_id = chunk.get("id", f"chunk_{idx}")
 
         if state and state.is_chunk_processed(chunk_id):
@@ -1049,13 +1232,8 @@ def process_pypi_knowledge(
         return card
 
     with ThreadPoolExecutor(max_workers=PYPI_CONCURRENCY) as executor:
-        futures = {
-            executor.submit(_fetch_and_save, lib): lib
-            for lib in libraries
-        }
-        for future in tqdm(
-            as_completed(futures), total=len(futures), desc="Fetching PyPI"
-        ):
+        futures = {executor.submit(_fetch_and_save, lib): lib for lib in libraries}
+        for future in tqdm(as_completed(futures), total=len(futures), desc="Fetching PyPI"):
             result = future.result()
             if result:
                 cards.append(result)
@@ -1118,19 +1296,17 @@ def main(
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(
-        description="100x Data Amplification Engine for PythonAI"
+
+    parser = argparse.ArgumentParser(description="100x Data Amplification Engine for PythonAI")
+    parser.add_argument("--test", action="store_true", help="Test mode: 100 chunks, 20 PyPI libraries")
+    parser.add_argument("--pypi-only", action="store_true", help="Only fetch PyPI knowledge cards")
+    parser.add_argument("--amplify-only", action="store_true", help="Only run amplification (skip PyPI)")
+    parser.add_argument(
+        "--no-ollama", action="store_true", help="Skip API-based QA generation (use template fallback only)"
     )
-    parser.add_argument("--test", action="store_true",
-                        help="Test mode: 100 chunks, 20 PyPI libraries")
-    parser.add_argument("--pypi-only", action="store_true",
-                        help="Only fetch PyPI knowledge cards")
-    parser.add_argument("--amplify-only", action="store_true",
-                        help="Only run amplification (skip PyPI)")
-    parser.add_argument("--no-ollama", action="store_true",
-                        help="Skip API-based QA generation (use template fallback only)")
-    parser.add_argument("--no-incremental", action="store_true",
-                        help="Disable incremental mode (re-process everything)")
+    parser.add_argument(
+        "--no-incremental", action="store_true", help="Disable incremental mode (re-process everything)"
+    )
     args = parser.parse_args()
 
     main(

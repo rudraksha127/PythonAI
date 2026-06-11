@@ -2,6 +2,7 @@
 Auto Kaggle Upload - Dataset aur Notebook ek saath upload karo.
 Run: python scripts/auto_kaggle_upload.py
 """
+
 import json
 import os
 import shutil
@@ -39,6 +40,7 @@ def step0_check():
 
     try:
         from kaggle.api.kaggle_api_extended import KaggleApi
+
         api = KaggleApi()
         api.authenticate()
         print(f"  [OK] Kaggle API: Authenticated as {USERNAME}")
@@ -62,6 +64,7 @@ def step1_create_dataset():
     print("=" * 60)
 
     from kaggle.api.kaggle_api_extended import KaggleApi
+
     api = KaggleApi()
     api.authenticate()
 
@@ -122,6 +125,7 @@ def step2_push_notebook():
     print("=" * 60)
 
     from kaggle.api.kaggle_api_extended import KaggleApi
+
     api = KaggleApi()
     api.authenticate()
 
@@ -174,6 +178,7 @@ def step3_check_status():
     print("=" * 60)
 
     from kaggle.api.kaggle_api_extended import KaggleApi
+
     api = KaggleApi()
     api.authenticate()
 

@@ -1,5 +1,6 @@
 # src/constants.py
 """Application-wide constants and configuration values."""
+
 import os
 
 APP_VERSION = "1.0.0"
@@ -21,9 +22,9 @@ SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
 
 # Agent tool output limits (single source of truth — imported by tool_execution.py,
 # tool_implementations.py, agent_tools.py, and any other module that needs them)
-MAX_OUTPUT_CHARS = 10_000       # cap for bash/python/web_search/web_fetch output
-MAX_READ_CHARS = 20_000         # cap for read_file / document preview
-MAX_DIFF_LINES = 400            # cap for edit_file unified-diff display
+MAX_OUTPUT_CHARS = 10_000  # cap for bash/python/web_search/web_fetch output
+MAX_READ_CHARS = 20_000  # cap for read_file / document preview
+MAX_DIFF_LINES = 400  # cap for edit_file unified-diff display
 
 # API Configuration
 MAX_CONTEXT_MESSAGES = 90

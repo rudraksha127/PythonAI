@@ -150,6 +150,7 @@ class CloudDB:
             return 0
         try:
             from datetime import timedelta
+
             cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
             resp = (
                 service.table("capture_signals")
@@ -171,6 +172,7 @@ class CloudDB:
             return {"accepts": 0, "rejects": 0, "edits": 0, "acceptance_rate": 0.0}
         try:
             from datetime import timedelta
+
             cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
             resp = (
                 service.table("capture_signals")
@@ -207,15 +209,21 @@ async def get_or_create_profile(user_id: str, email: str, username: str) -> dict
 
     now = datetime.now(timezone.utc).isoformat()
     try:
-        resp = service.table("profiles").insert({
-            "id": user_id,
-            "email": email,
-            "username": username,
-            "plan_tier": "free",
-            "subscription_status": "inactive",
-            "created_at": now,
-            "updated_at": now,
-        }).execute()
+        resp = (
+            service.table("profiles")
+            .insert(
+                {
+                    "id": user_id,
+                    "email": email,
+                    "username": username,
+                    "plan_tier": "free",
+                    "subscription_status": "inactive",
+                    "created_at": now,
+                    "updated_at": now,
+                }
+            )
+            .execute()
+        )
         return resp.data[0] if resp.data else None
     except Exception as e:
         logger.warning(f"Failed to create profile: {e}")

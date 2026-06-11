@@ -21,6 +21,7 @@ logger = logging.getLogger("pythonai.mcp.tool_adapter")
 #  MCP Tool Adapter
 # ═══════════════════════════════════════
 
+
 def normalize_mcp_name(name: str) -> str:
     """Normalize a name for use as a tool name (lowercase, underscores)."""
     result = ""
@@ -117,10 +118,7 @@ class MCPToolAdapter:
             return []
 
         if not self._wrapped_tools:
-            self._wrapped_tools = [
-                wrap_mcp_tool(self.connection, tool)
-                for tool in self.connection.tools
-            ]
+            self._wrapped_tools = [wrap_mcp_tool(self.connection, tool) for tool in self.connection.tools]
 
         return self._wrapped_tools
 

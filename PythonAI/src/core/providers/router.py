@@ -28,22 +28,24 @@ from .registry import (
 
 class RouteStrategy(str, Enum):
     """Strategy for selecting a provider."""
-    AUTO = "auto"                    # Best available
-    FASTEST = "fastest"              # Lowest latency
-    CHEAPEST = "cheapest"            # Lowest cost
-    BEST_QUALITY = "best_quality"    # Highest quality (reasoning models)
-    LOCAL_ONLY = "local_only"        # Local models only
-    CODING = "coding"                # Best for coding tasks
+
+    AUTO = "auto"  # Best available
+    FASTEST = "fastest"  # Lowest latency
+    CHEAPEST = "cheapest"  # Lowest cost
+    BEST_QUALITY = "best_quality"  # Highest quality (reasoning models)
+    LOCAL_ONLY = "local_only"  # Local models only
+    CODING = "coding"  # Best for coding tasks
 
 
 @dataclass
 class RouteResult:
     """Result of a routing decision."""
+
     provider: str
     model: str
     base_url: str
     api_key: str | None = None
-    api_type: str = "openai"          # "openai", "anthropic", "gemini"
+    api_type: str = "openai"  # "openai", "anthropic", "gemini"
     strategy_used: RouteStrategy = RouteStrategy.AUTO
     resolved_from_profile: bool = False
     is_local: bool = False
@@ -104,6 +106,7 @@ class ProviderRouter:
         # Then check PythonAI's apikeys storage
         try:
             from src.data.apikeys import resolve_key
+
             return resolve_key(provider_id)  # type: ignore[no-any-return]
         except ImportError:
             pass
@@ -136,16 +139,18 @@ class ProviderRouter:
         for provider in self.registry.list_providers():
             has_key = self.has_key(provider.id) if provider.requires_key else True
             default = self.registry.get_default_model(provider.id)
-            statuses.append({
-                "id": provider.id,
-                "label": provider.label,
-                "available": has_key,
-                "has_key": has_key,
-                "is_local": provider.is_local,
-                "default_model": default.id if default else provider.default_model,
-                "priority": provider.priority,
-                "base_url": provider.base_url,
-            })
+            statuses.append(
+                {
+                    "id": provider.id,
+                    "label": provider.label,
+                    "available": has_key,
+                    "has_key": has_key,
+                    "is_local": provider.is_local,
+                    "default_model": default.id if default else provider.default_model,
+                    "priority": provider.priority,
+                    "base_url": provider.base_url,
+                }
+            )
         return sorted(statuses, key=lambda s: (not s["available"], s["priority"]))
 
     # == Routing Logic ========================================
@@ -196,7 +201,9 @@ class ProviderRouter:
         provider_info = self.registry.get_provider(provider)
         if not provider_info:
             return RouteResult(
-                provider=provider, model=model, base_url="",
+                provider=provider,
+                model=model,
+                base_url="",
                 api_type="openai",
                 error=f"Unknown provider: {provider}. Use 'python -m src.cli provider list' to see available providers.",
             )
@@ -209,7 +216,9 @@ class ProviderRouter:
         api_key = self.resolve_key(provider) if provider_info.requires_key else None
         if provider_info.requires_key and not api_key:
             return RouteResult(
-                provider=provider, model=model_id, base_url=provider_info.base_url,
+                provider=provider,
+                model=model_id,
+                base_url=provider_info.base_url,
                 api_type=provider_info.api_type,
                 error=f"No API key found for provider '{provider}'. Set {provider_info.env_key} env var or use 'python -m src.cli apikeys set {provider} <key>'.",
             )
@@ -289,8 +298,11 @@ class ProviderRouter:
             model_id = model_desc.id if model_desc else p.default_model
             api_key = self.resolve_key(p.id) if p.requires_key else None
             return RouteResult(
-                provider=p.id, model=model_id, base_url=p.base_url,
-                api_key=api_key, api_type=p.api_type,
+                provider=p.id,
+                model=model_id,
+                base_url=p.base_url,
+                api_key=api_key,
+                api_type=p.api_type,
                 is_local=p.is_local,
                 strategy_used=strategy,
             )
@@ -382,10 +394,17 @@ class ProviderRouter:
         results = []
         for _, p, m in scored[:count]:
             api_key = self.resolve_key(p.id) if p.requires_key else None
-            results.append(RouteResult(
-                provider=p.id, model=m.id, base_url=p.base_url,
-                api_key=api_key, api_type=p.api_type,
-                is_local=p.is_local, model_info=m, provider_info=p,
-            ))
+            results.append(
+                RouteResult(
+                    provider=p.id,
+                    model=m.id,
+                    base_url=p.base_url,
+                    api_key=api_key,
+                    api_type=p.api_type,
+                    is_local=p.is_local,
+                    model_info=m,
+                    provider_info=p,
+                )
+            )
 
         return results

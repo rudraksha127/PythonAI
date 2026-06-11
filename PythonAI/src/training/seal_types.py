@@ -179,9 +179,7 @@ class CurriculumState:
             "difficulties_tried": dict(self.difficulties_tried),
             "weakness_scores": dict(self.weakness_scores),
             "acceptance_rate_history": list(self.acceptance_rate_history),
-            "action_effectiveness": {
-                k: v for k, v in self.action_effectiveness.items()
-            },
+            "action_effectiveness": {k: v for k, v in self.action_effectiveness.items()},
             "best_action": self.best_action,
         }
 
@@ -207,9 +205,7 @@ class CurriculumState:
         self.domains_explored[domain_key] = self.domains_explored.get(domain_key, 0) + 1
 
         # Track difficulties
-        self.difficulties_tried[action.difficulty] = (
-            self.difficulties_tried.get(action.difficulty, 0) + 1
-        )
+        self.difficulties_tried[action.difficulty] = self.difficulties_tried.get(action.difficulty, 0) + 1
 
         # Track effectiveness
         action_key = action.action_type.value
@@ -241,10 +237,7 @@ class CurriculumState:
 
     def get_underrepresented_domains(self, threshold: int = 2) -> list[str]:
         """Return domains explored fewer than threshold times."""
-        return [
-            d for d, count in self.domains_explored.items()
-            if count < threshold
-        ]
+        return [d for d, count in self.domains_explored.items() if count < threshold]
 
 
 @dataclass
@@ -402,7 +395,4 @@ class SealConfig:
         return cls(**filtered)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            k: getattr(self, k)
-            for k in self.__dataclass_fields__
-        }
+        return {k: getattr(self, k) for k in self.__dataclass_fields__}

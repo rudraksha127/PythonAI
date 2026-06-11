@@ -146,12 +146,14 @@ def setup() -> None:
     for name, key in KEYS.items():
         if len(key) < 10 or key.endswith("xxxx"):
             continue
-        active.append({
-            "name": name,
-            "url": URLS[name],
-            "key": key,
-            "model": MODELS[name],
-        })
+        active.append(
+            {
+                "name": name,
+                "url": URLS[name],
+                "key": key,
+                "model": MODELS[name],
+            }
+        )
         source = "stored" if _stored_key(name) else "env"
         print(f"  {name:12s} -> {MODELS[name]}  [{source}]")
     print(f"\n{len(active)} APIs active!")
@@ -177,6 +179,7 @@ def call_api(prompt: str, max_tokens: int = 800) -> tuple[str, str]:
 
         try:
             import requests
+
             r = requests.post(
                 p["url"],
                 headers={
@@ -296,84 +299,92 @@ def build_prompts(chunk: dict[str, Any]) -> dict[str, str]:
     if code:
         ctx += f"\nExample:\n{code}"
 
-    PRE = "Return ONLY a valid JSON array. No text before or after.\n\n" + ctx + "\n\n"
+    _pre = "Return ONLY a valid JSON array. No text before or after.\n\n" + ctx + "\n\n"
 
     ps: dict[str, str] = {}
 
-    ps["basic"] = PRE + (
+    ps["basic"] = _pre + (
         "Create 5 practical Q&A pairs about this topic.\n"
         '[{"type":"basic","instruction":"question?","output":"answer with code example"}]'
     )
 
-    ps["reasoning"] = PRE + (
+    ps["reasoning"] = _pre + (
         f"Create 3 deep reasoning questions about {t}.\n"
         '[{"type":"reasoning","instruction":"why/how?","output":"Step 1:...\\nStep 2:...\\n```python\\ncode\\n```"}]'
     )
 
-    ps["beginner"] = PRE + (
+    ps["beginner"] = _pre + (
         f"Explain {t} for absolute beginners. Use real-life analogy.\n"
         '[{"type":"beginner","instruction":"What is ' + t + ' in simple words?",'
         '"output":"Think of it like [analogy]...\\n```python\\nsimple example\\n```"}]'
     )
 
-    ps["expert"] = PRE + (
+    ps["expert"] = _pre + (
         f"Create 3 advanced expert-level questions about {t} covering internals and edge cases.\n"
         '[{"type":"expert","instruction":"advanced question?","output":"technical deep answer + code"}]'
     )
 
-    ps["interview"] = PRE + (
+    ps["interview"] = _pre + (
         f"Create 4 technical interview questions about {t} with model answers.\n"
         f'[{{"type":"interview","instruction":"Interview: Explain {t}",'
         f'"output":"Answer: [clear explanation]\\nExample:\\n```python\\ncode\\n```"}}]'
     )
 
-    ps["project"] = PRE + (
+    ps["project"] = _pre + (
         f"Create one complete real-world mini-project using {t}.\n"
         '[{"type":"project","instruction":"Build something real with ' + t + '",'
         '"output":"Project: name\\nCode:\\n```python\\nfull working code\\n```\\nOutput: what user sees"}]'
     )
 
-    ps["version"] = PRE + (
+    ps["version"] = _pre + (
         f"Create 2 questions about Python {ver} specific behavior of {t}.\n"
-        '[{"type":"version","instruction":"How does ' + t + ' work in Python ' + ver + '?",'
+        '[{"type":"version","instruction":"How does ' + t + " work in Python " + ver + '?",'
         '"output":"In Python ' + ver + ': [explanation]\\n```python\\nexample\\n```"}]'
     )
 
     # New prompt types
-    ps["security"] = PRE + (
+    ps["security"] = _pre + (
         f"Create 2 security-related Q&A pairs about {t}. Cover common vulnerabilities and fixes.\n"
         '[{"type":"security","instruction":"Security concern about ' + t + '?",'
         '"output":"Risk: ...\\nFix: ...\\n```python\\nsecure code\\n```"}]'
     )
 
-    ps["performance"] = PRE + (
+    ps["performance"] = _pre + (
         f"Create 2 performance optimization Q&A pairs about {t}. Compare slow vs fast approaches.\n"
         '[{"type":"performance","instruction":"How to optimize ' + t + ' for performance?",'
         '"output":"Slow approach: ...\\nFast approach: ...\\n```python\\nbenchmark code\\n```\\nSpeedup: X%"}]'
     )
 
-    ps["testing"] = PRE + (
+    ps["testing"] = _pre + (
         f"Create 2 testing strategy Q&A pairs about {t}. Include test examples.\n"
         '[{"type":"testing","instruction":"How to test code using ' + t + '?",'
         '"output":"Approach: ...\\n```python\\ntest code\\n```\\nEdge cases: ..."}]'
     )
 
     if codes:
-        ps["error_fix"] = PRE + (
+        ps["error_fix"] = _pre + (
             f"Create 3 common bug scenarios beginners face with {t}.\n"
             '[{"type":"error_fix","instruction":"Why does this fail?\\n```python\\nbuggy code\\n```",'
             '"output":"Bug: explanation\\nFix:\\n```python\\ncorrect code\\n```\\nLesson: key takeaway"}]'
         )
 
-        ps["code_review"] = PRE + (
+        ps["code_review"] = _pre + (
             f"Create 2 code review scenarios for {t}.\n"
             '[{"type":"code_review","instruction":"Review this code:\\n```python\\nsome code\\n```",'
             '"output":"Good: ...\\nIssues: ...\\nBetter:\\n```python\\nimproved\\n```"}]'
         )
 
     keep = [
-        "basic", "reasoning", "error_fix", "expert", "interview",
-        "project", "version", "security", "performance", "testing",
+        "basic",
+        "reasoning",
+        "error_fix",
+        "expert",
+        "interview",
+        "project",
+        "version",
+        "security",
+        "performance",
+        "testing",
     ]
     return {k: v for k, v in ps.items() if k in keep}
 
@@ -443,8 +454,9 @@ def main(resume: bool = False, quality_min: int = QUALITY_MIN_DEFAULT) -> None:
     if resume:
         start_index, all_pairs, type_stats = load_latest_checkpoint()
         seen_hashes.update(
-            hashlib.md5(f'{p.get("instruction","")}|{p.get("output","")}'.encode()).hexdigest()
-            for p in all_pairs if isinstance(p, dict)
+            hashlib.md5(f"{p.get('instruction', '')}|{p.get('output', '')}".encode()).hexdigest()
+            for p in all_pairs
+            if isinstance(p, dict)
         )
         if start_index > 0:
             print(f"Resuming from chunk {start_index} (already generated {len(all_pairs)} pairs)")
@@ -457,11 +469,7 @@ def main(resume: bool = False, quality_min: int = QUALITY_MIN_DEFAULT) -> None:
     start = time.time()
 
     with ThreadPoolExecutor(max_workers=50) as executor:
-        futures = {
-            executor.submit(process_chunk, chunk): i
-            for i, chunk in enumerate(valid)
-            if i >= start_index
-        }
+        futures = {executor.submit(process_chunk, chunk): i for i, chunk in enumerate(valid) if i >= start_index}
         pbar = tqdm(as_completed(futures), total=len(valid) - start_index, desc="Generating")
 
         for future in pbar:
@@ -486,7 +494,7 @@ def main(resume: bool = False, quality_min: int = QUALITY_MIN_DEFAULT) -> None:
 
     elapsed = (time.time() - start) / 60
 
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print("COMPLETE!")
     print(f"Total pairs  : {len(all_pairs):,}")
     print(f"Unique       : {len(seen_hashes):,}")
@@ -495,7 +503,7 @@ def main(resume: bool = False, quality_min: int = QUALITY_MIN_DEFAULT) -> None:
     print("\nBy type:")
     for t, n in sorted(type_stats.items(), key=lambda x: -x[1]):
         print(f"  {t:15s}: {n:,}")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
     # Print API stats
     print("\nAPI Usage:")
@@ -508,9 +516,11 @@ def main(resume: bool = False, quality_min: int = QUALITY_MIN_DEFAULT) -> None:
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--resume", action="store_true", help="Resume from last checkpoint")
-    parser.add_argument("--quality-min", type=int, default=QUALITY_MIN_DEFAULT,
-                        help="Minimum quality score to keep a pair (0-100)")
+    parser.add_argument(
+        "--quality-min", type=int, default=QUALITY_MIN_DEFAULT, help="Minimum quality score to keep a pair (0-100)"
+    )
     args = parser.parse_args()
     main(resume=args.resume, quality_min=args.quality_min)

@@ -126,8 +126,10 @@ class TestValidRow:
 
     def test_valid_row_default(self):
         """Row with instruction >= 10 and output >= 80 should be valid."""
-        row = {"instruction": "Explain Python recursion comprehensively",
-               "output": "Recursion is a programming technique where a function calls itself. " * 5}
+        row = {
+            "instruction": "Explain Python recursion comprehensively",
+            "output": "Recursion is a programming technique where a function calls itself. " * 5,
+        }
         assert valid_row(row, min_output_chars=80) is True
 
     def test_short_instruction(self):
@@ -300,12 +302,10 @@ class TestMerge:
         """Many rows with exact duplicates should all dedup."""
         output_text = "Same answer text for testing purposes. " * 15
         base = [
-            {"instruction": f"Explain Python concept number {i} in detail.", "output": output_text}
-            for i in range(5)
+            {"instruction": f"Explain Python concept number {i} in detail.", "output": output_text} for i in range(5)
         ]
         addition = [
-            {"instruction": f"Explain Python concept number {i} in detail.", "output": output_text}
-            for i in range(5)
+            {"instruction": f"Explain Python concept number {i} in detail.", "output": output_text} for i in range(5)
         ]
         result = merge(base, addition, min_output_chars=80)
         assert len(result) == 5
@@ -313,14 +313,24 @@ class TestMerge:
     def test_large_dataset(self):
         """merge should handle a moderately large dataset."""
         base = [
-            {"instruction": f"Explain Python question number {i} in detail.", "output": f"Answer to question {i}. " * 20}
+            {
+                "instruction": f"Explain Python question number {i} in detail.",
+                "output": f"Answer to question {i}. " * 20,
+            }
             for i in range(100)
         ]
         addition = []
         for i in range(50):
-            addition.append({"instruction": f"Explain Python question number {i} in detail.", "output": f"Answer to question {i}. " * 20})
+            addition.append(
+                {
+                    "instruction": f"Explain Python question number {i} in detail.",
+                    "output": f"Answer to question {i}. " * 20,
+                }
+            )
         for i in range(50, 100):
-            addition.append({"instruction": f"Explain new question number {i} in detail.", "output": f"New answer {i}. " * 20})
+            addition.append(
+                {"instruction": f"Explain new question number {i} in detail.", "output": f"New answer {i}. " * 20}
+            )
         result = merge(base, addition, min_output_chars=80)
         # 100 base + 50 new unique = 150
         assert len(result) == 150
@@ -328,8 +338,12 @@ class TestMerge:
     def test_different_metadata_same_content(self):
         """Same content with different metadata should dedup, keeping base metadata."""
         output_text = "Same content for testing purposes right here. " * 15
-        base = [{"instruction": "Explain this Python concept in detail please.", "output": output_text, "category": "old"}]
-        addition = [{"instruction": "Explain this Python concept in detail please.", "output": output_text, "category": "new"}]
+        base = [
+            {"instruction": "Explain this Python concept in detail please.", "output": output_text, "category": "old"}
+        ]
+        addition = [
+            {"instruction": "Explain this Python concept in detail please.", "output": output_text, "category": "new"}
+        ]
         result = merge(base, addition, min_output_chars=80, keep_old=True)
         assert len(result) == 1
         assert result[0]["category"] == "old"
@@ -388,10 +402,7 @@ class TestPrintDistribution:
 
     def test_percentage_formatting(self, capsys):
         """Percentages should be integers."""
-        rows = [
-            {"instruction": f"A{i}", "output": "A" * 100, "category": "python"}
-            for i in range(3)
-        ]
+        rows = [{"instruction": f"A{i}", "output": "A" * 100, "category": "python"} for i in range(3)]
         rows.append({"instruction": "B", "output": "B" * 100, "category": "other"})
         print_distribution(rows)
         captured = capsys.readouterr()
@@ -420,11 +431,23 @@ class TestParseArgs:
 
     def test_custom_values(self, monkeypatch):
         """Custom values should override defaults."""
-        monkeypatch.setattr(sys, "argv", [
-            "merger.py", "--base", "custom_base.json", "--add", "new.json",
-            "--output", "merged.json", "--min-output-chars", "50",
-            "--keep-old", "--stats-only",
-        ])
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "merger.py",
+                "--base",
+                "custom_base.json",
+                "--add",
+                "new.json",
+                "--output",
+                "merged.json",
+                "--min-output-chars",
+                "50",
+                "--keep-old",
+                "--stats-only",
+            ],
+        )
         args = parse_args()
         assert args.base == "custom_base.json"
         assert args.add == "new.json"
@@ -502,10 +525,7 @@ class TestMergeIntegration:
         add_file = tmp_path / "add.json"
         output_file = tmp_path / "output.json"
 
-        addition = [
-            {"instruction": f"Question {i}", "output": f"Answer {i}. " * 20}
-            for i in range(10)
-        ]
+        addition = [{"instruction": f"Question {i}", "output": f"Answer {i}. " * 20} for i in range(10)]
         add_file.write_text(json.dumps(addition))
 
         add_rows = load_rows(add_file)

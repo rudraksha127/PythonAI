@@ -19,9 +19,11 @@ from typing import Any
 #  Validation Result
 # ═══════════════════════════════════════════════
 
+
 @dataclass
 class ValidationResult:
     """Standard result for all validation functions."""
+
     valid: bool = True
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -196,9 +198,11 @@ def validate_api_key(provider: str, key: str) -> ValidationResult:
 #  Configuration Validation
 # ═══════════════════════════════════════════════
 
+
 @dataclass
 class ConfigValidation:
     """Result of validating a configuration dictionary."""
+
     valid: bool = True
     missing_required: list[str] = field(default_factory=list)
     invalid_types: list[str] = field(default_factory=list)
@@ -228,8 +232,7 @@ def validate_config(
             result.valid = False
         elif not isinstance(config[field_name], expected_type):
             result.invalid_types.append(
-                f"'{field_name}': expected {expected_type.__name__}, "
-                f"got {type(config[field_name]).__name__}"
+                f"'{field_name}': expected {expected_type.__name__}, got {type(config[field_name]).__name__}"
             )
             result.valid = False
 
@@ -238,8 +241,7 @@ def validate_config(
             if field_name in config and config[field_name] is not None:
                 if not isinstance(config[field_name], expected_type):
                     result.warnings.append(
-                        f"'{field_name}': expected {expected_type.__name__}, "
-                        f"got {type(config[field_name]).__name__}"
+                        f"'{field_name}': expected {expected_type.__name__}, got {type(config[field_name]).__name__}"
                     )
 
     return result
@@ -248,6 +250,7 @@ def validate_config(
 # ═══════════════════════════════════════════════
 #  Path Validation
 # ═══════════════════════════════════════════════
+
 
 def validate_path(
     path: str | Path,
@@ -281,10 +284,7 @@ def validate_path(
         errors.append(f"Path is not a directory: {path_obj}")
 
     if allowed_extensions and path_obj.suffix.lower() not in allowed_extensions:
-        errors.append(
-            f"File extension '{path_obj.suffix}' not allowed. "
-            f"Allowed: {', '.join(allowed_extensions)}"
-        )
+        errors.append(f"File extension '{path_obj.suffix}' not allowed. Allowed: {', '.join(allowed_extensions)}")
 
     return ValidationResult(
         valid=len(errors) == 0,
@@ -296,6 +296,7 @@ def validate_path(
 # ═══════════════════════════════════════════════
 #  JSON Validation
 # ═══════════════════════════════════════════════
+
 
 def validate_json_string(json_str: str, schema_type: str | None = None) -> ValidationResult:
     """Validate a JSON string and optionally check its structure.
@@ -329,6 +330,7 @@ def validate_json_string(json_str: str, schema_type: str | None = None) -> Valid
 # ═══════════════════════════════════════════════
 #  Data Record Validation
 # ═══════════════════════════════════════════════
+
 
 def validate_training_record(record: dict[str, Any]) -> ValidationResult:
     """Validate a single training data record.
@@ -364,6 +366,7 @@ def validate_training_record(record: dict[str, Any]) -> ValidationResult:
 # ═══════════════════════════════════════════════
 #  Environment Variable Helpers
 # ═══════════════════════════════════════════════
+
 
 def get_env_bool(name: str, default: bool = False) -> bool:
     """Get an environment variable as a boolean.
@@ -424,6 +427,7 @@ def get_env_list(name: str, separator: str = ",", default: list[str] | None = No
 #  File Content Validation
 # ═══════════════════════════════════════════════
 
+
 def validate_dataset_file(filepath: str | Path) -> ValidationResult:
     """Validate a training dataset JSON file.
 
@@ -434,8 +438,7 @@ def validate_dataset_file(filepath: str | Path) -> ValidationResult:
         ValidationResult with dataset stats in sanitized_value.
     """
     errors: list[str] = []
-    path_result = validate_path(filepath, must_exist=True, must_be_file=True,
-                                allowed_extensions={".json"})
+    path_result = validate_path(filepath, must_exist=True, must_be_file=True, allowed_extensions={".json"})
     if not path_result:
         return path_result
 

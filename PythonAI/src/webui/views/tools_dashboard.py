@@ -63,7 +63,7 @@ def _render_all_tools(registry: Any) -> None:
             f'<div class="tool-call-card {cls}">'
             f'<span class="tool-name">{t.name}</span> — {t.description[:80]} '
             f'<span style="float:right">{chips}</span>'
-            f'</div>',
+            f"</div>",
             unsafe_allow_html=True,
         )
 
@@ -80,7 +80,7 @@ def _render_readonly_tools(registry: Any) -> None:
         st.markdown(
             f'<div class="tool-call-card tool-readonly">'
             f'<span class="tool-name">{t.name}</span> — {t.description[:80]}'
-            f'</div>',
+            f"</div>",
             unsafe_allow_html=True,
         )
 
@@ -99,9 +99,7 @@ def _render_writable_tools(registry: Any) -> None:
     for t in tools:
         cls = "tool-destructive" if t.is_destructive() else "tool-write"
         st.markdown(
-            f'<div class="tool-call-card {cls}">'
-            f'<span class="tool-name">{t.name}</span> — {t.description[:80]}'
-            f'</div>',
+            f'<div class="tool-call-card {cls}"><span class="tool-name">{t.name}</span> — {t.description[:80]}</div>',
             unsafe_allow_html=True,
         )
 

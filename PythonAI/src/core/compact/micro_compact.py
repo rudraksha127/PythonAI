@@ -18,16 +18,23 @@ from typing import Any
 
 # Tools eligible for micro-compaction
 COMPACTABLE_TOOLS = {
-    "bash", "read", "file_read", "grep", "glob",
-    "web_search", "web_fetch", "file_edit", "file_write",
+    "bash",
+    "read",
+    "file_read",
+    "grep",
+    "glob",
+    "web_search",
+    "web_fetch",
+    "file_edit",
+    "file_write",
 }
 
 TIME_BASED_CLEARED_MESSAGE = "[Previous tool result content cleared for context efficiency]"
 
 # Default thresholds
-DEFAULT_TIME_GAP_MINUTES = 30   # Clear old results after 30 min gap
-DEFAULT_COUNT_KEEP_RECENT = 10   # Keep last 10 tool results
-DEFAULT_COUNT_TRIGGER = 25       # Start compacting at 25 tool results
+DEFAULT_TIME_GAP_MINUTES = 30  # Clear old results after 30 min gap
+DEFAULT_COUNT_KEEP_RECENT = 10  # Keep last 10 tool results
+DEFAULT_COUNT_TRIGGER = 25  # Start compacting at 25 tool results
 
 
 def estimate_tool_result_tokens(content: str | list[Any] | dict[str, Any]) -> int:
@@ -122,12 +129,14 @@ def microcompact_messages(
             if isinstance(content, str):
                 tokens_saved += estimate_tool_result_tokens(content)
             # Replace with cleared message
-            result_messages.append({
-                "role": "tool",
-                "content": TIME_BASED_CLEARED_MESSAGE,
-                "tool_call_id": tool_call_id,
-                "name": msg.get("name", ""),
-            })
+            result_messages.append(
+                {
+                    "role": "tool",
+                    "content": TIME_BASED_CLEARED_MESSAGE,
+                    "tool_call_id": tool_call_id,
+                    "name": msg.get("name", ""),
+                }
+            )
         else:
             result_messages.append(msg)
 

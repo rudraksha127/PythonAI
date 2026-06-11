@@ -12,6 +12,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
 class INDRABenchmark:
     def __init__(self, model_path: str):
         self.model_path = model_path
@@ -23,7 +24,7 @@ class INDRABenchmark:
         # In a real implementation, this would call lm-eval-harness
         # import lm_eval
         # results = lm_eval.simple_evaluate(model="hf", model_args=f"pretrained={self.model_path}", tasks=["mmlu"])
-        return 82.5 # Mock result
+        return 82.5  # Mock result
 
     def run_gsm8k(self) -> float:
         """Run GSM8K evaluation"""
@@ -64,8 +65,8 @@ class INDRABenchmark:
                 "custom_eval": self.run_india_eval(),
             },
             "safety": {
-                "truthfulqa": 85.1, # Mock
-            }
+                "truthfulqa": 85.1,  # Mock
+            },
         }
 
         self.save_results()
@@ -76,15 +77,17 @@ class INDRABenchmark:
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / "indra_benchmark_results.json"
 
-        with open(out_path, 'w') as f:
+        with open(out_path, "w") as f:
             json.dump(self.results, f, indent=2)
         logger.info(f"Saved benchmark results to {out_path}")
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run INDRA Benchmarks")
     parser.add_argument("--model-path", required=True, help="Path to fine-tuned model")
     parser.add_argument("--dry-run", action="store_true", help="Run mocked fast evaluation")
     return parser.parse_args()
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

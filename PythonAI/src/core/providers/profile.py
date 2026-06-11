@@ -25,14 +25,15 @@ CONFIG_DIR = Path.home() / ".pythonai"
 @dataclass
 class ProviderProfile:
     """Saved provider profile."""
-    provider: str                         # "openai", "deepseek", "ollama", etc.
-    model: str = ""                       # Specific model, empty = default
-    label: str = ""                       # User-friendly label
-    base_url: str = ""                    # Custom base URL
-    api_key_to_check: str = ""            # Last 4 chars of key for identification
-    strategy: str = "auto"                # RouteStrategy
-    updated_at: str = ""                  # ISO timestamp
-    goal: str = "coding"                  # "coding", "latency", "balanced"
+
+    provider: str  # "openai", "deepseek", "ollama", etc.
+    model: str = ""  # Specific model, empty = default
+    label: str = ""  # User-friendly label
+    base_url: str = ""  # Custom base URL
+    api_key_to_check: str = ""  # Last 4 chars of key for identification
+    strategy: str = "auto"  # RouteStrategy
+    updated_at: str = ""  # ISO timestamp
+    goal: str = "coding"  # "coding", "latency", "balanced"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -152,6 +153,7 @@ class ProfileManager:
         if not api_key_suffix:
             try:
                 from src.data.apikeys import get_key
+
                 key = get_key(provider)
                 if key and len(key) > 8:
                     api_key_suffix = f"...{key[-4:]}"
@@ -162,6 +164,7 @@ class ProfileManager:
         label = provider.upper() if len(provider) <= 4 else provider.capitalize()
         try:
             from .registry import get_registry
+
             provider_info = get_registry().get_provider(provider)
             if provider_info:
                 label = provider_info.label

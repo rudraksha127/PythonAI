@@ -570,12 +570,12 @@ class TestQualityPipeline:
         """Good records should all pass."""
         records = [
             self.make_record(
-                "Python is a versatile programming language used for web development. " * 5 +
-                "It supports multiple paradigms and has a rich ecosystem. " * 3
+                "Python is a versatile programming language used for web development. " * 5
+                + "It supports multiple paradigms and has a rich ecosystem. " * 3
             ),
             self.make_record(
-                "Java is a class-based, object-oriented programming language. " * 5 +
-                "It is designed to have as few implementation dependencies as possible. " * 3
+                "Java is a class-based, object-oriented programming language. " * 5
+                + "It is designed to have as few implementation dependencies as possible. " * 3
             ),
         ]
         pipe = QualityPipeline(min_text_length=50, target_languages={"en"})
@@ -592,10 +592,12 @@ class TestQualityPipeline:
 
     def test_pii_masked_not_filtered(self):
         """Records with PII should be masked, not filtered (unless extreme)."""
-        records = [self.make_record(
-            "Python programming guide. Email: test@example.com. " * 10 +
-            "This is a tutorial about data science with Python. " * 3
-        )]
+        records = [
+            self.make_record(
+                "Python programming guide. Email: test@example.com. " * 10
+                + "This is a tutorial about data science with Python. " * 3
+            )
+        ]
         pipe = QualityPipeline(min_text_length=50, pii_max_allowed=0)
         stats = pipe.run_records(records)
         # PII records are masked not filtered
@@ -614,9 +616,7 @@ class TestQualityPipeline:
 
     def test_quality_score_threshold(self):
         """Records below quality threshold should be filtered."""
-        records = [self.make_record(
-            "Short text that barely meets minimum requirements for testing purposes. "
-        )]
+        records = [self.make_record("Short text that barely meets minimum requirements for testing purposes. ")]
         pipe = QualityPipeline(min_text_length=50, quality_threshold=0.9)
         stats = pipe.run_records(records)
         # The quality score won't be high enough with the 0.9 threshold
@@ -624,7 +624,12 @@ class TestQualityPipeline:
 
     def test_custom_text_field(self):
         """Custom text_field should be used."""
-        records = [{"content": "Python is a versatile programming language used for web development, data science, and automation. " * 4}]
+        records = [
+            {
+                "content": "Python is a versatile programming language used for web development, data science, and automation. "
+                * 4
+            }
+        ]
         pipe = QualityPipeline(min_text_length=50, text_field="content")
         stats = pipe.run_records(records)
         assert stats["total_output"] == 1
@@ -655,7 +660,9 @@ class TestQualityPipelineFile:
         """Valid JSONL file should process correctly."""
         f = tmp_path / "data.jsonl"
         with open(f, "w") as fp:
-            fp.write(json.dumps({"text": "Python is a versatile programming language used for web development. " * 7}) + "\n")
+            fp.write(
+                json.dumps({"text": "Python is a versatile programming language used for web development. " * 7}) + "\n"
+            )
             fp.write(json.dumps({"text": "Java is a class-based object-oriented programming language. " * 7}) + "\n")
 
         pipe = QualityPipeline(min_text_length=50)
@@ -667,7 +674,9 @@ class TestQualityPipelineFile:
         """File with both valid and invalid JSON lines should handle gracefully."""
         f = tmp_path / "mixed.jsonl"
         with open(f, "w") as fp:
-            fp.write(json.dumps({"text": "Python is a versatile programming language used for web development. " * 7}) + "\n")
+            fp.write(
+                json.dumps({"text": "Python is a versatile programming language used for web development. " * 7}) + "\n"
+            )
             fp.write("not valid json\n")
             fp.write(json.dumps({"text": "Java is a class-based object-oriented programming language. " * 7}) + "\n")
 
@@ -693,10 +702,7 @@ class TestQualityDistribution:
 
     def test_distribution_shape(self):
         """Distribution should have the expected structure."""
-        records = [
-            {"_quality_score": s}
-            for s in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-        ]
+        records = [{"_quality_score": s} for s in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]]
         pipe = QualityPipeline()
         dist = pipe.quality_distribution(records, bins=5)
         assert dist["count"] == 10

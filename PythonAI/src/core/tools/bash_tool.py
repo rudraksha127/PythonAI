@@ -21,14 +21,28 @@ from ..tool import (
 )
 
 
-def _run_bash(command: str, timeout: int = 30,
-              cwd: str | None = None,
-              env: dict[str, str] | None = None) -> tuple[str, str, int]:
+def _run_bash(
+    command: str, timeout: int = 30, cwd: str | None = None, env: dict[str, str] | None = None
+) -> tuple[str, str, int]:
     """Run a bash command and return (stdout, stderr, returncode)."""
     # Security: block interactive commands
-    dangerous_commands = ["sudo", "su", "passwd", "ssh", "scp", "sftp",
-                          "vi", "vim", "nano", "emacs", "less", "more",
-                          "top", "htop", "watch"]
+    dangerous_commands = [
+        "sudo",
+        "su",
+        "passwd",
+        "ssh",
+        "scp",
+        "sftp",
+        "vi",
+        "vim",
+        "nano",
+        "emacs",
+        "less",
+        "more",
+        "top",
+        "htop",
+        "watch",
+    ]
 
     first_word = command.strip().split()[0].lower() if command.strip() else ""
     if first_word in dangerous_commands:
@@ -59,39 +73,44 @@ def _run_bash(command: str, timeout: int = 30,
 
 # Tool definition
 BashTool = build_tool(
-    type("BashToolDef", (), {
-        "name": "bash",
-        "description": "Execute a shell command with timeout. Returns stdout, stderr, and exit code.",
-        "search_hint": "run shell commands, terminal, CLI",
-        "input_schema": InputSchema(
-            command=Parameter(
-                type="string",
-                description="The shell command to execute",
-                required=True,
+    type(
+        "BashToolDef",
+        (),
+        {
+            "name": "bash",
+            "description": "Execute a shell command with timeout. Returns stdout, stderr, and exit code.",
+            "search_hint": "run shell commands, terminal, CLI",
+            "input_schema": InputSchema(
+                command=Parameter(
+                    type="string",
+                    description="The shell command to execute",
+                    required=True,
+                ),
+                timeout=Parameter(
+                    type="integer",
+                    description="Timeout in seconds (default: 30, max: 300)",
+                    default=30,
+                ),
+                cwd=Parameter(
+                    type="string",
+                    description="Working directory (default: project root)",
+                ),
             ),
-            timeout=Parameter(
-                type="integer",
-                description="Timeout in seconds (default: 30, max: 300)",
-                default=30,
+            "is_destructive": True,
+            "is_concurrency_safe": False,
+            "max_result_size_chars": 50000,
+            "call": lambda input_data, context: _bash_call(input_data, context),
+            "validate_input": lambda input_data, context: _bash_validate(input_data, context),
+            "get_tool_use_summary": lambda input_data: input_data.get("command", "")[:60] if input_data else None,
+            "get_activity_description": lambda input_data: (
+                f"Running: {input_data.get('command', '')[:40]}..." if input_data else None
             ),
-            cwd=Parameter(
-                type="string",
-                description="Working directory (default: project root)",
-            ),
-        ),
-        "is_destructive": True,
-        "is_concurrency_safe": False,
-        "max_result_size_chars": 50000,
-        "call": lambda input_data, context: _bash_call(input_data, context),
-        "validate_input": lambda input_data, context: _bash_validate(input_data, context),
-        "get_tool_use_summary": lambda input_data: input_data.get("command", "")[:60] if input_data else None,
-        "get_activity_description": lambda input_data: f"Running: {input_data.get('command', '')[:40]}..." if input_data else None,
-    })
+        },
+    )
 )
 
 
-def _bash_validate(input_data: dict[str, Any],
-                   context: ToolUseContext) -> ValidationResult:
+def _bash_validate(input_data: dict[str, Any], context: ToolUseContext) -> ValidationResult:
     command = input_data.get("command", "")
     if not command or not command.strip():
         return ValidationResult(success=False, message="Command cannot be empty", error_code=1)
@@ -100,8 +119,7 @@ def _bash_validate(input_data: dict[str, Any],
     return ValidationResult(success=True)
 
 
-def _bash_call(input_data: dict[str, Any],
-               context: ToolUseContext) -> ToolResult:
+def _bash_call(input_data: dict[str, Any], context: ToolUseContext) -> ToolResult:
     command = input_data.get("command", "")
     timeout = min(input_data.get("timeout", 30), 300)
     cwd = input_data.get("cwd") or context.cwd or None

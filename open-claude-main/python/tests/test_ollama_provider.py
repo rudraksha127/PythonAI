@@ -33,36 +33,49 @@ def test_converts_string_content():
 
 
 def test_converts_text_block_list():
-    messages = [{"role": "user", "content": [{"type": "text", "text": "What is Python?"}]}]
+    messages = [
+        {"role": "user", "content": [{"type": "text", "text": "What is Python?"}]}
+    ]
     result = anthropic_to_ollama_messages(messages)
     assert result[0]["content"] == "What is Python?"
 
 
 def test_converts_image_block_to_placeholder():
-    messages = [{"role": "user", "content": [{"type": "image", "source": {}}, {"type": "text", "text": "Describe this"}]}]
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "image", "source": {}},
+                {"type": "text", "text": "Describe this"},
+            ],
+        }
+    ]
     result = anthropic_to_ollama_messages(messages)
     assert "[image]" in result[0]["content"]
     assert "Describe this" in result[0]["content"]
 
 
 def test_converts_base64_image_block_to_ollama_images():
-    messages = [{
-        "role": "user",
-        "content": [
-            {
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/png",
-                    "data": "YWJjMTIz",
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/png",
+                        "data": "YWJjMTIz",
+                    },
                 },
-            },
-            {"type": "text", "text": "Describe this"},
-        ],
-    }]
+                {"type": "text", "text": "Describe this"},
+            ],
+        }
+    ]
     result = anthropic_to_ollama_messages(messages)
     assert result[0]["images"] == ["YWJjMTIz"]
     assert "Describe this" in result[0]["content"]
+
 
 def test_converts_multi_turn():
     messages = [
@@ -80,7 +93,9 @@ async def test_ollama_running_true():
     mock_response = MagicMock()
     mock_response.status_code = 200
     with patch("ollama_provider.httpx.AsyncClient") as MockClient:
-        MockClient.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
+        MockClient.return_value.__aenter__.return_value.get = AsyncMock(
+            return_value=mock_response
+        )
         result = await check_ollama_running()
     assert result is True
 
@@ -88,7 +103,9 @@ async def test_ollama_running_true():
 @pytest.mark.asyncio
 async def test_ollama_running_false_on_exception():
     with patch("ollama_provider.httpx.AsyncClient") as MockClient:
-        MockClient.return_value.__aenter__.return_value.get = AsyncMock(side_effect=Exception("refused"))
+        MockClient.return_value.__aenter__.return_value.get = AsyncMock(
+            side_effect=Exception("refused")
+        )
         result = await check_ollama_running()
     assert result is False
 
@@ -97,10 +114,14 @@ async def test_ollama_running_false_on_exception():
 async def test_list_models_returns_names():
     mock_response = MagicMock()
     mock_response.status_code = 200
-    mock_response.json.return_value = {"models": [{"name": "llama3:8b"}, {"name": "codellama:34b"}]}
+    mock_response.json.return_value = {
+        "models": [{"name": "llama3:8b"}, {"name": "codellama:34b"}]
+    }
     mock_response.raise_for_status = MagicMock()
     with patch("ollama_provider.httpx.AsyncClient") as MockClient:
-        MockClient.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
+        MockClient.return_value.__aenter__.return_value.get = AsyncMock(
+            return_value=mock_response
+        )
         models = await list_ollama_models()
     assert "llama3:8b" in models
 
@@ -116,10 +137,11 @@ async def test_ollama_chat_returns_anthropic_format():
         "eval_count": 8,
     }
     with patch("ollama_provider.httpx.AsyncClient") as MockClient:
-        MockClient.return_value.__aenter__.return_value.post = AsyncMock(return_value=mock_response)
+        MockClient.return_value.__aenter__.return_value.post = AsyncMock(
+            return_value=mock_response
+        )
         result = await ollama_chat(
-            model="llama3:8b",
-            messages=[{"role": "user", "content": "What is 6*7?"}]
+            model="llama3:8b", messages=[{"role": "user", "content": "What is 6*7?"}]
         )
     assert result["type"] == "message"
     assert result["role"] == "assistant"
@@ -138,9 +160,10 @@ async def test_ollama_chat_prepends_system():
             "message": {"content": "ok"},
             "created_at": "",
             "prompt_eval_count": 1,
-            "eval_count": 1
+            "eval_count": 1,
         }
         return m
+
     with patch("ollama_provider.httpx.AsyncClient") as MockClient:
         MockClient.return_value.__aenter__.return_value.post = mock_post
         await ollama_chat(
@@ -172,20 +195,22 @@ async def test_ollama_chat_includes_base64_images_in_payload():
         MockClient.return_value.__aenter__.return_value.post = mock_post
         await ollama_chat(
             model="llama3:8b",
-            messages=[{
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "image/jpeg",
-                            "data": "ZHVtbXk=",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": "ZHVtbXk=",
+                            },
                         },
-                    },
-                    {"type": "text", "text": "What is in this image?"},
-                ],
-            }],
+                        {"type": "text", "text": "What is in this image?"},
+                    ],
+                }
+            ],
         )
 
     assert captured["messages"][0]["images"] == ["ZHVtbXk="]

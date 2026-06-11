@@ -17,8 +17,10 @@ from typing import Any, Protocol, cast
 #  Type Definitions
 # ═══════════════════════════════════════
 
+
 class PermissionDecision(str, Enum):
     """Result of a permission check."""
+
     ALLOW = "allow"
     DENY = "deny"
     ALWAYS_ALLOW = "always_allow"
@@ -29,6 +31,7 @@ class PermissionDecision(str, Enum):
 @dataclass
 class ValidationResult:
     """Result of input validation."""
+
     success: bool
     message: str = ""
     error_code: int = 0
@@ -37,6 +40,7 @@ class ValidationResult:
 @dataclass
 class PermissionResult:
     """Result of a permission check."""
+
     behavior: PermissionDecision = PermissionDecision.ALLOW
     message: str = ""
     updated_input: dict[str, Any] | None = None
@@ -45,6 +49,7 @@ class PermissionResult:
 @dataclass
 class ToolResult:
     """Result of a tool execution."""
+
     data: Any
     error: str | None = None
     new_messages: list[dict[str, Any]] | None = None
@@ -53,6 +58,7 @@ class ToolResult:
 @dataclass
 class ToolProgress:
     """Progress update during tool execution."""
+
     tool_use_id: str
     data: dict[str, Any]
 
@@ -60,27 +66,34 @@ class ToolProgress:
 @dataclass
 class ToolUseContext:
     """Context passed to every tool call."""
+
     cwd: str = ""
     verbose: bool = False
     debug: bool = False
     abort_signal: Callable[[], bool] = lambda: False
     env_vars: dict[str, str] = field(default_factory=dict)
-    file_reading_limits: dict[str, int] = field(default_factory=lambda: {
-        "max_tokens": 32000,
-        "max_size_bytes": 5 * 1024 * 1024,  # 5MB
-    })
-    glob_limits: dict[str, int] = field(default_factory=lambda: {
-        "max_results": 100,
-    })
+    file_reading_limits: dict[str, int] = field(
+        default_factory=lambda: {
+            "max_tokens": 32000,
+            "max_size_bytes": 5 * 1024 * 1024,  # 5MB
+        }
+    )
+    glob_limits: dict[str, int] = field(
+        default_factory=lambda: {
+            "max_results": 100,
+        }
+    )
 
 
 # ═══════════════════════════════════════
 #  Input Schema (simplified JSON Schema)
 # ═══════════════════════════════════════
 
+
 @dataclass
 class Parameter:
     """A single parameter definition for a tool's input schema."""
+
     type: str  # "string", "integer", "boolean", "array", "object"
     description: str = ""
     default: Any = None
@@ -174,6 +187,7 @@ class InputSchema:
 #  Base Tool Class
 # ═══════════════════════════════════════
 
+
 class Tool(ABC):
     """Base class for all PythonAI tools.
 
@@ -222,20 +236,19 @@ class Tool(ABC):
         """Execute the tool with given input and context."""
         ...
 
-    def description_for_prompt(self, input_data: dict[str, Any] | None = None,
-                                context: ToolUseContext | None = None) -> str:
+    def description_for_prompt(
+        self, input_data: dict[str, Any] | None = None, context: ToolUseContext | None = None
+    ) -> str:
         """Return the tool's description for the LLM prompt."""
         return self._description
 
     # ── Optional Override Methods ────────────────────────────
 
-    def validate_input(self, input_data: dict[str, Any],
-                       context: ToolUseContext) -> ValidationResult:
+    def validate_input(self, input_data: dict[str, Any], context: ToolUseContext) -> ValidationResult:
         """Validate input before execution. Default: schema validation."""
         return self.input_schema().validate(input_data)
 
-    def check_permissions(self, input_data: dict[str, Any],
-                          context: ToolUseContext) -> PermissionResult:
+    def check_permissions(self, input_data: dict[str, Any], context: ToolUseContext) -> PermissionResult:
         """Check if this tool use is allowed. Default: always allow."""
         return PermissionResult(behavior=PermissionDecision.ALLOW)
 
@@ -293,7 +306,7 @@ class Tool(ABC):
                 "name": self._name,
                 "description": self._description,
                 "parameters": params,
-            }
+            },
         }
 
     def to_anthropic_tool(self) -> dict[str, Any]:
@@ -303,7 +316,7 @@ class Tool(ABC):
             "description": self._description,
             "input_schema": {
                 **self.input_schema().json_schema(),
-            }
+            },
         }
 
     def to_dict(self) -> dict[str, Any]:
@@ -325,8 +338,10 @@ class Tool(ABC):
 #  build_tool helper (inspired by Claude Code)
 # ═══════════════════════════════════════
 
+
 class ToolDef(Protocol):
     """Protocol for tool definitions passed to build_tool()."""
+
     name: str
     description: str
     input_schema: InputSchema
@@ -362,17 +377,17 @@ class SimpleTool(Tool):
         # dynamically created classes (e.g. type('McpToolDef', (), {...})),
         # which would pass the defn instance as 'self' on invocation.
         self._call_fn = cast(Callable[..., Any], _unbind(defn.call))
-        self._aliases: list[str] = getattr(defn, 'aliases', [])
-        self._search_hint: str = getattr(defn, 'search_hint', '')
-        self._max_result_size_chars: int = getattr(defn, 'max_result_size_chars', 100000)
-        self._is_readonly: bool = getattr(defn, 'is_readonly', False)
-        self._is_concurrency_safe: bool = getattr(defn, 'is_concurrency_safe', False)
-        self._is_destructive: bool = getattr(defn, 'is_destructive', False)
-        self._validate_fn = cast(Callable[..., Any] | None, _unbind(getattr(defn, 'validate_input', None)))
-        self._permissions_fn = cast(Callable[..., Any] | None, _unbind(getattr(defn, 'check_permissions', None)))
-        self._user_facing_name_fn = cast(Callable[..., Any] | None, _unbind(getattr(defn, 'user_facing_name', None)))
-        self._summary_fn = cast(Callable[..., Any] | None, _unbind(getattr(defn, 'get_tool_use_summary', None)))
-        self._activity_fn = cast(Callable[..., Any] | None, _unbind(getattr(defn, 'get_activity_description', None)))
+        self._aliases: list[str] = getattr(defn, "aliases", [])
+        self._search_hint: str = getattr(defn, "search_hint", "")
+        self._max_result_size_chars: int = getattr(defn, "max_result_size_chars", 100000)
+        self._is_readonly: bool = getattr(defn, "is_readonly", False)
+        self._is_concurrency_safe: bool = getattr(defn, "is_concurrency_safe", False)
+        self._is_destructive: bool = getattr(defn, "is_destructive", False)
+        self._validate_fn = cast(Callable[..., Any] | None, _unbind(getattr(defn, "validate_input", None)))
+        self._permissions_fn = cast(Callable[..., Any] | None, _unbind(getattr(defn, "check_permissions", None)))
+        self._user_facing_name_fn = cast(Callable[..., Any] | None, _unbind(getattr(defn, "user_facing_name", None)))
+        self._summary_fn = cast(Callable[..., Any] | None, _unbind(getattr(defn, "get_tool_use_summary", None)))
+        self._activity_fn = cast(Callable[..., Any] | None, _unbind(getattr(defn, "get_activity_description", None)))
 
     def input_schema(self) -> InputSchema:
         return self._input_schema
@@ -381,15 +396,13 @@ class SimpleTool(Tool):
         result = self._call_fn(input_data, context)
         return cast(ToolResult, result)
 
-    def validate_input(self, input_data: dict[str, Any],
-                       context: ToolUseContext) -> ValidationResult:
+    def validate_input(self, input_data: dict[str, Any], context: ToolUseContext) -> ValidationResult:
         if self._validate_fn:
             result = self._validate_fn(input_data, context)
             return cast(ValidationResult, result)
         return super().validate_input(input_data, context)
 
-    def check_permissions(self, input_data: dict[str, Any],
-                          context: ToolUseContext) -> PermissionResult:
+    def check_permissions(self, input_data: dict[str, Any], context: ToolUseContext) -> PermissionResult:
         if self._permissions_fn:
             result = self._permissions_fn(input_data, context)
             return cast(PermissionResult, result)
@@ -434,7 +447,7 @@ def _unbind(fn: Any) -> Any:
     """
     if fn is None:
         return None
-    return getattr(fn, '__func__', fn)
+    return getattr(fn, "__func__", fn)
 
 
 TOOL_DEFAULTS = {

@@ -48,7 +48,7 @@ class TestSafeJson:
 
     def test_text_surrounding_array(self):
         """Text before/after the JSON array should be handled."""
-        text = "Here is the result:\\n[{\"instruction\": \"Q\", \"output\": \"A\"}]\\nDone."
+        text = 'Here is the result:\\n[{"instruction": "Q", "output": "A"}]\\nDone.'
         result = safe_json(text)
         assert len(result) == 1
 
@@ -64,7 +64,7 @@ class TestSafeJson:
 
     def test_invalid_json_content(self):
         """Invalid content inside brackets should return empty."""
-        text = '[{invalid}]'
+        text = "[{invalid}]"
         result = safe_json(text)
         assert result == []
 
@@ -158,63 +158,78 @@ class TestScorePair:
 
     def test_long_instruction_bonus(self):
         """Instruction >= 20 chars should get score bonus."""
-        score, reasons = score_pair({
-            "instruction": "Explain Python comprehensions in detail.",
-            "output": "A" * 120,
-        })
+        score, reasons = score_pair(
+            {
+                "instruction": "Explain Python comprehensions in detail.",
+                "output": "A" * 120,
+            }
+        )
         assert score >= 20
         assert "clear instruction" in reasons
 
     def test_long_output_bonus(self):
         """Output >= 120 chars should get score bonus."""
-        score, reasons = score_pair({
-            "instruction": "Explain Python comprehensions in detail.",
-            "output": "A" * 150,
-        })
+        score, reasons = score_pair(
+            {
+                "instruction": "Explain Python comprehensions in detail.",
+                "output": "A" * 150,
+            }
+        )
         assert score >= 20
         assert "detailed answer" in reasons
 
     def test_code_example_bonus(self):
         """Code blocks should get score bonus."""
-        score, reasons = score_pair({
-            "instruction": "Explain Python comprehensions in detail.",
-            "output": "Here is code:\\n```python\\nprint('hi')\\n```",
-        })
+        score, reasons = score_pair(
+            {
+                "instruction": "Explain Python comprehensions in detail.",
+                "output": "Here is code:\\n```python\\nprint('hi')\\n```",
+            }
+        )
         assert score >= 20
         assert "code example" in reasons
 
     def test_reasoning_tokens_bonus(self):
         """Reasoning tokens should get bonus."""
-        score, reasons = score_pair({
-            "instruction": "Explain Python comprehensions in detail.",
-            "output": "Step 1: Understand. Because of this, trade-off is... Verify it works.",
-        })
+        score, reasons = score_pair(
+            {
+                "instruction": "Explain Python comprehensions in detail.",
+                "output": "Step 1: Understand. Because of this, trade-off is... Verify it works.",
+            }
+        )
         assert score >= 20
         assert "reasoning" in reasons
 
     def test_operational_detail_bonus(self):
         """Operational detail tokens should get bonus."""
-        score, reasons = score_pair({
-            "instruction": "Explain Python comprehensions in detail.",
-            "output": "Performance warning: there is a common pitfall. Reliability matters.",
-        })
+        score, reasons = score_pair(
+            {
+                "instruction": "Explain Python comprehensions in detail.",
+                "output": "Performance warning: there is a common pitfall. Reliability matters.",
+            }
+        )
         assert score >= 10
         assert "operational detail" in reasons
 
     def test_score_capped_at_100(self):
         """Score should not exceed 100."""
-        score, reasons = score_pair({
-            "instruction": "Explain Python comprehensions in detail for beginners. " * 3,
-            "output": "A" * 300 + "\\n```python\\ncode\\n```\\nStep 1: do this. Because of that. Performance pitfall warning.",
-        })
+        score, reasons = score_pair(
+            {
+                "instruction": "Explain Python comprehensions in detail for beginners. " * 3,
+                "output": "A" * 300
+                + "\\n```python\\ncode\\n```\\nStep 1: do this. Because of that. Performance pitfall warning.",
+            }
+        )
         assert score <= 100
 
     def test_minimal_pair(self):
         """Minimal pair should score low."""
-        score, reasons = score_pair({
-            "instruction": "Short instr",
-            "output": "Short answer",
-        })
+        score, reasons = score_pair(
+            {
+                "instruction": "Short instr",
+                "output": "Short answer",
+            }
+        )
         assert score < 40
 
 
@@ -226,10 +241,13 @@ class TestScorePair:
 class TestBuildPrompts:
     """Tests for build_prompts — prompt template generation per data type."""
 
-    def make_chunk(self, title: str = "List Comprehensions",
-                   text: str = "A list comprehension creates lists concisely. " * 20,
-                   codes: list | None = None,
-                   version: str = "3.12") -> dict:
+    def make_chunk(
+        self,
+        title: str = "List Comprehensions",
+        text: str = "A list comprehension creates lists concisely. " * 20,
+        codes: list | None = None,
+        version: str = "3.12",
+    ) -> dict:
         return {
             "title": title,
             "text": text,
@@ -332,8 +350,10 @@ class TestCheckpoint:
 
     def test_save_checkpoint_creates_files(self, tmp_path: Path):
         """save_checkpoint should create checkpoint files."""
-        with patch("src.data.generator.CKPT_DIR", tmp_path), \
-             patch("src.data.generator.CKPT_META", tmp_path / "generation_meta.json"):
+        with (
+            patch("src.data.generator.CKPT_DIR", tmp_path),
+            patch("src.data.generator.CKPT_META", tmp_path / "generation_meta.json"),
+        ):
             pairs = [{"instruction": "Q1", "output": "A1"}]
             save_checkpoint(pairs, chunk_index=5, type_stats={"basic": 1})
             ckpt = tmp_path / "par_5.json"
@@ -347,8 +367,10 @@ class TestCheckpoint:
 
     def test_save_checkpoint_meta(self, tmp_path: Path):
         """save_checkpoint should write correct metadata."""
-        with patch("src.data.generator.CKPT_DIR", tmp_path), \
-             patch("src.data.generator.CKPT_META", tmp_path / "generation_meta.json"):
+        with (
+            patch("src.data.generator.CKPT_DIR", tmp_path),
+            patch("src.data.generator.CKPT_META", tmp_path / "generation_meta.json"),
+        ):
             save_checkpoint([], chunk_index=10, type_stats={"basic": 5, "expert": 3})
             meta = json.loads((tmp_path / "generation_meta.json").read_text(encoding="utf-8"))
             assert meta["chunk_index"] == 10
@@ -358,8 +380,10 @@ class TestCheckpoint:
 
     def test_load_latest_no_checkpoint(self, tmp_path: Path):
         """No checkpoint should return starting state."""
-        with patch("src.data.generator.CKPT_DIR", tmp_path), \
-             patch("src.data.generator.CKPT_META", tmp_path / "generation_meta.json"):
+        with (
+            patch("src.data.generator.CKPT_DIR", tmp_path),
+            patch("src.data.generator.CKPT_META", tmp_path / "generation_meta.json"),
+        ):
             index, pairs, type_stats = load_latest_checkpoint()
             assert index == 0
             assert pairs == []
@@ -367,8 +391,10 @@ class TestCheckpoint:
 
     def test_load_latest_with_checkpoint(self, tmp_path: Path):
         """Existing checkpoint should load state."""
-        with patch("src.data.generator.CKPT_DIR", tmp_path), \
-             patch("src.data.generator.CKPT_META", tmp_path / "generation_meta.json"):
+        with (
+            patch("src.data.generator.CKPT_DIR", tmp_path),
+            patch("src.data.generator.CKPT_META", tmp_path / "generation_meta.json"),
+        ):
             pairs_data = [{"instruction": "Q1", "output": "A1"}]
             (tmp_path / "par_0.json").write_text(json.dumps(pairs_data), encoding="utf-8")
             (tmp_path / "generation_meta.json").write_text(
@@ -430,6 +456,7 @@ class TestCallApi:
         """Timeout should fail the provider and skip."""
         active.append({"name": "groq", "url": "https://api.groq.com/", "key": "gk", "model": "llama"})
         from requests.exceptions import Timeout
+
         mock_post.side_effect = Timeout("timeout")
 
         content, name = call_api("Test")

@@ -38,12 +38,12 @@ def test_score_completeness():
 def test_evaluator_baseline(tmp_path):
     evaluator = SelfEvaluator(eval_dir=tmp_path)
 
-    samples = [
-        {"question": "How to map?", "answer": "Use map().\n```python\nmap(int, ['1'])\n```"}
-    ]
+    samples = [{"question": "How to map?", "answer": "Use map().\n```python\nmap(int, ['1'])\n```"}]
 
     # Baseline should be near 1.0
     report = evaluator.evaluate_batch(samples)
     assert report["overall_score"] > 0.9
     assert report["results_count"] == 1
-    assert (tmp_path / f"eval_report_{report['timestamp'].replace('-', '').replace(':', '').replace('T', '_')[:15]}.json") or True
+    assert (
+        tmp_path / f"eval_report_{report['timestamp'].replace('-', '').replace(':', '').replace('T', '_')[:15]}.json"
+    ) or True

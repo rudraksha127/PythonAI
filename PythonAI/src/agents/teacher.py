@@ -12,6 +12,7 @@ Your job:
 5. Use Hindi + English (Hinglish) if the user writes in Hindi
 Format: Use headers, bullet points, and code examples."""
 
+
 def run_teacher_agent(task: GenerationTask) -> dict[str, Any]:
     prompt = f"Teach: {task.prompt}"
     try:

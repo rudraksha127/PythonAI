@@ -48,11 +48,11 @@ class ErrorPattern:
     """A single error→solution pattern."""
 
     error_hash: str
-    error_type: str         # e.g., "TypeError", "ImportError"
-    error_message: str      # The error message text
-    error_module: str       # Module where error originated (if extractable)
-    full_traceback: str     # Complete traceback text
-    solution: str           # The solution text
+    error_type: str  # e.g., "TypeError", "ImportError"
+    error_message: str  # The error message text
+    error_module: str  # Module where error originated (if extractable)
+    full_traceback: str  # Complete traceback text
+    solution: str  # The solution text
     times_seen: int = 1
     confidence: float = 0.5
     first_seen: float = 0.0
@@ -210,7 +210,7 @@ class ErrorPatternDB:
 
     def _trigger_auto_search(self, error_type: str, error_message: str) -> None:
         """
-        Optional: Triggers an asynchronous background search (e.g. StackOverflow or 
+        Optional: Triggers an asynchronous background search (e.g. StackOverflow or
         Web Search) to proactively find a solution for an unresolved error.
         """
         logger.info(f"Triggering auto-search for unresolved error: {error_type}")
@@ -228,7 +228,7 @@ class ErrorPatternDB:
 
         If the error pattern already exists, updates frequency and confidence.
         If new, creates a fresh entry.
-        
+
         If the solution is missing, triggers an auto-search.
 
         Args:
@@ -322,14 +322,16 @@ class ErrorPatternDB:
         # Exact match
         if error_hash in self._patterns:
             pattern = self._patterns[error_hash]
-            results.append({
-                "solution": pattern.solution,
-                "confidence": pattern.confidence,
-                "times_seen": pattern.times_seen,
-                "error_type": pattern.error_type,
-                "similarity": 1.0,
-                "match_type": "exact",
-            })
+            results.append(
+                {
+                    "solution": pattern.solution,
+                    "confidence": pattern.confidence,
+                    "times_seen": pattern.times_seen,
+                    "error_type": pattern.error_type,
+                    "similarity": 1.0,
+                    "match_type": "exact",
+                }
+            )
             return results
 
         # Fuzzy match
@@ -351,14 +353,16 @@ class ErrorPatternDB:
         scored.sort(key=lambda x: x[0], reverse=True)
 
         for similarity, pattern in scored[:max_results]:
-            results.append({
-                "solution": pattern.solution,
-                "confidence": pattern.confidence * similarity,
-                "times_seen": pattern.times_seen,
-                "error_type": pattern.error_type,
-                "similarity": round(similarity, 3),
-                "match_type": "fuzzy",
-            })
+            results.append(
+                {
+                    "solution": pattern.solution,
+                    "confidence": pattern.confidence * similarity,
+                    "times_seen": pattern.times_seen,
+                    "error_type": pattern.error_type,
+                    "similarity": round(similarity, 3),
+                    "match_type": "fuzzy",
+                }
+            )
 
         return results
 

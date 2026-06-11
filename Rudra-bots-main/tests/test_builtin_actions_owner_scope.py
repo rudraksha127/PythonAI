@@ -50,7 +50,9 @@ class _Db:
         self.closed = True
 
 
-def _resolver_spy(monkeypatch, utility_result=("", "", {}), default_result=("http://llm", "model", {})):
+def _resolver_spy(
+    monkeypatch, utility_result=("", "", {}), default_result=("http://llm", "model", {})
+):
     from src import endpoint_resolver
 
     calls = []
@@ -65,7 +67,9 @@ def _resolver_spy(monkeypatch, utility_result=("", "", {}), default_result=("htt
         return []
 
     monkeypatch.setattr(endpoint_resolver, "resolve_endpoint", fake_resolve)
-    monkeypatch.setattr(endpoint_resolver, "resolve_utility_fallback_candidates", fake_fallbacks)
+    monkeypatch.setattr(
+        endpoint_resolver, "resolve_utility_fallback_candidates", fake_fallbacks
+    )
     return calls, fallback_calls
 
 
@@ -87,7 +91,9 @@ async def test_classify_events_resolves_llm_for_task_owner(monkeypatch):
         location="",
     )
     db = _Db({FakeCalendarEvent: [event]})
-    calls, _fallback_calls = _resolver_spy(monkeypatch, utility_result=("http://llm", "model", {}))
+    calls, _fallback_calls = _resolver_spy(
+        monkeypatch, utility_result=("http://llm", "model", {})
+    )
 
     monkeypatch.setattr(database, "CalendarEvent", FakeCalendarEvent)
     monkeypatch.setattr(database, "SessionLocal", lambda: db)
@@ -118,8 +124,12 @@ async def test_learn_sender_signatures_resolves_llm_for_task_owner(monkeypatch):
         def logout(self):
             return None
 
-    calls, _fallback_calls = _resolver_spy(monkeypatch, utility_result=("", "", {}), default_result=("", "", {}))
-    monkeypatch.setattr(email_helpers, "_imap_connect", lambda _account_id=None: FakeImap())
+    calls, _fallback_calls = _resolver_spy(
+        monkeypatch, utility_result=("", "", {}), default_result=("", "", {})
+    )
+    monkeypatch.setattr(
+        email_helpers, "_imap_connect", lambda _account_id=None: FakeImap()
+    )
 
     message, ok = await action_learn_sender_signatures("alice")
 
@@ -129,7 +139,9 @@ async def test_learn_sender_signatures_resolves_llm_for_task_owner(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_check_email_urgency_resolves_llm_candidates_for_task_owner(monkeypatch, tmp_path):
+async def test_check_email_urgency_resolves_llm_candidates_for_task_owner(
+    monkeypatch, tmp_path
+):
     from core import database
     from src.builtin_actions import TaskNoop, action_check_email_urgency
 
@@ -140,7 +152,9 @@ async def test_check_email_urgency_resolves_llm_candidates_for_task_owner(monkey
         from_address = _Column()
 
     db = _Db({FakeEmailAccount: []})
-    calls, fallback_calls = _resolver_spy(monkeypatch, utility_result=("http://llm", "model", {}))
+    calls, fallback_calls = _resolver_spy(
+        monkeypatch, utility_result=("http://llm", "model", {})
+    )
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(database, "EmailAccount", FakeEmailAccount)

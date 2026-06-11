@@ -26,8 +26,10 @@ console = Console()
 # Config & Status Types (imported by src.data.__init__)
 # ═══════════════════════════════════════════════════
 
+
 class TaskStatus(Enum):
     """Status of an individual collection task"""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -37,6 +39,7 @@ class TaskStatus(Enum):
 
 class PhaseStatus(Enum):
     """Status of a collection phase"""
+
     PENDING = "pending"
     ACTIVE = "active"
     COMPLETED = "completed"
@@ -45,6 +48,7 @@ class PhaseStatus(Enum):
 
 class Phase(Enum):
     """Collection phases"""
+
     PHASE1 = "phase1"
     PHASE2 = "phase2"
     PHASE3 = "phase3"
@@ -60,6 +64,7 @@ class Phase(Enum):
 @dataclass
 class CollectionTask:
     """A single data collection task with its configuration and status"""
+
     name: str
     source_type: str
     params: dict = field(default_factory=dict)
@@ -74,21 +79,25 @@ class CollectionTask:
 @dataclass
 class OrchestratorConfig:
     """Configuration for the AntiGravity orchestrator"""
+
     base_output_dir: str = "D:/PythonAI_Data/anti_gravity_data"
     max_concurrent: int = 30
     synthetic_per_task: int = 1000
     priorities: dict = field(default_factory=dict)
-    phase1_sources: dict = field(default_factory=lambda: {
-        "huggingface_datasets": True,
-        "arxiv_papers": True,
-        "openalex_snapshot": True,
-        "openimages": True,
-    })
+    phase1_sources: dict = field(
+        default_factory=lambda: {
+            "huggingface_datasets": True,
+            "arxiv_papers": True,
+            "openalex_snapshot": True,
+            "openimages": True,
+        }
+    )
 
 
 @dataclass
 class PhaseResult:
     """Result of a single phase execution"""
+
     name: str
     status: str  # "✅ SUCCESS", "❌ FAILED", "⏭️ SKIPPED"
     duration_seconds: float = 0.0
@@ -99,6 +108,7 @@ class PhaseResult:
 @dataclass
 class DataSourceStatus:
     """Track the status of a data source"""
+
     name: str
     source_type: str  # "hf", "arxiv", "openalex", "image", "video", "audio", "synthetic"
     status: str = "pending"  # pending, downloading, complete, failed
@@ -156,17 +166,23 @@ class AntiGravityOrchestrator:
     def _get_key(self, env_key: str, default: str | None = None) -> str | None:
         """Get API key from environment or config"""
         import os
+
         return os.environ.get(env_key) or self.config.get(env_key.lower(), default)
 
-    def _update_source_status(self, name: str, source_type: str, status: str,
-                              size_bytes: int = 0, num_items: int = 0,
-                              error: str | None = None):
+    def _update_source_status(
+        self,
+        name: str,
+        source_type: str,
+        status: str,
+        size_bytes: int = 0,
+        num_items: int = 0,
+        error: str | None = None,
+    ):
         """Update tracking status for a data source"""
         now = datetime.now(timezone.utc).isoformat()
         if name not in self.source_statuses:
             self.source_statuses[name] = DataSourceStatus(
-                name=name, source_type=source_type,
-                started_at=now if status in ("downloading", "complete") else None
+                name=name, source_type=source_type, started_at=now if status in ("downloading", "complete") else None
             )
         entry = self.source_statuses[name]
         entry.status = status
@@ -226,7 +242,7 @@ class AntiGravityOrchestrator:
             return PhaseResult(
                 name=phase_name,
                 status="❌ FAILED",
-                error=f"Unknown phase: {phase_name}. Available: {', '.join(phase_map.keys())}"
+                error=f"Unknown phase: {phase_name}. Available: {', '.join(phase_map.keys())}",
             )
 
         logger.info(f"[Phase] Starting {phase_name}")
@@ -241,32 +257,30 @@ class AntiGravityOrchestrator:
                 name=phase_name,
                 status="✅ SUCCESS" if result else "⚠️ PARTIAL",
                 duration_seconds=duration,
-                details={"force": force}
+                details={"force": force},
             )
             logger.success(f"[Phase] {phase_name} completed in {duration:.1f}s")
             return pr
         except Exception as e:
             duration = time.time() - start
             pr = PhaseResult(
-                name=phase_name,
-                status="❌ FAILED",
-                duration_seconds=duration,
-                error=str(e),
-                details={"force": force}
+                name=phase_name, status="❌ FAILED", duration_seconds=duration, error=str(e), details={"force": force}
             )
             logger.error(f"[Phase] {phase_name} failed after {duration:.1f}s: {e}")
             return pr
 
     async def run_all(self, force: bool = False):
         """Execute all phases in sequence"""
-        console.print(Panel.fit(
-            "[bold green]╔══════════════════════════════════════════════════════╗\n"
-            "║     ⚡ ANTI-GRAVITY ORCHESTRATOR ⚡                      ║\n"
-            "║     \"A country of geniuses in a data center\"             ║\n"
-            "║     — Dario Amodei, Machines of Loving Grace             ║\n"
-            "╚══════════════════════════════════════════════════════╝[/bold green]",
-            title="🚀 Initializing"
-        ))
+        console.print(
+            Panel.fit(
+                "[bold green]╔══════════════════════════════════════════════════════╗\n"
+                "║     ⚡ ANTI-GRAVITY ORCHESTRATOR ⚡                      ║\n"
+                '║     "A country of geniuses in a data center"             ║\n'
+                "║     — Dario Amodei, Machines of Loving Grace             ║\n"
+                "╚══════════════════════════════════════════════════════╝[/bold green]",
+                title="🚀 Initializing",
+            )
+        )
 
         phases = ["phase1", "phase2", "phase3", "phase4", "phase5"]
         self.phase_results = []
@@ -337,10 +351,8 @@ class AntiGravityOrchestrator:
 
         try:
             from collect_everything import HuggingFaceMassDownloader
-            downloader = HuggingFaceMassDownloader(
-                str(self.base_dir / "huggingface"),
-                self._get_key("HF_TOKEN")
-            )
+
+            downloader = HuggingFaceMassDownloader(str(self.base_dir / "huggingface"), self._get_key("HF_TOKEN"))
             # Run the synchronous download_all in a thread to avoid blocking the event loop
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(None, downloader.download_all)
@@ -358,6 +370,7 @@ class AntiGravityOrchestrator:
 
         try:
             from collect_everything import ArXivMassCollector
+
             collector = ArXivMassCollector(str(self.base_dir / "arxiv"))
             await collector.collect_all()
             self._update_source_status("arxiv_papers", "arxiv", "complete")
@@ -373,9 +386,9 @@ class AntiGravityOrchestrator:
         self._update_source_status("openalex", "openalex", "downloading")
         try:
             from collect_everything import OpenAlexCollector
+
             collector = OpenAlexCollector(
-                self._get_key("OPENALEX_EMAIL", "user@example.com"),
-                str(self.base_dir / "openalex")
+                self._get_key("OPENALEX_EMAIL", "user@example.com"), str(self.base_dir / "openalex")
             )
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(None, collector.download_snapshot)
@@ -391,6 +404,7 @@ class AntiGravityOrchestrator:
         self._update_source_status("openimages", "image", "downloading")
         try:
             from collect_everything import LAIONImageCollector
+
             collector = LAIONImageCollector()
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
@@ -412,9 +426,7 @@ class AntiGravityOrchestrator:
         try:
             collector = AudioDataCollector()
             await loop.run_in_executor(
-                None, lambda: collector.download_common_voice(
-                    output_dir=str(self.base_dir / "audio/common_voice")
-                )
+                None, lambda: collector.download_common_voice(output_dir=str(self.base_dir / "audio/common_voice"))
             )
             self._update_source_status("common_voice", "audio", "complete")
         except Exception as e:
@@ -443,8 +455,7 @@ class AntiGravityOrchestrator:
 
             factory = MultiModelSyntheticFactory(api_keys=resolve_all())
             await factory.run_full_synthetic_pipeline(
-                str(self.base_dir / "synthetic"),
-                total_per_task=self.config.get("synthetic_per_task", 1000)
+                str(self.base_dir / "synthetic"), total_per_task=self.config.get("synthetic_per_task", 1000)
             )
             self._update_source_status("synthetic_data", "synthetic", "complete")
             return True
@@ -491,16 +502,20 @@ class AntiGravityOrchestrator:
         """Print comprehensive final report"""
         summary = self.get_collection_summary()
 
-        console.print(Panel.fit(
-            f"[bold green]🏆 COLLECTION COMPLETE[/bold green]\n\n"
-            f"Phases Completed: {summary['phases_completed']}\n"
-            f"Sources Tracked: {len(summary['sources'])}\n"
-            f"Total Size: {summary['total_size_bytes'] / 1e9:.2f} GB\n\n"
-            f"[bold]By Type:[/bold]\n" +
-            "\n".join(f"  {k}: {v['count']} sources, {v['size_bytes']/1e9:.2f} GB"
-                     for k, v in summary['by_type'].items()),
-            title="📊 Final Summary"
-        ))
+        console.print(
+            Panel.fit(
+                f"[bold green]🏆 COLLECTION COMPLETE[/bold green]\n\n"
+                f"Phases Completed: {summary['phases_completed']}\n"
+                f"Sources Tracked: {len(summary['sources'])}\n"
+                f"Total Size: {summary['total_size_bytes'] / 1e9:.2f} GB\n\n"
+                f"[bold]By Type:[/bold]\n"
+                + "\n".join(
+                    f"  {k}: {v['count']} sources, {v['size_bytes'] / 1e9:.2f} GB"
+                    for k, v in summary["by_type"].items()
+                ),
+                title="📊 Final Summary",
+            )
+        )
 
     def get_dashboard_data(self) -> dict:
         """Return data formatted for web dashboard"""
@@ -510,8 +525,10 @@ class AntiGravityOrchestrator:
             "total_size_gb": round(summary["total_size_bytes"] / 1e9, 2),
             "sources_count": len(summary["sources"]),
             "phases_completed": summary["phases_completed"],
-            "by_type": {k: {"count": v["count"], "size_gb": round(v["size_bytes"] / 1e9, 2)}
-                       for k, v in summary["by_type"].items()},
+            "by_type": {
+                k: {"count": v["count"], "size_gb": round(v["size_bytes"] / 1e9, 2)}
+                for k, v in summary["by_type"].items()
+            },
             "sources": {k: asdict(v) for k, v in self.source_statuses.items()},
             "phase_results": [asdict(pr) for pr in self.phase_results],
         }

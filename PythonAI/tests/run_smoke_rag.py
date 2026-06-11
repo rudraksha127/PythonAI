@@ -30,6 +30,7 @@ if str(ROOT) not in sys.path:
 def _get_python_exe() -> str:
     """Return the project's Python executable path (lazy import to avoid startup issues)."""
     from src.utils.models import project_python
+
     return str(project_python())
 
 
@@ -109,8 +110,11 @@ def phase_rag(
     """Run the RAG engine with --question --no-exec and a real Ollama call."""
     python_bin = _get_python_exe()
     cmd = [
-        python_bin, "-m", "src.rag.rag_engine",
-        "--question", question,
+        python_bin,
+        "-m",
+        "src.rag.rag_engine",
+        "--question",
+        question,
         "--no-exec",
     ]
 
@@ -152,7 +156,7 @@ def phase_rag(
     answer_snippet = ""
     if "PYTHON MASTER" in output:
         idx = output.index("PYTHON MASTER")
-        answer_snippet = output[idx:idx + 300].replace("\n", " ")
+        answer_snippet = output[idx : idx + 300].replace("\n", " ")
 
     success = result.returncode == 0 and checks["ollama_responded"] and checks.get("no_exceptions", True)
 
@@ -190,9 +194,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--skip-pytest", action="store_true", help="Skip Phase 1 (pytest)")
     parser.add_argument("--skip-rag", action="store_true", help="Skip Phase 2 (RAG query)")
-    parser.add_argument("--timeout", type=int, default=300, help="Timeout in seconds for the Ollama RAG query (default: 300)")
-    parser.add_argument("--question", default="What is the difference between a list and a tuple in Python?",
-                        help="Question to ask the RAG engine (default: difference between list and tuple)")
+    parser.add_argument(
+        "--timeout", type=int, default=300, help="Timeout in seconds for the Ollama RAG query (default: 300)"
+    )
+    parser.add_argument(
+        "--question",
+        default="What is the difference between a list and a tuple in Python?",
+        help="Question to ask the RAG engine (default: difference between list and tuple)",
+    )
     parser.add_argument("--verbose", action="store_true", help="Show full output from each phase")
     return parser.parse_args(argv)
 
@@ -234,7 +243,7 @@ def main(argv: list[str] | None = None) -> int:
 
         print(f"      Tests passed: {p['passed']}  |  failed: {p['failed']}  |  skipped: {p['skipped']}")
         print(f"      Test files: {', '.join(p['test_files'][:10])}")
-        if len(p['test_files']) > 10:
+        if len(p["test_files"]) > 10:
             print(f"      ... and {len(p['test_files']) - 10} more")
         if args.verbose and p.get("output"):
             print(f"\n{p['output'][:2000]}")
@@ -246,7 +255,7 @@ def main(argv: list[str] | None = None) -> int:
         print()
     else:
         print("  [Phase 2] Running RAG engine with real Ollama query...")
-        print(f"      Question: \"{args.question}\"")
+        print(f'      Question: "{args.question}"')
         print(f"      Timeout:  {args.timeout}s")
         print(f"  {'-' * 55}")
         print("  (This may take a while -- the 14B model loads and generates...)")

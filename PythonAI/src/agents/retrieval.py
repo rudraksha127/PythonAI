@@ -11,6 +11,7 @@ Your job:
 4. Cite your sources precisely
 Always be factual. If unsure, say "I need more context" rather than guessing."""
 
+
 def run_retrieval_agent(task: GenerationTask) -> dict[str, Any]:
     prompt = f"Search and retrieve information for: {task.prompt}"
     try:

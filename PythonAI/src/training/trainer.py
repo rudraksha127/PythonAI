@@ -17,20 +17,23 @@ import torch
 from datasets import Dataset, load_from_disk
 
 datasets.disable_caching()
-import datasets.fingerprint
+import datasets.fingerprint  # noqa: E402
 
 datasets.fingerprint.generate_fingerprint = lambda *args, **kwargs: "dummy_fingerprint"
 
 # ── Unsloth (optional — 2x faster QLoRA, 70% less VRAM) ──
 _HAS_UNSLOTH: bool = False
 try:
+    # noqa: E402  # noqa: F811
     from unsloth import FastLanguageModel, is_bfloat16_supported
-    from unsloth.chat_templates import get_chat_template
+
     _HAS_UNSLOTH = True
 except (ImportError, NotImplementedError, RuntimeError):
     pass
 
-from transformers import (
+# noqa: E402
+from peft import LoraConfig, get_peft_model  # noqa: E402, I001
+from transformers import (  # noqa: E402
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
@@ -40,7 +43,7 @@ from transformers import (
     default_data_collator,
 )
 
-from src.training.viz import TrainingMetrics, render_all
+from src.training.viz import TrainingMetrics, render_all  # noqa: E402
 
 DEFAULT_SOURCE_FILES = [
     "training_dataset.json",
@@ -177,13 +180,14 @@ def make_dataset(examples: list[Example], tokenizer, max_length: int, use_indra:
     if use_indra:
         try:
             from src.training.indra_prompt import build_training_system_prompt
+
             system_msg = build_training_system_prompt()
         except ImportError:
             print("[WARN] Could not import INDRA prompt, using empty system prompt.")
 
     for example in examples:
         # Chat format if tokenizer has chat template, else fallback
-        if hasattr(tokenizer, 'apply_chat_template') and tokenizer.chat_template:
+        if hasattr(tokenizer, "apply_chat_template") and tokenizer.chat_template:
             messages = []
             if system_msg:
                 messages.append({"role": "system", "content": system_msg})
@@ -201,7 +205,7 @@ def make_dataset(examples: list[Example], tokenizer, max_length: int, use_indra:
                 prompt_ids = tokenizer(prompt_text, add_special_tokens=False)["input_ids"]
                 full_ids = tokenizer(full_text, add_special_tokens=False)["input_ids"]
 
-                response_ids = full_ids[len(prompt_ids):]
+                response_ids = full_ids[len(prompt_ids) :]
 
             except Exception:
                 # Fallback on error
@@ -350,11 +354,13 @@ def resolve_deepspeed_config(args: argparse.Namespace, output_dir: str) -> str |
     }
 
     if stage == 3:
-        config["zero_optimization"].update({
-            "stage3_param_persistence_threshold": 1e5,
-            "offload_param": {"device": "cpu", "pin_memory": True},
-            "offload_optimizer": {"device": "cpu", "pin_memory": True},
-        })
+        config["zero_optimization"].update(
+            {
+                "stage3_param_persistence_threshold": 1e5,
+                "offload_param": {"device": "cpu", "pin_memory": True},
+                "offload_optimizer": {"device": "cpu", "pin_memory": True},
+            }
+        )
 
     output_path = Path(output_dir) / "deepspeed_config.json"
     output_path.write_text(json.dumps(config, indent=2), encoding="utf-8")
@@ -418,6 +424,7 @@ class TrainingCurvesCallback(TrainerCallback):
             return
         try:
             import matplotlib
+
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
 
@@ -582,21 +589,18 @@ def train_with_unsloth(args: argparse.Namespace) -> None:
     random.seed(args.seed)
     torch.manual_seed(args.seed)
 
-    if getattr(args, 'test_mode', False):
+    if getattr(args, "test_mode", False):
         args.max_steps = 2
         args.max_examples = 4
         print("[Test mode] Overriding: --max-steps 2 --max-examples 4")
 
     if args.base_model.startswith("ollama:"):
-        raise ValueError(
-            "Ollama/GGUF models cannot be fine-tuned. "
-            "Use an HF-format model id for Unsloth training."
-        )
+        raise ValueError("Ollama/GGUF models cannot be fine-tuned. Use an HF-format model id for Unsloth training.")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  ⚡ UNSLOTH MODE — 2x faster, 70% less VRAM")
     print(f"  Model: {args.base_model}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     # ── Load tokenizer ──
     tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)
@@ -640,8 +644,13 @@ def train_with_unsloth(args: argparse.Namespace) -> None:
         model,
         r=args.lora_rank,
         target_modules=[
-            "q_proj", "k_proj", "v_proj", "o_proj",
-            "gate_proj", "up_proj", "down_proj",
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
         ],
         lora_alpha=args.lora_alpha,
         lora_dropout=0,  # Unsloth recommends 0 for best performance
@@ -665,8 +674,8 @@ def train_with_unsloth(args: argparse.Namespace) -> None:
             curves_cb = TrainingCurvesCallback(args.output_dir)
         callbacks.append(curves_cb)
 
-    _viz_base_model = args.base_model if hasattr(args, 'base_model') else ""
-    _viz_dataset_version = args.dataset_version if hasattr(args, 'dataset_version') else ""
+    _viz_base_model = args.base_model if hasattr(args, "base_model") else ""
+    _viz_dataset_version = args.dataset_version if hasattr(args, "dataset_version") else ""
 
     # ── Training arguments ──
     training_args = TrainingArguments(
@@ -731,10 +740,10 @@ def train_with_unsloth(args: argparse.Namespace) -> None:
         else:
             curves_cb.save_plot()
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  ✅ UNSLOTH TRAINING COMPLETE")
     print(f"  Model saved: {args.output_dir}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
 
 def train(args: argparse.Namespace) -> None:
@@ -859,8 +868,8 @@ def train(args: argparse.Namespace) -> None:
         callbacks.append(curves_cb)
 
         # Capture base_model and dataset_version for visualization metadata
-    _viz_base_model = args.base_model if hasattr(args, 'base_model') else ""
-    _viz_dataset_version = args.dataset_version if hasattr(args, 'dataset_version') else ""
+    _viz_base_model = args.base_model if hasattr(args, "base_model") else ""
+    _viz_dataset_version = args.dataset_version if hasattr(args, "dataset_version") else ""
 
     deepspeed_config = resolve_deepspeed_config(args, args.output_dir)
 
@@ -964,21 +973,24 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--wandb", action="store_true", help="Enable W&B logging")
     parser.add_argument("--early-stopping-patience", type=int, default=0)
     parser.add_argument("--lr-scheduler-type", choices=["cosine", "linear", "constant"], default=None)
-    parser.add_argument("--save-training-curves", action="store_true",
-                        help="Save basic training loss curve plot")
-    parser.add_argument("--viz", action="store_true",
-                        help="Save comprehensive training visualization (dashboard, LR, throughput, HTML, JSON)")
+    parser.add_argument("--save-training-curves", action="store_true", help="Save basic training loss curve plot")
+    parser.add_argument(
+        "--viz",
+        action="store_true",
+        help="Save comprehensive training visualization (dashboard, LR, throughput, HTML, JSON)",
+    )
     parser.add_argument("--load-in-4bit", action="store_true", help="Enable 4-bit QLoRA")
-    parser.add_argument("--use-unsloth", action="store_true",
-                        help="Use Unsloth for 2x faster QLoRA training (70%% less VRAM)")
-    parser.add_argument("--unsloth-max-seq-length", type=int, default=2048,
-                        help="Max sequence length for Unsloth (default: 2048)")
-    parser.add_argument("--hf-token", default="",
-                        help="HuggingFace token for gated models")
-    parser.add_argument("--test-mode", action="store_true",
-                        help="Run a quick validation (2 steps, 4 examples)")
-    parser.add_argument("--use-indra-prompt", action="store_true",
-                        help="Inject INDRA system prompt into training examples")
+    parser.add_argument(
+        "--use-unsloth", action="store_true", help="Use Unsloth for 2x faster QLoRA training (70%% less VRAM)"
+    )
+    parser.add_argument(
+        "--unsloth-max-seq-length", type=int, default=2048, help="Max sequence length for Unsloth (default: 2048)"
+    )
+    parser.add_argument("--hf-token", default="", help="HuggingFace token for gated models")
+    parser.add_argument("--test-mode", action="store_true", help="Run a quick validation (2 steps, 4 examples)")
+    parser.add_argument(
+        "--use-indra-prompt", action="store_true", help="Inject INDRA system prompt into training examples"
+    )
     return parser.parse_args()
 
 

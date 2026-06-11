@@ -1,15 +1,18 @@
 """Detailed stats of all collected data in anti_gravity_data (ASCII-safe)."""
+
 import os, json, sys
 
 BASE = "D:/PythonAI_Data/anti_gravity_data"
 
+
 def fmt_size(sz):
     if sz < 1024:
         return f"{sz} B"
-    elif sz < 1024*1024:
-        return f"{sz/1024:.1f} KB"
+    elif sz < 1024 * 1024:
+        return f"{sz / 1024:.1f} KB"
     else:
-        return f"{sz/1024/1024:.2f} MB"
+        return f"{sz / 1024 / 1024:.2f} MB"
+
 
 print("=" * 75)
 print("  ANTI-GRAVITY DATA COLLECTION - DETAILED STATS")
@@ -71,7 +74,7 @@ print(f"\n{'=' * 75}")
 print("  SUMMARY BY SOURCE")
 print(f"{'=' * 75}")
 print(f"  {'Source':<30s}  {'Files':>5s}  {'Rows':>10s}  {'Size':>10s}")
-print(f"  {'-'*30}  {'-'*5}  {'-'*10}  {'-'*10}")
+print(f"  {'-' * 30}  {'-' * 5}  {'-' * 10}  {'-' * 10}")
 for source, file_details, srows, ssize in all_sources:
     nfiles = len(file_details)
     print(f"  {source:<30s}  {nfiles:>5d}  {srows:>10,}  {fmt_size(ssize):>10}")
@@ -102,7 +105,7 @@ for source, file_details, srows, ssize in all_sources:
                     print(f"\n  [{source}/{file_details[0][0]}]")
                     print(f"      Keys ({len(keys)}): {', '.join(keys[:12])}")
                     if len(keys) > 12:
-                        print(f"        ... +{len(keys)-12} more")
+                        print(f"        ... +{len(keys) - 12} more")
                     # Show preview
                     preview = json.dumps(parsed, ensure_ascii=False, indent=2)
                     if len(preview) > 500:

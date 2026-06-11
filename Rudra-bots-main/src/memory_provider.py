@@ -117,9 +117,7 @@ class NativeMemoryProvider(MemoryProvider):
 
     def _to_record(self, entry: Dict[str, Any]) -> MemoryRecord:
         metadata = {
-            key: value
-            for key, value in entry.items()
-            if key not in self._CORE_FIELDS
+            key: value for key, value in entry.items() if key not in self._CORE_FIELDS
         }
         stored_metadata = entry.get("metadata")
         if isinstance(stored_metadata, dict):
@@ -258,7 +256,9 @@ class MemoryProviderRegistry:
 
     def register(self, provider: MemoryProvider) -> None:
         if provider.provider_id in self._providers:
-            raise ValueError(f"Memory provider already registered: {provider.provider_id}")
+            raise ValueError(
+                f"Memory provider already registered: {provider.provider_id}"
+            )
         self._providers[provider.provider_id] = provider
 
     def get(self, provider_id: str) -> MemoryProvider:

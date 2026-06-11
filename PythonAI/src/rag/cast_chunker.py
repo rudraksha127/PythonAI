@@ -2,7 +2,7 @@
 cAST Chunker — AST-aware Code Chunking (EMNLP 2025 Implementation)
 ==================================================================
 
-Implements the cAST algorithm from "Enhancing Code RAG with Structural 
+Implements the cAST algorithm from "Enhancing Code RAG with Structural
 Chunking via Abstract Syntax Tree" (Zhang et al., EMNLP 2025).
 
 Key insight: Code's natural structure is the AST, not arbitrary line counts.
@@ -26,6 +26,7 @@ from typing import Any
 _HAS_TS_CORE = False
 try:
     from tree_sitter import Language, Parser
+
     _HAS_TS_CORE = True
 except ImportError:
     pass
@@ -39,46 +40,59 @@ _HAS_TS_JAVA = False
 
 try:
     import tree_sitter_python  # noqa: F401
+
     _HAS_TS_PYTHON = True
 except ImportError:
     pass
 
 try:
     import tree_sitter_javascript as _ts_js  # noqa: F401
+
     _HAS_TS_JS = True
 except ImportError:
     pass
 
 try:
     import tree_sitter_typescript as _ts_ts  # noqa: F401
+
     _HAS_TS_TS = True
 except ImportError:
     pass
 
 try:
     import tree_sitter_go as _ts_go  # noqa: F401
+
     _HAS_TS_GO = True
 except ImportError:
     pass
 
 try:
     import tree_sitter_rust as _ts_rs  # noqa: F401
+
     _HAS_TS_RUST = True
 except ImportError:
     pass
 
 try:
     import tree_sitter_java as _ts_java  # noqa: F401
+
     _HAS_TS_JAVA = True
 except ImportError:
     pass
 
-_HAS_TREE_SITTER = _HAS_TS_CORE and (_HAS_TS_PYTHON or _HAS_TS_JS or _HAS_TS_TS or _HAS_TS_GO or _HAS_TS_RUST or _HAS_TS_JAVA)
+_HAS_TREE_SITTER = _HAS_TS_CORE and (
+    _HAS_TS_PYTHON or _HAS_TS_JS or _HAS_TS_TS or _HAS_TS_GO or _HAS_TS_RUST or _HAS_TS_JAVA
+)
 
 # AST node types that have inner bodies — split points for recursive chunking (Python)
 _BLOCK_BODY_NODES: tuple = (
-    ast.If, ast.For, ast.While, ast.Try, ast.With,
-    ast.AsyncFor, ast.AsyncWith,
+    ast.If,
+    ast.For,
+    ast.While,
+    ast.Try,
+    ast.With,
+    ast.AsyncFor,
+    ast.AsyncWith,
 )
 # Python 3.10+ match statement
 try:
@@ -88,18 +102,39 @@ except AttributeError:
 
 # Tree-sitter block node type names per language (for recursive splitting)
 _TS_BLOCK_TYPES: dict[str, tuple[str, ...]] = {
-    "javascript": ("if_statement", "for_statement", "for_in_statement", "while_statement",
-                    "try_statement", "switch_statement", "with_statement", "do_statement"),
-    "typescript": ("if_statement", "for_statement", "for_in_statement", "while_statement",
-                    "try_statement", "switch_statement", "with_statement", "do_statement"),
-    "tsx": ("if_statement", "for_statement", "for_in_statement", "while_statement",
-             "try_statement", "switch_statement", "with_statement", "do_statement"),
-    "go": ("if_statement", "for_statement", "switch_statement", "select_statement",
-            "type_switch_statement"),
-    "rust": ("if_expression", "for_expression", "while_expression", "loop_expression",
-              "match_expression"),
-    "java": ("if_statement", "for_statement", "while_statement", "try_statement",
-              "switch_statement", "do_statement"),
+    "javascript": (
+        "if_statement",
+        "for_statement",
+        "for_in_statement",
+        "while_statement",
+        "try_statement",
+        "switch_statement",
+        "with_statement",
+        "do_statement",
+    ),
+    "typescript": (
+        "if_statement",
+        "for_statement",
+        "for_in_statement",
+        "while_statement",
+        "try_statement",
+        "switch_statement",
+        "with_statement",
+        "do_statement",
+    ),
+    "tsx": (
+        "if_statement",
+        "for_statement",
+        "for_in_statement",
+        "while_statement",
+        "try_statement",
+        "switch_statement",
+        "with_statement",
+        "do_statement",
+    ),
+    "go": ("if_statement", "for_statement", "switch_statement", "select_statement", "type_switch_statement"),
+    "rust": ("if_expression", "for_expression", "while_expression", "loop_expression", "match_expression"),
+    "java": ("if_statement", "for_statement", "while_statement", "try_statement", "switch_statement", "do_statement"),
 }
 
 # Max recursion depth for recursive splitting
@@ -109,6 +144,7 @@ _MAX_RECURSION_DEPTH = 5
 @dataclass
 class CodeChunk:
     """A semantically complete code unit from cAST chunking."""
+
     content: str
     chunk_type: str  # "function", "class", "module", "method", "import_block"
     start_line: int
@@ -159,6 +195,7 @@ class CodeChunk:
 @dataclass
 class TSLanguageConfig:
     """Configuration for a tree-sitter language grammar and its chunking rules."""
+
     name: str
     extensions: list[str]
 
@@ -185,36 +222,43 @@ _TS_LANGUAGE_CONFIGS: dict[str, TSLanguageConfig] = {
     "javascript": TSLanguageConfig(
         name="javascript",
         extensions=[".js", ".jsx", ".mjs"],
-        function_types=("function_declaration", "method_definition",
-                        "generator_function_declaration", "arrow_function"),
+        function_types=(
+            "function_declaration",
+            "method_definition",
+            "generator_function_declaration",
+            "arrow_function",
+        ),
         class_types=("class_declaration", "class_expression"),
         import_types=("import_statement", "import_expression", "export_statement"),
-        assignment_types=("lexical_declaration", "variable_declaration",
-                          "expression_statement"),
+        assignment_types=("lexical_declaration", "variable_declaration", "expression_statement"),
     ),
     "typescript": TSLanguageConfig(
         name="typescript",
         extensions=[".ts"],
-        function_types=("function_declaration", "method_definition",
-                        "generator_function_declaration", "arrow_function"),
+        function_types=(
+            "function_declaration",
+            "method_definition",
+            "generator_function_declaration",
+            "arrow_function",
+        ),
         class_types=("class_declaration", "class_expression"),
-        interface_types=("interface_declaration", "type_alias_declaration",
-                         "enum_declaration"),
+        interface_types=("interface_declaration", "type_alias_declaration", "enum_declaration"),
         import_types=("import_statement", "import_expression", "export_statement"),
-        assignment_types=("lexical_declaration", "variable_declaration",
-                          "expression_statement"),
+        assignment_types=("lexical_declaration", "variable_declaration", "expression_statement"),
     ),
     "tsx": TSLanguageConfig(
         name="tsx",
         extensions=[".tsx"],
-        function_types=("function_declaration", "method_definition",
-                        "generator_function_declaration", "arrow_function"),
+        function_types=(
+            "function_declaration",
+            "method_definition",
+            "generator_function_declaration",
+            "arrow_function",
+        ),
         class_types=("class_declaration", "class_expression"),
-        interface_types=("interface_declaration", "type_alias_declaration",
-                         "enum_declaration"),
+        interface_types=("interface_declaration", "type_alias_declaration", "enum_declaration"),
         import_types=("import_statement", "import_expression", "export_statement"),
-        assignment_types=("lexical_declaration", "variable_declaration",
-                          "expression_statement"),
+        assignment_types=("lexical_declaration", "variable_declaration", "expression_statement"),
     ),
     "go": TSLanguageConfig(
         name="go",
@@ -223,8 +267,7 @@ _TS_LANGUAGE_CONFIGS: dict[str, TSLanguageConfig] = {
         class_types=("type_declaration", "type_spec"),
         interface_types=("interface_type", "struct_type"),
         import_types=("import_declaration",),
-        assignment_types=("assignment_statement", "short_var_declaration",
-                          "const_declaration", "var_declaration"),
+        assignment_types=("assignment_statement", "short_var_declaration", "const_declaration", "var_declaration"),
         uses_type_identifier=True,
         comment_types=("comment",),
         line_comment_prefix="//",
@@ -246,8 +289,7 @@ _TS_LANGUAGE_CONFIGS: dict[str, TSLanguageConfig] = {
         name="java",
         extensions=[".java"],
         function_types=("method_declaration",),
-        class_types=("class_declaration", "enum_declaration",
-                      "record_declaration"),
+        class_types=("class_declaration", "enum_declaration", "record_declaration"),
         interface_types=("interface_declaration", "annotation_type_declaration"),
         import_types=("import_declaration",),
         assignment_types=("variable_declaration", "field_declaration"),
@@ -320,8 +362,7 @@ class ASTDependencyExtractor(ast.NodeVisitor):
 
 def _extract_docstring(node) -> str:
     """Extract docstring from a function or class node."""
-    if (node.body and isinstance(node.body[0], ast.Expr) and
-            isinstance(node.body[0].value, ast.Constant)):
+    if node.body and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Constant):
         value = node.body[0].value
         if isinstance(value.value, str):
             return value.value
@@ -348,7 +389,7 @@ def _count_tokens(text: str) -> int:
 class CastChunker:
     """
     cAST: AST-aware code chunking for semantic completeness.
-    
+
     Algorithm:
     1. Parse source file into AST
     2. Extract top-level nodes (functions, classes, imports)
@@ -358,9 +399,9 @@ class CastChunker:
     """
 
     MAX_CHUNK_TOKENS = 2000  # ~8000 chars
-    MIN_CHUNK_TOKENS = 50    # Skip tiny chunks
-    MERGE_THRESHOLD = 300    # Merge siblings under this
-    SPLIT_THRESHOLD = 2500   # Split functions/classes that exceed this
+    MIN_CHUNK_TOKENS = 50  # Skip tiny chunks
+    MERGE_THRESHOLD = 300  # Merge siblings under this
+    SPLIT_THRESHOLD = 2500  # Split functions/classes that exceed this
 
     def __init__(self, language: str = "python"):
         self.language = language
@@ -411,7 +452,7 @@ class CastChunker:
             if isinstance(node, (ast.Import, ast.ImportFrom)):
                 if not import_start:
                     import_start = node.lineno
-                import_block.append("\n".join(source_lines[node.lineno - 1: node.end_lineno]))
+                import_block.append("\n".join(source_lines[node.lineno - 1 : node.end_lineno]))
                 extractor.visit(node)
                 continue
             else:
@@ -450,7 +491,7 @@ class CastChunker:
 
             elif isinstance(node, (ast.Assign, ast.AnnAssign)) and not import_block:
                 # Top-level assignments/constants
-                content = source_lines[node.lineno - 1: node.end_lineno]
+                content = source_lines[node.lineno - 1 : node.end_lineno]
                 content_str = "\n".join(content)
                 if len(content_str) > 1:
                     chunk = CodeChunk(
@@ -504,7 +545,7 @@ class CastChunker:
         sub_extractor.visit(node)
 
         start_line = self._get_node_start_line(node)
-        content_lines = source_lines[start_line - 1: node.end_lineno]
+        content_lines = source_lines[start_line - 1 : node.end_lineno]
         content = "\n".join(content_lines)
         token_count = _count_tokens(content)
 
@@ -566,17 +607,19 @@ class CastChunker:
         """
         if depth > _MAX_RECURSION_DEPTH:
             # Safety valve — return one monolithic chunk
-            content = "\n".join(source_lines[start_line - 1: node.end_lineno])
-            return [CodeChunk(
-                content=content,
-                chunk_type=chunk_type,
-                start_line=start_line,
-                end_line=node.end_lineno,
-                name=func_name,
-                filepath=filepath,
-                language="python",
-                token_count=_count_tokens(content),
-            )]
+            content = "\n".join(source_lines[start_line - 1 : node.end_lineno])
+            return [
+                CodeChunk(
+                    content=content,
+                    chunk_type=chunk_type,
+                    start_line=start_line,
+                    end_line=node.end_lineno,
+                    name=func_name,
+                    filepath=filepath,
+                    language="python",
+                    token_count=_count_tokens(content),
+                )
+            ]
 
         chunks: list[CodeChunk] = []
         cursor = start_line  # Source line cursor (1-based)
@@ -589,63 +632,75 @@ class CastChunker:
             if isinstance(stmt, _BLOCK_BODY_NODES):
                 # ── Code before this block ──
                 if stmt_start > cursor:
-                    pre_lines = source_lines[cursor - 1: stmt_start - 1]
+                    pre_lines = source_lines[cursor - 1 : stmt_start - 1]
                     pre_content = "\n".join(pre_lines).strip()
                     if pre_content:
-                        chunks.append(CodeChunk(
-                            content=pre_content,
-                            chunk_type=f"{chunk_type}_section",
-                            start_line=cursor,
-                            end_line=stmt_start - 1,
-                            name=f"{func_name}_pre_{section_idx}",
-                            filepath=filepath,
-                            language="python",
-                            token_count=_count_tokens(pre_content),
-                        ))
+                        chunks.append(
+                            CodeChunk(
+                                content=pre_content,
+                                chunk_type=f"{chunk_type}_section",
+                                start_line=cursor,
+                                end_line=stmt_start - 1,
+                                name=f"{func_name}_pre_{section_idx}",
+                                filepath=filepath,
+                                language="python",
+                                token_count=_count_tokens(pre_content),
+                            )
+                        )
                         section_idx += 1
 
                 # ── The block statement — check if it needs recursive split ──
-                block_lines = source_lines[stmt_start - 1: stmt_end]
+                block_lines = source_lines[stmt_start - 1 : stmt_end]
                 block_content = "\n".join(block_lines)
                 block_tokens = _count_tokens(block_content)
 
                 if block_tokens > self.SPLIT_THRESHOLD:
                     # Recursively split the block
                     sub_chunks = self._split_node_into_sections(
-                        stmt, stmt_start, stmt_end, source_lines,
-                        filepath, func_name, chunk_type, depth + 1,
+                        stmt,
+                        stmt_start,
+                        stmt_end,
+                        source_lines,
+                        filepath,
+                        func_name,
+                        chunk_type,
+                        depth + 1,
                     )
                     chunks.extend(sub_chunks)
                 else:
-                    chunks.append(CodeChunk(
-                        content=block_content,
-                        chunk_type=f"{chunk_type}_block",
-                        start_line=stmt_start,
-                        end_line=stmt_end,
-                        name=f"{func_name}_{type(stmt).__name__.lower()}_{section_idx}",
-                        filepath=filepath,
-                        language="python",
-                        token_count=block_tokens,
-                    ))
+                    chunks.append(
+                        CodeChunk(
+                            content=block_content,
+                            chunk_type=f"{chunk_type}_block",
+                            start_line=stmt_start,
+                            end_line=stmt_end,
+                            name=f"{func_name}_{type(stmt).__name__.lower()}_{section_idx}",
+                            filepath=filepath,
+                            language="python",
+                            token_count=block_tokens,
+                        )
+                    )
                     section_idx += 1
 
                 cursor = stmt_end + 1
 
         # ── Remaining code after the last block ──
         if cursor <= node.end_lineno:
-            post_lines = source_lines[cursor - 1: node.end_lineno]
+            post_lines = source_lines[cursor - 1 : node.end_lineno]
             post_content = "\n".join(post_lines).strip()
             if post_content:
-                chunks.append(CodeChunk(
-                    content=post_content,
-                    chunk_type=f"{chunk_type}_section",
-                    start_line=cursor,
-                    end_line=node.end_lineno,
-                    name=f"{func_name}_post_{section_idx}",
-                    filepath=filepath,
-                    language="python",
-                    token_count=_count_tokens(post_content),
-                ))
+                chunks.append(
+                    CodeChunk(
+                        content=post_content,
+                        chunk_type=f"{chunk_type}_section",
+                        start_line=cursor,
+                        end_line=node.end_lineno,
+                        name=f"{func_name}_post_{section_idx}",
+                        filepath=filepath,
+                        language="python",
+                        token_count=_count_tokens(post_content),
+                    )
+                )
 
         return chunks
 
@@ -665,17 +720,19 @@ class CastChunker:
         Works for if/for/while/try/with by walking the node's body children.
         """
         if depth > _MAX_RECURSION_DEPTH:
-            content = "\n".join(source_lines[start_line - 1: end_line])
-            return [CodeChunk(
-                content=content,
-                chunk_type=f"{parent_type}_block",
-                start_line=start_line,
-                end_line=end_line,
-                name=f"{parent_name}_section",
-                filepath=filepath,
-                language="python",
-                token_count=_count_tokens(content),
-            )]
+            content = "\n".join(source_lines[start_line - 1 : end_line])
+            return [
+                CodeChunk(
+                    content=content,
+                    chunk_type=f"{parent_type}_block",
+                    start_line=start_line,
+                    end_line=end_line,
+                    name=f"{parent_name}_section",
+                    filepath=filepath,
+                    language="python",
+                    token_count=_count_tokens(content),
+                )
+            ]
 
         # Collect body nodes from the block statement
         body_nodes: list[ast.AST] = []
@@ -693,17 +750,19 @@ class CastChunker:
             body_nodes.extend(node.finalbody)
 
         if not body_nodes:
-            content = "\n".join(source_lines[start_line - 1: end_line])
-            return [CodeChunk(
-                content=content,
-                chunk_type=f"{parent_type}_block",
-                start_line=start_line,
-                end_line=end_line,
-                name=f"{parent_name}_section",
-                filepath=filepath,
-                language="python",
-                token_count=_count_tokens(content),
-            )]
+            content = "\n".join(source_lines[start_line - 1 : end_line])
+            return [
+                CodeChunk(
+                    content=content,
+                    chunk_type=f"{parent_type}_block",
+                    start_line=start_line,
+                    end_line=end_line,
+                    name=f"{parent_name}_section",
+                    filepath=filepath,
+                    language="python",
+                    token_count=_count_tokens(content),
+                )
+            ]
 
         chunks: list[CodeChunk] = []
         cursor = start_line
@@ -716,60 +775,72 @@ class CastChunker:
             if isinstance(stmt, _BLOCK_BODY_NODES):
                 # Code before this nested block
                 if stmt_start > cursor:
-                    pre_lines = source_lines[cursor - 1: stmt_start - 1]
+                    pre_lines = source_lines[cursor - 1 : stmt_start - 1]
                     pre_content = "\n".join(pre_lines).strip()
                     if pre_content:
-                        chunks.append(CodeChunk(
-                            content=pre_content,
-                            chunk_type=f"{parent_type}_section",
-                            start_line=cursor,
-                            end_line=stmt_start - 1,
-                            name=f"{parent_name}_inner_pre_{section_idx}",
-                            filepath=filepath,
-                            language="python",
-                            token_count=_count_tokens(pre_content),
-                        ))
+                        chunks.append(
+                            CodeChunk(
+                                content=pre_content,
+                                chunk_type=f"{parent_type}_section",
+                                start_line=cursor,
+                                end_line=stmt_start - 1,
+                                name=f"{parent_name}_inner_pre_{section_idx}",
+                                filepath=filepath,
+                                language="python",
+                                token_count=_count_tokens(pre_content),
+                            )
+                        )
                         section_idx += 1
 
                 # The nested block — recursively split if too large
-                block_lines = source_lines[stmt_start - 1: stmt_end]
+                block_lines = source_lines[stmt_start - 1 : stmt_end]
                 block_content = "\n".join(block_lines)
                 if _count_tokens(block_content) > self.SPLIT_THRESHOLD:
                     sub_chunks = self._split_node_into_sections(
-                        stmt, stmt_start, stmt_end, source_lines,
-                        filepath, parent_name, parent_type, depth + 1,
+                        stmt,
+                        stmt_start,
+                        stmt_end,
+                        source_lines,
+                        filepath,
+                        parent_name,
+                        parent_type,
+                        depth + 1,
                     )
                     chunks.extend(sub_chunks)
                 else:
-                    chunks.append(CodeChunk(
-                        content=block_content,
-                        chunk_type=f"{parent_type}_block",
-                        start_line=stmt_start,
-                        end_line=stmt_end,
-                        name=f"{parent_name}_inner_{type(stmt).__name__.lower()}_{section_idx}",
-                        filepath=filepath,
-                        language="python",
-                        token_count=_count_tokens(block_content),
-                    ))
+                    chunks.append(
+                        CodeChunk(
+                            content=block_content,
+                            chunk_type=f"{parent_type}_block",
+                            start_line=stmt_start,
+                            end_line=stmt_end,
+                            name=f"{parent_name}_inner_{type(stmt).__name__.lower()}_{section_idx}",
+                            filepath=filepath,
+                            language="python",
+                            token_count=_count_tokens(block_content),
+                        )
+                    )
                     section_idx += 1
 
                 cursor = stmt_end + 1
 
         # Remaining code
         if cursor <= end_line:
-            post_lines = source_lines[cursor - 1: end_line]
+            post_lines = source_lines[cursor - 1 : end_line]
             post_content = "\n".join(post_lines).strip()
             if post_content:
-                chunks.append(CodeChunk(
-                    content=post_content,
-                    chunk_type=f"{parent_type}_section",
-                    start_line=cursor,
-                    end_line=end_line,
-                    name=f"{parent_name}_inner_post_{section_idx}",
-                    filepath=filepath,
-                    language="python",
-                    token_count=_count_tokens(post_content),
-                ))
+                chunks.append(
+                    CodeChunk(
+                        content=post_content,
+                        chunk_type=f"{parent_type}_section",
+                        start_line=cursor,
+                        end_line=end_line,
+                        name=f"{parent_name}_inner_post_{section_idx}",
+                        filepath=filepath,
+                        language="python",
+                        token_count=_count_tokens(post_content),
+                    )
+                )
 
         return chunks
 
@@ -780,7 +851,7 @@ class CastChunker:
         filepath: str,
     ) -> CodeChunk | list[CodeChunk]:
         """Process a class node — may return multiple chunks for large classes."""
-        content_lines = source_lines[node.lineno - 1: node.end_lineno]
+        content_lines = source_lines[node.lineno - 1 : node.end_lineno]
         content = "\n".join(content_lines)
         token_count = _count_tokens(content)
 
@@ -820,36 +891,41 @@ class CastChunker:
                     chunks.append(result)
             elif isinstance(item, (ast.Assign, ast.AnnAssign)):
                 # Class-level attribute
-                attr_content = "\n".join(source_lines[item.lineno - 1: item.end_lineno])
-                chunks.append(CodeChunk(
-                    content=attr_content,
-                    chunk_type="class_attribute",
-                    start_line=item.lineno,
-                    end_line=item.end_lineno,
-                    name="class_attr",
-                    parent_class=node.name,
-                    filepath=filepath,
-                    language="python",
-                    token_count=_count_tokens(attr_content),
-                ))
+                attr_content = "\n".join(source_lines[item.lineno - 1 : item.end_lineno])
+                chunks.append(
+                    CodeChunk(
+                        content=attr_content,
+                        chunk_type="class_attribute",
+                        start_line=item.lineno,
+                        end_line=item.end_lineno,
+                        name="class_attr",
+                        parent_class=node.name,
+                        filepath=filepath,
+                        language="python",
+                        token_count=_count_tokens(attr_content),
+                    )
+                )
 
         # Also include class definition line + docstring as context chunk
         class_header = source_lines[node.lineno - 1]
         docstring = _extract_docstring(node)
         if docstring:
             header_content = class_header + "\n" + '"""' + docstring + '"""'
-            chunks.insert(0, CodeChunk(
-                content=header_content,
-                chunk_type="class_header",
-                start_line=node.lineno,
-                end_line=node.lineno + docstring.count("\n") + 2,
-                name=node.name,
-                docstring=docstring,
-                signature=f"class {node.name}{self._get_class_bases(node)}:",
-                filepath=filepath,
-                language="python",
-                token_count=_count_tokens(header_content),
-            ))
+            chunks.insert(
+                0,
+                CodeChunk(
+                    content=header_content,
+                    chunk_type="class_header",
+                    start_line=node.lineno,
+                    end_line=node.lineno + docstring.count("\n") + 2,
+                    name=node.name,
+                    docstring=docstring,
+                    signature=f"class {node.name}{self._get_class_bases(node)}:",
+                    filepath=filepath,
+                    language="python",
+                    token_count=_count_tokens(header_content),
+                ),
+            )
 
         return chunks
 
@@ -880,9 +956,11 @@ class CastChunker:
                 merged_end = current.end_line
                 merged_type = current.chunk_type
                 j = i + 1
-                while (j < len(chunks)
-                       and chunks[j].token_count < self.MERGE_THRESHOLD
-                       and chunks[j].chunk_type == merged_type):
+                while (
+                    j < len(chunks)
+                    and chunks[j].token_count < self.MERGE_THRESHOLD
+                    and chunks[j].chunk_type == merged_type
+                ):
                     # Only merge if contiguous (allowing 1 blank line gap)
                     if chunks[j].start_line <= merged_end + 2:
                         merged_content.append(chunks[j].content)
@@ -894,16 +972,18 @@ class CastChunker:
                 if j > i + 1:
                     # We merged multiple chunks
                     content = "\n\n".join(merged_content)
-                    merged.append(CodeChunk(
-                        content=content,
-                        chunk_type=merged_type,
-                        start_line=current.start_line,
-                        end_line=merged_end,
-                        name=f"merged_{merged_type}_block",
-                        filepath=current.filepath,
-                        language=current.language,
-                        token_count=_count_tokens(content),
-                    ))
+                    merged.append(
+                        CodeChunk(
+                            content=content,
+                            chunk_type=merged_type,
+                            start_line=current.start_line,
+                            end_line=merged_end,
+                            name=f"merged_{merged_type}_block",
+                            filepath=current.filepath,
+                            language=current.language,
+                            token_count=_count_tokens(content),
+                        )
+                    )
                     i = j
                     continue
 
@@ -935,16 +1015,18 @@ class CastChunker:
             end = boundaries[idx + 1]
             content = "\n".join(source_lines[start:end])
             if content.strip() and len(content) > 30:
-                self.chunks.append(CodeChunk(
-                    content=content,
-                    chunk_type="code_block",
-                    start_line=start + 1,
-                    end_line=end,
-                    name=f"block_{idx}",
-                    filepath=filepath,
-                    language=self.language,
-                    token_count=_count_tokens(content),
-                ))
+                self.chunks.append(
+                    CodeChunk(
+                        content=content,
+                        chunk_type="code_block",
+                        start_line=start + 1,
+                        end_line=end,
+                        name=f"block_{idx}",
+                        filepath=filepath,
+                        language=self.language,
+                        token_count=_count_tokens(content),
+                    )
+                )
 
     def chunk_directory(
         self,
@@ -957,8 +1039,16 @@ class CastChunker:
             extensions = [".py", ".js", ".jsx", ".mjs", ".ts", ".tsx", ".java", ".go", ".rs"]
         if exclude_patterns is None:
             exclude_patterns = [
-                "__pycache__", "node_modules", ".git", "dist", "build",
-                "venv", ".venv", "env", ".tox", "*.min.js",
+                "__pycache__",
+                "node_modules",
+                ".git",
+                "dist",
+                "build",
+                "venv",
+                ".venv",
+                "env",
+                ".tox",
+                "*.min.js",
             ]
 
         dirpath = Path(dirpath)
@@ -1012,21 +1102,27 @@ class CastChunker:
         """Get the tree-sitter Language object for a given language name."""
         if lang == "javascript" and _HAS_TS_JS:
             import tree_sitter_javascript
+
             return Language(tree_sitter_javascript.language())
         elif lang == "typescript" and _HAS_TS_TS:
             import tree_sitter_typescript
+
             return Language(tree_sitter_typescript.language_typescript())
         elif lang == "tsx" and _HAS_TS_TS:
             import tree_sitter_typescript
+
             return Language(tree_sitter_typescript.language_tsx())
         elif lang == "go" and _HAS_TS_GO:
             import tree_sitter_go
+
             return Language(tree_sitter_go.language())
         elif lang == "rust" and _HAS_TS_RUST:
             import tree_sitter_rust
+
             return Language(tree_sitter_rust.language())
         elif lang == "java" and _HAS_TS_JAVA:
             import tree_sitter_java
+
             return Language(tree_sitter_java.language())
         return None
 
@@ -1061,16 +1157,14 @@ class CastChunker:
                 if node.type in lang_config.import_types:
                     if import_start is None:
                         import_start = node.start_point[0] + 1  # 1-based
-                    node_text = source_bytes[node.start_byte:node.end_byte].decode("utf-8")
+                    node_text = source_bytes[node.start_byte : node.end_byte].decode("utf-8")
                     import_block.append(node_text)
                     if not cursor.goto_next_sibling():
                         break
                     continue
                 else:
                     if import_block:
-                        chunk = self._make_ts_import_chunk(
-                            import_block, import_start or 1, source_lines, filepath
-                        )
+                        chunk = self._make_ts_import_chunk(import_block, import_start or 1, source_lines, filepath)
                         if chunk:
                             top_level_chunks.append(chunk)
                         import_block = []
@@ -1078,9 +1172,7 @@ class CastChunker:
 
                 # ── Functions ──
                 if node.type in lang_config.function_types:
-                    result = self._process_ts_function(
-                        node, source_bytes, source_lines, filepath, lang_config
-                    )
+                    result = self._process_ts_function(node, source_bytes, source_lines, filepath, lang_config)
                     if isinstance(result, list):
                         top_level_chunks.extend(result)
                     else:
@@ -1088,9 +1180,7 @@ class CastChunker:
 
                 # ── Classes ──
                 elif node.type in lang_config.class_types:
-                    result = self._process_ts_class(
-                        node, source_bytes, source_lines, filepath, lang_config
-                    )
+                    result = self._process_ts_class(node, source_bytes, source_lines, filepath, lang_config)
                     if isinstance(result, list):
                         top_level_chunks.extend(result)
                     else:
@@ -1098,17 +1188,13 @@ class CastChunker:
 
                 # ── Interfaces / Type aliases / Enums ──
                 elif node.type in lang_config.interface_types:
-                    chunk = self._process_ts_interface(
-                        node, source_bytes, source_lines, filepath, lang_config
-                    )
+                    chunk = self._process_ts_interface(node, source_bytes, source_lines, filepath, lang_config)
                     if chunk:
                         top_level_chunks.append(chunk)
 
                 # ── Top-level assignments / declarations ──
                 elif node.type in lang_config.assignment_types:
-                    chunk = self._process_ts_assignment(
-                        node, source_bytes, source_lines, filepath, lang_config
-                    )
+                    chunk = self._process_ts_assignment(node, source_bytes, source_lines, filepath, lang_config)
                     if chunk:
                         top_level_chunks.append(chunk)
 
@@ -1117,9 +1203,7 @@ class CastChunker:
 
             # Flush remaining imports
             if import_block:
-                chunk = self._make_ts_import_chunk(
-                    import_block, import_start or 1, source_lines, filepath
-                )
+                chunk = self._make_ts_import_chunk(import_block, import_start or 1, source_lines, filepath)
                 if chunk:
                     top_level_chunks.append(chunk)
 
@@ -1168,7 +1252,7 @@ class CastChunker:
         """Process a tree-sitter function node."""
         start_line = node.start_point[0] + 1
         end_line = node.end_point[0] + 1
-        content = source_bytes[node.start_byte:node.end_byte].decode("utf-8")
+        content = source_bytes[node.start_byte : node.end_byte].decode("utf-8")
         token_count = _count_tokens(content)
         name = self._extract_ts_node_name(node, source_bytes)
         docstring = self._get_ts_comment_before(node, source_bytes)
@@ -1203,7 +1287,7 @@ class CastChunker:
         """Process a tree-sitter class node — may split into methods."""
         start_line = node.start_point[0] + 1
         end_line = node.end_point[0] + 1
-        content = source_bytes[node.start_byte:node.end_byte].decode("utf-8")
+        content = source_bytes[node.start_byte : node.end_byte].decode("utf-8")
         token_count = _count_tokens(content)
         name = self._extract_ts_node_name(node, source_bytes)
         docstring = self._get_ts_comment_before(node, source_bytes)
@@ -1231,18 +1315,20 @@ class CastChunker:
         header_line = source_lines[start_line - 1]
         if docstring:
             header_content = header_line
-            chunks.append(CodeChunk(
-                content=header_content,
-                chunk_type="class_header",
-                start_line=start_line,
-                end_line=start_line,
-                name=name or "anonymous",
-                docstring=docstring,
-                signature=f"{node.type}: {name}" if name else node.type,
-                filepath=filepath,
-                language=self.language,
-                token_count=_count_tokens(header_content),
-            ))
+            chunks.append(
+                CodeChunk(
+                    content=header_content,
+                    chunk_type="class_header",
+                    start_line=start_line,
+                    end_line=start_line,
+                    name=name or "anonymous",
+                    docstring=docstring,
+                    signature=f"{node.type}: {name}" if name else node.type,
+                    filepath=filepath,
+                    language=self.language,
+                    token_count=_count_tokens(header_content),
+                )
+            )
 
         # Walk class body for method definitions
         body_node = node.child_by_field_name("body")
@@ -1252,9 +1338,7 @@ class CastChunker:
                 while True:
                     child = method_cursor.node
                     if child.type in lang_config.function_types:
-                        func_chunk = self._process_ts_function(
-                            child, source_bytes, source_lines, filepath, lang_config
-                        )
+                        func_chunk = self._process_ts_function(child, source_bytes, source_lines, filepath, lang_config)
                         if isinstance(func_chunk, list):
                             for mc in func_chunk:
                                 mc.parent_class = name
@@ -1296,7 +1380,7 @@ class CastChunker:
         """Process an interface/type alias/enum node."""
         start_line = node.start_point[0] + 1
         end_line = node.end_point[0] + 1
-        content = source_bytes[node.start_byte:node.end_byte].decode("utf-8")
+        content = source_bytes[node.start_byte : node.end_byte].decode("utf-8")
         token_count = _count_tokens(content)
         name = self._extract_ts_node_name(node, source_bytes)
         docstring = self._get_ts_comment_before(node, source_bytes)
@@ -1330,7 +1414,7 @@ class CastChunker:
         """Process a top-level assignment or declaration."""
         start_line = node.start_point[0] + 1
         end_line = node.end_point[0] + 1
-        content = source_bytes[node.start_byte:node.end_byte].decode("utf-8")
+        content = source_bytes[node.start_byte : node.end_byte].decode("utf-8")
 
         if len(content.strip()) <= 1:
             return None
@@ -1351,7 +1435,7 @@ class CastChunker:
         """Extract the name from a tree-sitter node using the 'name' field."""
         name_node = node.child_by_field_name("name")
         if name_node:
-            return source_bytes[name_node.start_byte:name_node.end_byte].decode("utf-8")
+            return source_bytes[name_node.start_byte : name_node.end_byte].decode("utf-8")
         return ""
 
     @staticmethod
@@ -1364,7 +1448,7 @@ class CastChunker:
         comments = []
         prev = node.prev_named_sibling
         while prev is not None and prev.type in ("comment", "line_comment", "block_comment"):
-            text = source_bytes[prev.start_byte:prev.end_byte].decode("utf-8").strip()
+            text = source_bytes[prev.start_byte : prev.end_byte].decode("utf-8").strip()
             comments.insert(0, text)
             prev = prev.prev_named_sibling
             # Only look at up to 3 comment nodes before
@@ -1392,12 +1476,12 @@ class CastChunker:
                 elif c.startswith("///"):
                     # Rust doc comment
                     lines = c.split("\n")
-                    doc_lines = [l.strip().lstrip("///").strip() for l in lines]
+                    doc_lines = [line.strip().lstrip("///").strip() for line in lines]
                     cleaned.append(" ".join(doc_lines))
                 elif c.startswith("//"):
                     # Line comment
                     lines = c.split("\n")
-                    doc_lines = [l.strip().lstrip("//").strip() for l in lines]
+                    doc_lines = [line.strip().lstrip("//").strip() for line in lines]
                     cleaned.append(" ".join(doc_lines))
                 else:
                     cleaned.append(c)
@@ -1461,9 +1545,9 @@ if __name__ == "__main__":
         exit(1)
 
     if args.stats:
-        print(f"\n{'='*50}")
+        print(f"\n{'=' * 50}")
         print("cAST Chunking Statistics")
-        print(f"{'='*50}")
+        print(f"{'=' * 50}")
         print(f"Total chunks: {len(chunks)}")
         types = {}
         for c in chunks:
@@ -1473,7 +1557,7 @@ if __name__ == "__main__":
             print(f"  {t}: {count}")
         avg_tokens = sum(c["token_count"] for c in chunks) / len(chunks) if chunks else 0
         print(f"Avg tokens/chunk: {avg_tokens:.0f}")
-        print(f"{'='*50}\n")
+        print(f"{'=' * 50}\n")
 
     output = json.dumps(chunks, indent=2, ensure_ascii=False)
 

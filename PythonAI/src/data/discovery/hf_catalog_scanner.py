@@ -25,6 +25,7 @@ DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / ".hf_scanner_cache.json"
 @dataclass
 class HFDiscoveryResult:
     """A single dataset discovered on HuggingFace."""
+
     dataset_id: str
     url: str = ""
     description: str = ""
@@ -51,46 +52,113 @@ class HFCatalogScanner:
 
     DOMAIN_KEYWORDS: dict[str, list[str]] = {
         "formal_science": [
-            "math", "proof", "theorem", "algebra", "calculus",
-            "statistics", "probability", "logic", "cryptography",
-            "number-theory", "geometry",
+            "math",
+            "proof",
+            "theorem",
+            "algebra",
+            "calculus",
+            "statistics",
+            "probability",
+            "logic",
+            "cryptography",
+            "number-theory",
+            "geometry",
         ],
         "natural_science": [
-            "physics", "chemistry", "biology", "astronomy", "geology",
-            "climate", "ecology", "genomics", "protein", "drug",
+            "physics",
+            "chemistry",
+            "biology",
+            "astronomy",
+            "geology",
+            "climate",
+            "ecology",
+            "genomics",
+            "protein",
+            "drug",
         ],
         "engineering": [
-            "code", "programming", "python", "javascript", "rust",
-            "software", "github", "stackoverflow", "algorithm",
-            "data-structure", "system-design",
+            "code",
+            "programming",
+            "python",
+            "javascript",
+            "rust",
+            "software",
+            "github",
+            "stackoverflow",
+            "algorithm",
+            "data-structure",
+            "system-design",
         ],
         "medicine": [
-            "medical", "clinical", "health", "diagnosis", "patient",
-            "drug", "pharma", "biomedical", "radiology", "pathology",
+            "medical",
+            "clinical",
+            "health",
+            "diagnosis",
+            "patient",
+            "drug",
+            "pharma",
+            "biomedical",
+            "radiology",
+            "pathology",
         ],
         "social_science": [
-            "economics", "psychology", "sociology", "political",
-            "legal", "law", "governance", "policy",
+            "economics",
+            "psychology",
+            "sociology",
+            "political",
+            "legal",
+            "law",
+            "governance",
+            "policy",
         ],
         "business": [
-            "finance", "stock", "market", "trading", "business",
-            "startup", "entrepreneur", "accounting",
+            "finance",
+            "stock",
+            "market",
+            "trading",
+            "business",
+            "startup",
+            "entrepreneur",
+            "accounting",
         ],
         "arts": [
-            "literature", "poetry", "philosophy", "history", "music",
-            "art", "creative", "writing",
+            "literature",
+            "poetry",
+            "philosophy",
+            "history",
+            "music",
+            "art",
+            "creative",
+            "writing",
         ],
         "language": [
-            "translation", "multilingual", "hindi", "indic",
-            "parallel", "corpus", "nlp", "text",
+            "translation",
+            "multilingual",
+            "hindi",
+            "indic",
+            "parallel",
+            "corpus",
+            "nlp",
+            "text",
         ],
         "multimodal": [
-            "image", "video", "audio", "speech", "vision",
-            "caption", "multimodal", "generation",
+            "image",
+            "video",
+            "audio",
+            "speech",
+            "vision",
+            "caption",
+            "multimodal",
+            "generation",
         ],
         "emerging": [
-            "safety", "alignment", "robotics", "quantum",
-            "blockchain", "climate", "biotech",
+            "safety",
+            "alignment",
+            "robotics",
+            "quantum",
+            "blockchain",
+            "climate",
+            "biotech",
         ],
     }
 
@@ -154,9 +222,17 @@ class HFCatalogScanner:
                 terms.extend(self.DOMAIN_KEYWORDS.get(d, []))
         if not terms:
             terms = [
-                "dataset", "fineweb", "instruction", "code",
-                "hindi", "indic", "translation", "science",
-                "medical", "math", "multilingual",
+                "dataset",
+                "fineweb",
+                "instruction",
+                "code",
+                "hindi",
+                "indic",
+                "translation",
+                "science",
+                "medical",
+                "math",
+                "multilingual",
             ]
 
         # Try to query HF Datasets Server API
@@ -172,17 +248,19 @@ class HFCatalogScanner:
                 self._seen.add(did)
                 continue
 
-            discovered.append(HFDiscoveryResult(
-                dataset_id=did,
-                url=f"https://huggingface.co/datasets/{did}",
-                description=ds.get("description", ""),
-                languages=self._extract_languages(ds),
-                tags=ds.get("tags", []),
-                size_bytes=ds.get("size", 0),
-                num_downloads=ds.get("downloads", 0),
-                license=ds.get("license", ""),
-                is_new=did not in self._seen,
-            ))
+            discovered.append(
+                HFDiscoveryResult(
+                    dataset_id=did,
+                    url=f"https://huggingface.co/datasets/{did}",
+                    description=ds.get("description", ""),
+                    languages=self._extract_languages(ds),
+                    tags=ds.get("tags", []),
+                    size_bytes=ds.get("size", 0),
+                    num_downloads=ds.get("downloads", 0),
+                    license=ds.get("license", ""),
+                    is_new=did not in self._seen,
+                )
+            )
             self._seen.add(did)
 
         self._save_cache()
@@ -204,16 +282,21 @@ class HFCatalogScanner:
 
             all_results: list[dict[str, Any]] = []
             for term in terms[:5]:  # Limit to first 5 search terms
-                params = urllib.parse.urlencode({
-                    "search": term,
-                    "sort": "downloads",
-                    "direction": -1,
-                    "limit": min(50, max_results),
-                })
+                params = urllib.parse.urlencode(
+                    {
+                        "search": term,
+                        "sort": "downloads",
+                        "direction": -1,
+                        "limit": min(50, max_results),
+                    }
+                )
                 url = f"https://huggingface.co/api/datasets?{params}"
-                req = urllib.request.Request(url, headers={
-                    "User-Agent": "PythonAI/2.0 (data-discovery)",
-                })
+                req = urllib.request.Request(
+                    url,
+                    headers={
+                        "User-Agent": "PythonAI/2.0 (data-discovery)",
+                    },
+                )
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     if isinstance(data, list):
@@ -255,16 +338,86 @@ class HFCatalogScanner:
         that the user might want to add.
         """
         known_datasets = [
-            {"id": "meta-math/MetaMathQA", "description": "MetaMathQA: 395K math QA pairs", "tags": ["math", "qa"], "downloads": 50000, "size": 500_000_000, "license": "MIT"},
-            {"id": "cognitivecomputations/dolphin-2.9-llama3-8b", "description": "Dolphin 2.9 instruct dataset", "tags": ["instruction", "general"], "downloads": 100000, "size": 1_000_000_000, "license": "cc-by-nc-4.0"},
-            {"id": "Intel/orca_dpo_pairs", "description": "Orca DPO preference pairs", "tags": ["dpo", "preference", "instruction"], "downloads": 80000, "size": 300_000_000, "license": "cc-by-nc-4.0"},
-            {"id": "HuggingFaceH4/ultrafeedback_binarized", "description": "UltraFeedback binarized for DPO/RLHF", "tags": ["preference", "rlhf"], "downloads": 60000, "size": 200_000_000, "license": "mit"},
-            {"id": "databricks/databricks-dolly-15k", "description": "Databricks Dolly 15k instruction dataset", "tags": ["instruction", "general"], "downloads": 150000, "size": 50_000_000, "license": "cc-by-sa-3.0"},
-            {"id": "nvidia/HelpSteer", "description": "HelpSteer: 36K helpfulness preferences", "tags": ["preference", "helpfulness"], "downloads": 30000, "size": 100_000_000, "license": "cc-by-4.0"},
-            {"id": "argilla/ultrafeedback-binarized-preferences-cleaned", "description": "Cleaned UltraFeedback preferences", "tags": ["preference", "cleaned"], "downloads": 25000, "size": 150_000_000, "license": "cc-by-4.0"},
-            {"id": "GAIR/lima", "description": "LIMA: Less Is More for Alignment", "tags": ["instruction", "alignment"], "downloads": 40000, "size": 20_000_000, "license": "cc-by-nc-4.0"},
-            {"id": "Open-Orca/SlimOrca-Dedup", "description": "SlimOrca deduplicated instruction data", "tags": ["instruction", "orca"], "downloads": 90000, "size": 1_500_000_000, "license": "cc-by-nc-4.0"},
-            {"id": "mlabonne/chatbot-arena-v2", "description": "Chatbot Arena conversations v2", "tags": ["chat", "preference"], "downloads": 35000, "size": 200_000_000, "license": "cc-by-4.0"},
+            {
+                "id": "meta-math/MetaMathQA",
+                "description": "MetaMathQA: 395K math QA pairs",
+                "tags": ["math", "qa"],
+                "downloads": 50000,
+                "size": 500_000_000,
+                "license": "MIT",
+            },
+            {
+                "id": "cognitivecomputations/dolphin-2.9-llama3-8b",
+                "description": "Dolphin 2.9 instruct dataset",
+                "tags": ["instruction", "general"],
+                "downloads": 100000,
+                "size": 1_000_000_000,
+                "license": "cc-by-nc-4.0",
+            },
+            {
+                "id": "Intel/orca_dpo_pairs",
+                "description": "Orca DPO preference pairs",
+                "tags": ["dpo", "preference", "instruction"],
+                "downloads": 80000,
+                "size": 300_000_000,
+                "license": "cc-by-nc-4.0",
+            },
+            {
+                "id": "HuggingFaceH4/ultrafeedback_binarized",
+                "description": "UltraFeedback binarized for DPO/RLHF",
+                "tags": ["preference", "rlhf"],
+                "downloads": 60000,
+                "size": 200_000_000,
+                "license": "mit",
+            },
+            {
+                "id": "databricks/databricks-dolly-15k",
+                "description": "Databricks Dolly 15k instruction dataset",
+                "tags": ["instruction", "general"],
+                "downloads": 150000,
+                "size": 50_000_000,
+                "license": "cc-by-sa-3.0",
+            },
+            {
+                "id": "nvidia/HelpSteer",
+                "description": "HelpSteer: 36K helpfulness preferences",
+                "tags": ["preference", "helpfulness"],
+                "downloads": 30000,
+                "size": 100_000_000,
+                "license": "cc-by-4.0",
+            },
+            {
+                "id": "argilla/ultrafeedback-binarized-preferences-cleaned",
+                "description": "Cleaned UltraFeedback preferences",
+                "tags": ["preference", "cleaned"],
+                "downloads": 25000,
+                "size": 150_000_000,
+                "license": "cc-by-4.0",
+            },
+            {
+                "id": "GAIR/lima",
+                "description": "LIMA: Less Is More for Alignment",
+                "tags": ["instruction", "alignment"],
+                "downloads": 40000,
+                "size": 20_000_000,
+                "license": "cc-by-nc-4.0",
+            },
+            {
+                "id": "Open-Orca/SlimOrca-Dedup",
+                "description": "SlimOrca deduplicated instruction data",
+                "tags": ["instruction", "orca"],
+                "downloads": 90000,
+                "size": 1_500_000_000,
+                "license": "cc-by-nc-4.0",
+            },
+            {
+                "id": "mlabonne/chatbot-arena-v2",
+                "description": "Chatbot Arena conversations v2",
+                "tags": ["chat", "preference"],
+                "downloads": 35000,
+                "size": 200_000_000,
+                "license": "cc-by-4.0",
+            },
         ]
         return known_datasets[:max_results]
 
@@ -279,10 +432,24 @@ class HFCatalogScanner:
                     return [lang]
         # Fallback: check tags
         tags = ds.get("tags", [])
-        known_langs = {"en": "en", "hi": "hi", "bn": "bn", "zh": "zh",
-                       "ar": "ar", "es": "es", "fr": "fr", "de": "de",
-                       "ja": "ja", "ko": "ko", "ru": "ru", "pt": "pt",
-                       "ta": "ta", "te": "te", "mr": "mr", "gu": "gu"}
+        known_langs = {
+            "en": "en",
+            "hi": "hi",
+            "bn": "bn",
+            "zh": "zh",
+            "ar": "ar",
+            "es": "es",
+            "fr": "fr",
+            "de": "de",
+            "ja": "ja",
+            "ko": "ko",
+            "ru": "ru",
+            "pt": "pt",
+            "ta": "ta",
+            "te": "te",
+            "mr": "mr",
+            "gu": "gu",
+        }
         for tag in tags:
             tag_lower = tag.lower()
             for code in known_langs:
@@ -298,21 +465,23 @@ class HFCatalogScanner:
         """Convert discovery results to DatasetRecord for registration."""
         records: list[DatasetRecord] = []
         for r in results:
-            records.append(DatasetRecord(
-                id=f"hf_{r.dataset_id.replace('/', '_')}",
-                name=r.dataset_id.split("/")[-1] if "/" in r.dataset_id else r.dataset_id,
-                source="huggingface",
-                url=r.url,
-                size_bytes=r.size_bytes,
-                estimated_records=0,
-                languages=r.languages or ["en"],
-                domains=[domain],
-                modalities=["text"],
-                license="CC-BY" if "cc" in r.license.lower() else "MIT",
-                priority="medium",
-                quality_score=0.5,
-                description=r.description,
-            ))
+            records.append(
+                DatasetRecord(
+                    id=f"hf_{r.dataset_id.replace('/', '_')}",
+                    name=r.dataset_id.split("/")[-1] if "/" in r.dataset_id else r.dataset_id,
+                    source="huggingface",
+                    url=r.url,
+                    size_bytes=r.size_bytes,
+                    estimated_records=0,
+                    languages=r.languages or ["en"],
+                    domains=[domain],
+                    modalities=["text"],
+                    license="CC-BY" if "cc" in r.license.lower() else "MIT",
+                    priority="medium",
+                    quality_score=0.5,
+                    description=r.description,
+                )
+            )
         return records
 
 

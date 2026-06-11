@@ -20,6 +20,7 @@ from src.training.indra_prompt import TRAINING_GENERATION_PROMPT
 
 logger = logging.getLogger(__name__)
 
+
 class SyntheticGenerator:
     def __init__(self, output_dir: str = "data/training/synthetic"):
         self.output_dir = Path(output_dir)
@@ -57,15 +58,12 @@ class SyntheticGenerator:
                     self.key_manager.report_error(provider, api_key)
                     continue
 
-                headers = {
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                }
+                headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
                 payload = {
                     "model": models.get(provider, "gpt-4o-mini"),
                     "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.7
+                    "temperature": 0.7,
                 }
 
                 r = requests.post(url, headers=headers, json=payload, timeout=20)
@@ -105,8 +103,7 @@ class SyntheticGenerator:
 
     async def run(self, total_examples: int = 100):
         """Run highly parallel generation loop"""
-        domains = ["math", "science", "engineering", "medicine", "law",
-                   "business", "arts", "language", "ai", "india"]
+        domains = ["math", "science", "engineering", "medicine", "law", "business", "arts", "language", "ai", "india"]
 
         generated = []
         batch_size = 5
@@ -133,11 +130,11 @@ class SyntheticGenerator:
 
     def _save(self, data: list[dict]):
         out_path = self.output_dir / "synthetic_dataset.json"
-        with open(out_path, 'w', encoding='utf-8') as f:
+        with open(out_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     gen = SyntheticGenerator()
     asyncio.run(gen.run(500))  # Test run
-

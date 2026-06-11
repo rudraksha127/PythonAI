@@ -28,6 +28,7 @@ class CloudConfig:
     For actual cloud integration, use the 'cloud' module's get_cloud_config().
     This dataclass holds Forge AI's opinionated defaults for the config file.
     """
+
     enabled: bool = False
     app_url: str = "http://localhost:3000"
     allow_signups: bool = True
@@ -37,6 +38,7 @@ class CloudConfig:
 @dataclass
 class InferenceConfig:
     """Inference engine configuration."""
+
     backend: str = "ollama"  # ollama, vllm, sglang, openai, anthropic
     url: str = "http://localhost:11434"
     model: str = "qwen2.5-coder:7b"
@@ -53,6 +55,7 @@ class InferenceConfig:
 @dataclass
 class TrainingConfig:
     """Training pipeline configuration."""
+
     base_model: str = "Qwen/Qwen2.5-Coder-7B-Instruct"
     lora_rank: int = 16
     lora_alpha: int = 32
@@ -76,6 +79,7 @@ class TrainingConfig:
 @dataclass
 class RAGConfig:
     """RAG engine configuration."""
+
     chunk_size: int = 2000  # tokens
     chunk_overlap: int = 200  # tokens
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
@@ -95,6 +99,7 @@ class RAGConfig:
 @dataclass
 class CaptureConfig:
     """Capture engine configuration."""
+
     db_path: str = "~/.forgeai/signals.db"
     encryption_key: str | None = None  # Auto-generated from machine ID if None
     project_name: str = "default"
@@ -107,20 +112,20 @@ class CaptureConfig:
 @dataclass
 class AgentConfig:
     """Agent orchestration configuration."""
+
     orchestrator: str = "hermes-agent"
     skills_path: str = "~/.forgeai/skills"
     max_iterations: int = 10
     timeout_seconds: int = 300
 
     # Available agents
-    agents: list[str] = field(default_factory=lambda: [
-        "code", "debug", "docs", "teacher", "retrieval"
-    ])
+    agents: list[str] = field(default_factory=lambda: ["code", "debug", "docs", "teacher", "retrieval"])
 
 
 @dataclass
 class PathsConfig:
     """File system paths configuration."""
+
     models_dir: str = "~/.forgeai/models"
     adapters_dir: str = "~/.forgeai/adapters"
     data_dir: str = "~/.forgeai/data"
@@ -133,6 +138,7 @@ class PathsConfig:
 @dataclass
 class LoggingConfig:
     """Logging configuration."""
+
     level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
     format: str = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
     file_path: str | None = "~/.forgeai/logs/forgeai.log"
@@ -143,6 +149,7 @@ class LoggingConfig:
 @dataclass
 class ForgeAIConfig:
     """Master configuration for the entire ForgeAI ecosystem."""
+
     version: str = "2.0.0"
 
     # Sub-configs
@@ -156,12 +163,14 @@ class ForgeAIConfig:
     logging: LoggingConfig = field(default_factory=LoggingConfig)
 
     # Ecosystem
-    ecosystem: dict[str, str] = field(default_factory=lambda: {
-        "core_engine": "PythonAI",
-        "agent_framework": "hermes-agent",
-        "cli_interface": "open-claude",
-        "dashboard": "Rudra-bots",
-    })
+    ecosystem: dict[str, str] = field(
+        default_factory=lambda: {
+            "core_engine": "PythonAI",
+            "agent_framework": "hermes-agent",
+            "cli_interface": "open-claude",
+            "dashboard": "Rudra-bots",
+        }
+    )
 
     @classmethod
     def from_file(cls, path: str | Path | None = None) -> ForgeAIConfig:
@@ -225,7 +234,7 @@ class ForgeAIConfig:
             config.ecosystem.update(data["ecosystem"])
 
         # Apply environment variable overrides
-        config.    _apply_env_overrides()
+        config._apply_env_overrides()
 
         return config
 
@@ -236,7 +245,11 @@ class ForgeAIConfig:
         config.cloud.enabled = os.getenv("FORGEAI_CLOUD_ENABLED", "").lower() in ("1", "true", "yes")
         config.cloud.app_url = os.getenv("FORGEAI_APP_URL", "http://localhost:3000")
         config.cloud.allow_signups = os.getenv("FORGEAI_ALLOW_SIGNUPS", "true").lower() in ("1", "true", "yes")
-        config.cloud.require_subscription = os.getenv("FORGEAI_REQUIRE_SUBSCRIPTION", "").lower() in ("1", "true", "yes")
+        config.cloud.require_subscription = os.getenv("FORGEAI_REQUIRE_SUBSCRIPTION", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
         config._apply_env_overrides()
         return config
 

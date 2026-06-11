@@ -87,11 +87,31 @@ def _extract_concepts(text: str) -> list[str]:
 
     # Python keywords and builtins
     python_keywords = {
-        "async", "await", "class", "def", "import", "from", "return",
-        "yield", "lambda", "decorator", "generator", "iterator",
-        "exception", "context manager", "metaclass", "descriptor",
-        "property", "staticmethod", "classmethod", "abc",
-        "dataclass", "namedtuple", "enum", "typing", "protocol",
+        "async",
+        "await",
+        "class",
+        "def",
+        "import",
+        "from",
+        "return",
+        "yield",
+        "lambda",
+        "decorator",
+        "generator",
+        "iterator",
+        "exception",
+        "context manager",
+        "metaclass",
+        "descriptor",
+        "property",
+        "staticmethod",
+        "classmethod",
+        "abc",
+        "dataclass",
+        "namedtuple",
+        "enum",
+        "typing",
+        "protocol",
     }
     text_lower = text.lower()
     for kw in python_keywords:

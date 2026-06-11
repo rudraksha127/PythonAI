@@ -29,9 +29,9 @@ from pathlib import Path
 def cmd_capture(args):
     """Capture engine commands."""
     from src.learning.capture_engine import CaptureEngine
-    
+
     engine = CaptureEngine()
-    
+
     if args.action == "stats":
         stats = engine.get_statistics()
         print(json.dumps(stats, indent=2))
@@ -41,15 +41,17 @@ def cmd_capture(args):
     elif args.action == "rate":
         rates = engine.get_acceptance_rate(args.days)
         for r in rates:
-            print(f"{r['date']}: {r['acceptance_rate']:.1f}% ({r['accepts']}A/{r['rejects']}R/{r['edits']}E)")
+            print(
+                f"{r['date']}: {r['acceptance_rate']:.1f}% ({r['accepts']}A/{r['rejects']}R/{r['edits']}E)"
+            )
 
 
 def cmd_rag(args):
     """RAG engine commands."""
     from src.rag.cast_chunker import CastChunker
-    
+
     chunker = CastChunker()
-    
+
     if args.action == "index":
         path = Path(args.path)
         if path.is_file():
@@ -59,9 +61,10 @@ def cmd_rag(args):
         else:
             print(f"Error: {path} not found")
             sys.exit(1)
-        
+
         if args.output:
             import json
+
             Path(args.output).parent.mkdir(parents=True, exist_ok=True)
             with open(args.output, "w") as f:
                 json.dump([c.to_dict() for c in chunks], f, indent=2)
@@ -75,22 +78,23 @@ def cmd_rag(args):
 def cmd_train(args):
     """Training commands."""
     from src.config import get_config
-    
+
     config = get_config()
-    
+
     if args.sdft:
         print("Starting SDFT training...")
         from src.training.sdft_trainer import SDFTTrainer
-        
+
         trainer = SDFTTrainer(
             model_name=config.training.base_model,
             lora_rank=config.training.lora_rank,
             learning_rate=config.training.learning_rate,
         )
-        
+
         # Load training data
         if args.data:
             import json
+
             examples = []
             with open(args.data) as f:
                 for line in f:
@@ -103,36 +107,37 @@ def cmd_train(args):
         else:
             print("No training data specified. Use --data <file>")
             sys.exit(1)
-        
+
         # Load replay buffers
         if args.replay:
             trainer.replay_buffer.load_from_disk(
                 args.replay,
                 args.foundational or (Path(args.replay).parent / "foundational.jsonl"),
             )
-        
+
         metrics = trainer.train(
             current_examples=[],  # Would need TrainingExample conversion
             output_dir=args.output or "checkpoints/forge_model",
             num_epochs=args.epochs,
             batch_size=config.training.batch_size,
         )
-        
+
         print(json.dumps(metrics, indent=2))
-    
+
     elif args.grpo:
         print("Starting GRPO training...")
         from src.training.grpo_trainer import GRPOTrainer, GRPOPair
-        
+
         trainer = GRPOTrainer(
             model_name=args.model or config.training.base_model,
             lora_rank=config.training.lora_rank,
             learning_rate=config.training.grpo_learning_rate,
             kl_coef=config.training.grpo_kl_coef,
         )
-        
+
         if args.data:
             import json
+
             pairs = []
             with open(args.data) as f:
                 for line in f:
@@ -143,7 +148,7 @@ def cmd_train(args):
                         except (json.JSONDecodeError, KeyError):
                             pass
             print(f"Loaded {len(pairs)} GRPO pairs")
-            
+
             metrics = trainer.train(
                 pairs=pairs,
                 output_dir=args.output or "checkpoints/forge_grpo",
@@ -160,9 +165,10 @@ def cmd_agent(args):
     """Agent commands."""
     print(f"Agent mode: {args.task}")
     print("Connecting to Hermes-Agent...")
-    
+
     try:
         from src.integration.hermes_bridge import call_hermes_agent
+
         result = call_hermes_agent(args.task)
         print(json.dumps(result, indent=2))
     except ImportError:
@@ -173,7 +179,7 @@ def cmd_agent(args):
 def cmd_config(args):
     """Configuration commands."""
     from src.config import ForgeAIConfig, get_config
-    
+
     if args.action == "show":
         config = get_config()
         print(json.dumps(config.to_dict(), indent=2))
@@ -195,9 +201,10 @@ def cmd_dashboard(args):
     """Dashboard commands."""
     print("Starting ForgeAI Dashboard...")
     print("Opening web interface at http://localhost:8501")
-    
+
     try:
         from src.webui.app import run_dashboard
+
         run_dashboard()
     except ImportError:
         print("Dashboard not available. Install streamlit: pip install streamlit")
@@ -220,24 +227,26 @@ Examples:
 Research: MIT SEAL · cAST (EMNLP 2025) · GRPO (DeepSeek 2025) · SDFT (MIT 2026)
         """,
     )
-    
+
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
-    
+
     # Capture command
     capture_parser = subparsers.add_parser("capture", help="Capture engine commands")
-    capture_parser.add_argument("action", choices=["stats", "export", "rate"], help="Action")
+    capture_parser.add_argument(
+        "action", choices=["stats", "export", "rate"], help="Action"
+    )
     capture_parser.add_argument("--output", "-o", help="Output file")
     capture_parser.add_argument("--format", default="jsonl", choices=["jsonl", "json"])
     capture_parser.add_argument("--days", type=int, default=7)
     capture_parser.set_defaults(func=cmd_capture)
-    
+
     # RAG command
     rag_parser = subparsers.add_parser("rag", help="RAG engine commands")
     rag_parser.add_argument("action", choices=["index", "search"], help="Action")
     rag_parser.add_argument("path", nargs="?", help="File or directory to index")
     rag_parser.add_argument("--output", "-o", help="Output file")
     rag_parser.set_defaults(func=cmd_rag)
-    
+
     # Train command
     train_parser = subparsers.add_parser("train", help="Training commands")
     train_parser.add_argument("--sdft", action="store_true", help="Use SDFT training")
@@ -249,27 +258,29 @@ Research: MIT SEAL · cAST (EMNLP 2025) · GRPO (DeepSeek 2025) · SDFT (MIT 202
     train_parser.add_argument("--model", help="Base model")
     train_parser.add_argument("--epochs", type=int, default=1)
     train_parser.set_defaults(func=cmd_train)
-    
+
     # Agent command
     agent_parser = subparsers.add_parser("agent", help="Run AI agent")
     agent_parser.add_argument("task", help="Task description")
     agent_parser.set_defaults(func=cmd_agent)
-    
+
     # Config command
     config_parser = subparsers.add_parser("config", help="Configuration commands")
-    config_parser.add_argument("action", choices=["show", "init", "paths"], help="Action")
+    config_parser.add_argument(
+        "action", choices=["show", "init", "paths"], help="Action"
+    )
     config_parser.set_defaults(func=cmd_config)
-    
+
     # Dashboard command
     dashboard_parser = subparsers.add_parser("dashboard", help="Start dashboard")
     dashboard_parser.set_defaults(func=cmd_dashboard)
-    
+
     args = parser.parse_args()
-    
+
     if args.command is None:
         parser.print_help()
         sys.exit(0)
-    
+
     args.func(args)
 
 

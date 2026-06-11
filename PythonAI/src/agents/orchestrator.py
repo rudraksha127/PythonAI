@@ -20,6 +20,7 @@ When answering directly:
 3. If a task involves code, delegate to Code Agent first, then verify with Debug Agent
 4. Support Hinglish (Hindi + English) if the user writes in Hindi"""
 
+
 def run_orchestrator_agent(task: GenerationTask, session_id: str = "default") -> dict[str, Any]:
     # Search memory for past context
     past_context = memory.search_memory(session_id, task.prompt)
@@ -27,10 +28,23 @@ def run_orchestrator_agent(task: GenerationTask, session_id: str = "default") ->
 
     # 1. Routing decision
     prompt_lower = task.prompt.lower()
-    is_coding_task = any(kw in prompt_lower for kw in [
-        "code", "function", "script", "bug", "implement", "class", "def ",
-        "import", "write a", "build a", "create a program", "fix this"
-    ])
+    is_coding_task = any(
+        kw in prompt_lower
+        for kw in [
+            "code",
+            "function",
+            "script",
+            "bug",
+            "implement",
+            "class",
+            "def ",
+            "import",
+            "write a",
+            "build a",
+            "create a program",
+            "fix this",
+        ]
+    )
 
     if is_coding_task:
         logger.info("[Orchestrator] Routing to Code Agent (parallel race)...")
@@ -39,8 +53,8 @@ def run_orchestrator_agent(task: GenerationTask, session_id: str = "default") ->
         logger.info("[Orchestrator] Code generated. Routing to Debug Agent for verification...")
         verify_task = GenerationTask(
             prompt=f"Review and fix any potential issues in this code. "
-                   f"If perfect, just return the code with 'LGTM ✓'.\n"
-                   f"Code:\n{code_result}\n\nOriginal Request: {task.prompt}"
+            f"If perfect, just return the code with 'LGTM ✓'.\n"
+            f"Code:\n{code_result}\n\nOriginal Request: {task.prompt}"
         )
         final_result = run_debug_agent(verify_task).get("output", "")
 

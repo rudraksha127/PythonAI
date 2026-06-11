@@ -53,9 +53,7 @@ def get_peps() -> list[dict[str, str]]:
 
             soup = BeautifulSoup(r.text, "html.parser")
             title = soup.find("h1")
-            body = soup.find("section", id="pep-content") or soup.find(
-                "div", class_="pep-content"
-            )
+            body = soup.find("section", id="pep-content") or soup.find("div", class_="pep-content")
 
             if title and body:
                 peps.append(
@@ -261,8 +259,9 @@ ERROR_PATTERNS: list[dict[str, str]] = [
 PYDOC_BASE = "https://docs.python.org/3"
 
 
-def _crawl_index_page(index_url: str, source_key: str, category: str,
-                      link_filter: callable = None) -> list[dict[str, str]]:
+def _crawl_index_page(
+    index_url: str, source_key: str, category: str, link_filter: callable = None
+) -> list[dict[str, str]]:
     """
     Generic helper: fetch an index page, find all internal links,
     download each sub-page, and return chunks.
@@ -332,15 +331,17 @@ def _crawl_index_page(index_url: str, source_key: str, category: str,
                     if code and len(code) > 20:
                         codes.append(code[:500])
 
-                chunks.append({
-                    "id": f"{source_key}_{url.split('/')[-1].replace('.html', '')}",
-                    "title": title_text,
-                    "text": body_text,
-                    "type": "python_doc",
-                    "category": category,
-                    "version": "3.x",
-                    "codes": codes[:5],
-                })
+                chunks.append(
+                    {
+                        "id": f"{source_key}_{url.split('/')[-1].replace('.html', '')}",
+                        "title": title_text,
+                        "text": body_text,
+                        "type": "python_doc",
+                        "category": category,
+                        "version": "3.x",
+                        "codes": codes[:5],
+                    }
+                )
             cache[cache_key] = time.time()
         except requests.RequestException:
             continue
@@ -466,15 +467,17 @@ def get_python_glossary() -> list[dict[str, str]]:
         if body:
             cache["glossary"] = time.time()
             save_cache(cache)
-            return [{
-                "id": "glossary",
-                "title": "Python Glossary",
-                "text": body.get_text("\n", strip=True)[:4000],
-                "type": "python_doc",
-                "category": "python_glossary",
-                "version": "3.x",
-                "codes": [],
-            }]
+            return [
+                {
+                    "id": "glossary",
+                    "title": "Python Glossary",
+                    "text": body.get_text("\n", strip=True)[:4000],
+                    "type": "python_doc",
+                    "category": "python_glossary",
+                    "version": "3.x",
+                    "codes": [],
+                }
+            ]
     except requests.RequestException as e:
         print(f"  [WARN] Failed to fetch glossary: {e}")
 

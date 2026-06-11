@@ -21,6 +21,7 @@ from src.training.comparison import (
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def sample_results() -> list[AdapterResult]:
     return [
@@ -60,6 +61,7 @@ def sample_report(sample_results) -> ComparisonReport:
 
 
 # ── AdapterResult & ComparisonReport ──────────────────────────────────
+
 
 class TestAdapterResult:
     def test_defaults(self) -> None:
@@ -107,6 +109,7 @@ class TestComparisonReport:
 
 # ── compute_bleu ──────────────────────────────────────────────────────
 
+
 class TestComputeBleu:
     def test_exact_match(self) -> None:
         score = compute_bleu("hello world", "hello world")
@@ -126,6 +129,7 @@ class TestComputeBleu:
 
 
 # ── load_adapter_config ───────────────────────────────────────────────
+
 
 class TestLoadAdapterConfig:
     def test_missing_file(self) -> None:
@@ -147,6 +151,7 @@ class TestLoadAdapterConfig:
 
 
 # ── discover_adapters ─────────────────────────────────────────────────
+
 
 class TestDiscoverAdapters:
     def test_no_checkpoints_dir(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -178,6 +183,7 @@ class TestDiscoverAdapters:
 
 
 # ── generate_html_report ──────────────────────────────────────────────
+
 
 class TestGenerateHtmlReport:
     def test_creates_html_file(self, sample_report: ComparisonReport) -> None:
@@ -224,6 +230,7 @@ class TestGenerateHtmlReport:
 
 
 # ── run_comparison ────────────────────────────────────────────────────
+
 
 class TestRunComparison:
     def test_no_adapters(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -287,8 +294,10 @@ class TestRunComparison:
 
 # ── main CLI ──────────────────────────────────────────────────────────
 
+
 class TestMain:
     def test_importable(self) -> None:
         """Just verify the module can be imported cleanly."""
         import src.training.comparison  # noqa: F811
+
         assert hasattr(src.training.comparison, "main")

@@ -14,8 +14,8 @@ import time
 from pathlib import Path
 
 # Fix Windows console encoding
-if hasattr(sys.stdout, 'buffer'):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 import torch
 from loguru import logger
@@ -26,6 +26,7 @@ from forge_config import ForgeConfig
 
 try:
     from peft import PeftModel
+
     HAS_PEFT = True
 except ImportError:
     HAS_PEFT = False
@@ -66,7 +67,10 @@ BENCHMARKS = {
     "reasoning": [
         {"q": "If I have 5 apples and give 2 away, how many do I have left?", "check": ["3", "three"]},
         {"q": "What comes next: 2, 4, 8, 16, ?", "check": ["32"]},
-        {"q": "A train leaves at 3 PM and travels for 2 hours. What time does it arrive?", "check": ["5", "5 pm", "5pm"]},
+        {
+            "q": "A train leaves at 3 PM and travels for 2 hours. What time does it arrive?",
+            "check": ["5", "5 pm", "5pm"],
+        },
         {"q": "What is the next number: 1, 1, 2, 3, 5, 8, ?", "check": ["13"]},
         {"q": "If all cats are mammals, and all mammals are animals, are all cats animals?", "check": ["yes", "true"]},
     ],
@@ -173,12 +177,14 @@ class ForgeEvaluator:
                 if passed:
                     correct += 1
 
-                category_results.append({
-                    "question": prompt,
-                    "output": output[:200],
-                    "passed": passed,
-                    "latency_ms": round(latency * 1000),
-                })
+                category_results.append(
+                    {
+                        "question": prompt,
+                        "output": output[:200],
+                        "passed": passed,
+                        "latency_ms": round(latency * 1000),
+                    }
+                )
 
             accuracy = correct / len(tests) * 100
             all_results[category] = {
@@ -218,19 +224,26 @@ class ForgeEvaluator:
             return 0.0
 
         overall = results.get("overall", {})
-        console.print(f"\n{'='*50}")
-        console.print(f"[bold]OVERALL SCORE: {overall.get('accuracy', 0):.1f}% "
-                      f"({overall.get('correct', 0)}/{overall.get('total', 0)})[/bold]")
-        console.print(f"{'='*50}")
+        console.print(f"\n{'=' * 50}")
+        console.print(
+            f"[bold]OVERALL SCORE: {overall.get('accuracy', 0):.1f}% "
+            f"({overall.get('correct', 0)}/{overall.get('total', 0)})[/bold]"
+        )
+        console.print(f"{'=' * 50}")
 
         # Save results
         results_file = Path(self.cfg.final_model_dir) / "evaluation_results.json"
-        with open(results_file, 'w', encoding='utf-8') as f:
-            json.dump({
-                "overall_accuracy": overall.get("accuracy", 0),
-                "categories": {k: v for k, v in results.items() if k != "overall"},
-                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            }, f, indent=2, ensure_ascii=False)
+        with open(results_file, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "overall_accuracy": overall.get("accuracy", 0),
+                    "categories": {k: v for k, v in results.items() if k != "overall"},
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                },
+                f,
+                indent=2,
+                ensure_ascii=False,
+            )
         logger.success(f"Results saved: {results_file}")
 
         return overall.get("accuracy", 0)

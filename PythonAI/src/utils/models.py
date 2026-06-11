@@ -123,9 +123,7 @@ def dataset_profile(path: Path | None = None) -> dict[str, Any]:
     categories = Counter(str(row.get("category", "")) for row in rows if isinstance(row, dict))
     versions = Counter(str(row.get("version", "")) for row in rows if isinstance(row, dict))
     lengths = [
-        len(str(row.get("instruction", ""))) + len(str(row.get("output", "")))
-        for row in rows
-        if isinstance(row, dict)
+        len(str(row.get("instruction", ""))) + len(str(row.get("output", ""))) for row in rows if isinstance(row, dict)
     ]
 
     return {

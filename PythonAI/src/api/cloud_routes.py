@@ -60,6 +60,7 @@ router = APIRouter(prefix="/api/cloud", tags=["cloud"])
 # Pydantic Models
 # ═══════════════════════════════════════
 
+
 class SignUpRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
@@ -77,12 +78,12 @@ class RefreshRequest(BaseModel):
 
 class CheckoutRequest(BaseModel):
     plan_tier: str = Field(default="pro", pattern="^(pro|team)$")
-    success_url: Optional[str] = None
-    cancel_url: Optional[str] = None
+    success_url: str | None = None
+    cancel_url: str | None = None
 
 
 class PortalRequest(BaseModel):
-    return_url: Optional[str] = None
+    return_url: str | None = None
 
 
 class ProjectSyncRequest(BaseModel):
@@ -103,6 +104,7 @@ class SignalSyncRequest(BaseModel):
 # Auth Dependency
 # ═══════════════════════════════════════
 
+
 async def _get_user(authorization: str = Header(default="")) -> CloudUser:
     """FastAPI dependency to extract authenticated user from Bearer token."""
     if not authorization:
@@ -121,6 +123,7 @@ async def _get_user(authorization: str = Header(default="")) -> CloudUser:
 # ═══════════════════════════════════════
 # Auth Endpoints
 # ═══════════════════════════════════════
+
 
 @router.get("/auth/status")
 async def cloud_auth_status():
@@ -199,6 +202,7 @@ async def cloud_me(user: CloudUser = Depends(_get_user)):
 # Billing Endpoints
 # ═══════════════════════════════════════
 
+
 @router.get("/billing/prices")
 async def billing_prices():
     """List all available pricing plans with prices."""
@@ -263,6 +267,7 @@ async def billing_subscription(user: CloudUser = Depends(_get_user)):
 # Webhook Endpoints
 # ═══════════════════════════════════════
 
+
 @router.post("/webhooks/stripe")
 async def stripe_webhook(request: Request):
     """Handle Stripe webhook events (checkout, subscription, invoice)."""
@@ -323,6 +328,7 @@ async def stripe_webhook(request: Request):
 # Cloud Data Endpoints
 # ═══════════════════════════════════════
 
+
 @router.get("/projects")
 async def cloud_list_projects(user: CloudUser = Depends(_get_user)):
     """List user's cloud-synced projects."""
@@ -336,15 +342,18 @@ async def cloud_sync_project(
     user: CloudUser = Depends(_get_user),
 ):
     """Sync a local project to the cloud."""
-    project_id = await CloudDB.upsert_project(user.id, {
-        "id": request.project_id,
-        "name": request.name,
-        "repo_path": request.repo_path,
-        "languages": request.languages,
-        "training_phase": request.training_phase,
-        "base_model": request.base_model,
-        "training_schedule": request.training_schedule,
-    })
+    project_id = await CloudDB.upsert_project(
+        user.id,
+        {
+            "id": request.project_id,
+            "name": request.name,
+            "repo_path": request.repo_path,
+            "languages": request.languages,
+            "training_phase": request.training_phase,
+            "base_model": request.base_model,
+            "training_schedule": request.training_schedule,
+        },
+    )
     if not project_id:
         raise HTTPException(status_code=500, detail="Failed to sync project")
     return {"project_id": project_id, "synced": True}
@@ -398,6 +407,7 @@ async def cloud_sync_signals(
 # ═══════════════════════════════════════
 # Status Endpoint
 # ═══════════════════════════════════════
+
 
 @router.get("/status")
 async def cloud_status():

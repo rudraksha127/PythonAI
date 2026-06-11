@@ -1,4 +1,5 @@
 """Workspace API — browse server directories to pick a tool workspace folder."""
+
 import os
 from fastapi import APIRouter, Request, HTTPException, Query
 
@@ -21,7 +22,9 @@ def setup_workspace_routes():
         """
         owner = get_current_user(request)
         if not owner_is_admin_or_single_user(owner):
-            raise HTTPException(status_code=403, detail="Workspace browsing is admin-only")
+            raise HTTPException(
+                status_code=403, detail="Workspace browsing is admin-only"
+            )
 
         # Resolve symlinks so the reported path is canonical and the UI navigates
         # real directories (defends against symlink games in displayed paths).
@@ -37,10 +40,17 @@ def setup_workspace_routes():
                         # Don't follow symlinks when classifying — a symlinked
                         # dir is skipped rather than letting the browser wander
                         # off via a link. Hidden entries are omitted.
-                        if entry.is_dir(follow_symlinks=False) and not entry.name.startswith("."):
+                        if entry.is_dir(
+                            follow_symlinks=False
+                        ) and not entry.name.startswith("."):
                             # Build the child path server-side with os.path.join
                             # so it's correct on Windows (backslashes) and Linux.
-                            dirs.append({"name": entry.name, "path": os.path.join(target, entry.name)})
+                            dirs.append(
+                                {
+                                    "name": entry.name,
+                                    "path": os.path.join(target, entry.name),
+                                }
+                            )
                     except OSError:
                         continue
         except (PermissionError, OSError):

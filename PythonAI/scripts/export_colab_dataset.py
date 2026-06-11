@@ -3,6 +3,7 @@
 Usage:
     python scripts/export_colab_dataset.py
 """
+
 from __future__ import annotations
 
 import json
@@ -52,8 +53,7 @@ def main() -> None:
 
     # Create a smaller sample for quick testing
     sample_path = OUTPUT / "training_sample_500.jsonl"
-    with jsonl_path.open("r", encoding="utf-8") as f_in, \
-         sample_path.open("w", encoding="utf-8") as f_out:
+    with jsonl_path.open("r", encoding="utf-8") as f_in, sample_path.open("w", encoding="utf-8") as f_out:
         for i, line in enumerate(f_in):
             if i >= 500:
                 break
@@ -62,6 +62,7 @@ def main() -> None:
 
     # Create dataset statistics
     import collections
+
     cats = collections.Counter()
     lengths_instr = []
     lengths_out = []
@@ -99,7 +100,7 @@ def main() -> None:
     readme_path = OUTPUT / "README.md"
     readme_content = f"""# Colab Training Dataset Export
 
-Exported on: {__import__('datetime').datetime.now().isoformat()}
+Exported on: {__import__("datetime").datetime.now().isoformat()}
 
 ## Files
 
@@ -117,19 +118,20 @@ Exported on: {__import__('datetime').datetime.now().isoformat()}
 
 ## Dataset Stats
 
-- Total rows: {stats['total_rows']:,}
-- Valid rows: {stats['valid_rows']:,}
-- Avg instruction length: {stats['avg_instruction_chars']} chars
-- Avg output length: {stats['avg_output_chars']} chars
-- Code examples: {stats['code_examples_pct']}%
-- Recommended max_seq_length: {stats['recommended_max_seq_length']}
+- Total rows: {stats["total_rows"]:,}
+- Valid rows: {stats["valid_rows"]:,}
+- Avg instruction length: {stats["avg_instruction_chars"]} chars
+- Avg output length: {stats["avg_output_chars"]} chars
+- Code examples: {stats["code_examples_pct"]}%
+- Recommended max_seq_length: {stats["recommended_max_seq_length"]}
 """
     readme_path.write_text(readme_content, encoding="utf-8")
     print(f"README saved to {readme_path}")
 
     # Create HuggingFace upload script
     hf_script = OUTPUT / "upload_to_hf.py"
-    hf_script.write_text(f'''"""Upload the training dataset to HuggingFace Hub so Colab can load it directly.
+    hf_script.write_text(
+        f'''"""Upload the training dataset to HuggingFace Hub so Colab can load it directly.
 
 Steps:
 1. Set your HF token:  huggingface-cli login
@@ -155,7 +157,9 @@ HF_REPO = "YOUR_HF_USERNAME/pythonai-training-data"
 
 dataset_dict.push_to_hub(HF_REPO, private=False)
 print(f"Uploaded {{len(rows):,}} rows to https://huggingface.co/datasets/{{HF_REPO}}")
-''', encoding="utf-8")
+''',
+        encoding="utf-8",
+    )
 
     print(f"Upload script created: {hf_script}")
     print(f"\n[OK] Export complete! Files in: {OUTPUT}")

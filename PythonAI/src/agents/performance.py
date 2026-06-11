@@ -12,6 +12,7 @@ Your job:
 5. Use tools like cProfile, timeit, memory_profiler patterns
 Always quantify improvements with numbers."""
 
+
 def run_performance_agent(task: GenerationTask) -> dict[str, Any]:
     prompt = f"Analyze and optimize:\n\n{task.prompt}"
     try:

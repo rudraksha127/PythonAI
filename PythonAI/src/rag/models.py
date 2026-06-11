@@ -67,6 +67,7 @@ RECOMMENDED_MODELS: dict[str, dict[str, str]] = {
 #  I/O helpers
 # ═══════════════════════════════════════
 
+
 def _ensure_dir() -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -99,6 +100,7 @@ def _save(data: dict[str, dict[str, str]]) -> None:
 #  Public API
 # ═══════════════════════════════════════
 
+
 def list_configured_models() -> dict[str, dict[str, str]]:
     """Return {model_name: metadata} for all configured models.
 
@@ -118,7 +120,9 @@ def list_ollama_models() -> list[str]:
     try:
         result = subprocess.run(
             ["ollama", "list"],
-            capture_output=True, text=True, timeout=20,
+            capture_output=True,
+            text=True,
+            timeout=20,
         )
         if result.returncode != 0:
             return []
@@ -140,7 +144,9 @@ def get_ollama_model_info(model_name: str) -> dict[str, Any] | None:
     try:
         result = subprocess.run(
             ["ollama", "show", model_name],
-            capture_output=True, text=True, timeout=15,
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
         if result.returncode != 0:
             return None
@@ -221,7 +227,9 @@ def resolve_model(
         try:
             result = subprocess.run(
                 ["ollama", "pull", model_name],
-                capture_output=True, text=True, timeout=300,
+                capture_output=True,
+                text=True,
+                timeout=300,
             )
             if result.returncode == 0:
                 return model_name

@@ -33,19 +33,20 @@ from typing import Any
 
 try:
     import torch
-    import torch.nn.functional as F
     from torch.utils.data import DataLoader, Dataset
+
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
 
 try:
-    from peft import LoraConfig, PeftModel, TaskType, get_peft_model
+    from peft import LoraConfig, TaskType, get_peft_model
     from transformers import (
         AutoModelForCausalLM,
         AutoTokenizer,
         BitsAndBytesConfig,
     )
+
     HAS_TRANSFORMERS = True
 except ImportError:
     HAS_TRANSFORMERS = False
@@ -54,9 +55,10 @@ except ImportError:
 @dataclass
 class GRPOPair:
     """A pair of accepted and rejected responses for the same prompt."""
-    prompt: str                    # The code context/instruction
-    accepted_response: str         # Developer accepted this
-    rejected_response: str         # Developer rejected this (or AI alternative)
+
+    prompt: str  # The code context/instruction
+    accepted_response: str  # Developer accepted this
+    rejected_response: str  # Developer rejected this (or AI alternative)
 
     # Optional verifiable rewards
     accepted_test_passed: bool = False
@@ -107,7 +109,7 @@ def compute_reward(
 ) -> float:
     """
     Compute verifiable reward for a response.
-    
+
     Reward structure (RLVR):
     - Base acceptance: +1.0 (accepted) or -1.0 (rejected)
     - Test passed: +2.0 (verifiable correctness)
@@ -196,7 +198,7 @@ class GRPODataset(Dataset):
 class GRPOTrainer:
     """
     GRPO (Group Relative Policy Optimization) trainer.
-    
+
     Implements 2-GRPO: minimum viable GRPO with just 2 responses per prompt
     (one accepted, one rejected). This is computationally efficient while
     maintaining the core RL benefits.
@@ -218,7 +220,7 @@ class GRPOTrainer:
         self.lora_alpha = lora_alpha
         self.learning_rate = learning_rate
         self.kl_coef = kl_coef  # KL penalty to prevent mode collapse
-        self.gamma = gamma      # Reward discount factor
+        self.gamma = gamma  # Reward discount factor
         self.max_length = max_length
         self.device = device
 
@@ -299,9 +301,9 @@ class GRPOTrainer:
     ) -> dict[str, float]:
         """
         Compute GRPO loss for a batch of pairs.
-        
+
         GRPO loss = -log(π(a|s)) * A + β * KL(π || π_ref)
-        
+
         Where A is the group-relative advantage:
         A = (r_accepted - mean(r)) / std(r)
         """
@@ -317,10 +319,10 @@ class GRPOTrainer:
 
             # Generate response with current policy
             accepted_ids = torch.tensor(batch["accepted_input_ids"][i], device=self.device).unsqueeze(0)
-            accepted_mask = torch.tensor(batch["accepted_attention_mask"][i], device=self.device).unsqueeze(0)
+            torch.tensor(batch["accepted_attention_mask"][i], device=self.device).unsqueeze(0)
 
             rejected_ids = torch.tensor(batch["rejected_input_ids"][i], device=self.device).unsqueeze(0)
-            rejected_mask = torch.tensor(batch["rejected_attention_mask"][i], device=self.device).unsqueeze(0)
+            torch.tensor(batch["rejected_attention_mask"][i], device=self.device).unsqueeze(0)
 
             # Compute log probabilities
             with torch.no_grad():
@@ -360,18 +362,23 @@ class GRPOTrainer:
             mean_reward = rewards.mean()
             std_reward = rewards.std() + 1e-8  # Avoid division by zero
 
-            A_accepted = (r_accepted - mean_reward) / std_reward
-            A_rejected = (r_rejected - mean_reward) / std_reward
+            adv_accepted = (r_accepted - mean_reward) / std_reward
+            adv_rejected = (r_rejected - mean_reward) / std_reward
 
             # Policy loss (negative because we want to maximize reward)
-            policy_loss = -(
-                accepted_log_probs * A_accepted +
-                rejected_log_probs * A_rejected
-            )
+            policy_loss = -(accepted_log_probs * adv_accepted + rejected_log_probs * adv_rejected)
 
             # KL penalty
-            kl_accepted = torch.exp(ref_accepted_log_probs - accepted_log_probs) - (ref_accepted_log_probs - accepted_log_probs) - 1
-            kl_rejected = torch.exp(ref_rejected_log_probs - rejected_log_probs) - (ref_rejected_log_probs - rejected_log_probs) - 1
+            kl_accepted = (
+                torch.exp(ref_accepted_log_probs - accepted_log_probs)
+                - (ref_accepted_log_probs - accepted_log_probs)
+                - 1
+            )
+            kl_rejected = (
+                torch.exp(ref_rejected_log_probs - rejected_log_probs)
+                - (ref_rejected_log_probs - rejected_log_probs)
+                - 1
+            )
             kl_loss = (kl_accepted + kl_rejected) * self.kl_coef
 
             # Total loss
@@ -410,7 +417,7 @@ class GRPOTrainer:
     ) -> dict[str, Any]:
         """
         Train with GRPO.
-        
+
         Args:
             pairs: List of accept/reject pairs
             model_path: Path to SFT-trained model (from Phase 1)
@@ -421,7 +428,7 @@ class GRPOTrainer:
             save_steps: Save checkpoint every N steps
             logging_steps: Log every N steps
             use_4bit: Use 4-bit quantization
-            
+
         Returns:
             Training metrics
         """
@@ -456,7 +463,7 @@ class GRPOTrainer:
         global_step = 0
         metrics_history = []
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("GRPO TRAINING START")
         print(f"  Model: {model_path or self.model_name}")
         print(f"  Pairs: {len(pairs)}")
@@ -464,7 +471,7 @@ class GRPOTrainer:
         print(f"  Batch size: {batch_size}")
         print(f"  Learning rate: {learning_rate}")
         print(f"  KL coefficient: {self.kl_coef}")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         for epoch in range(num_epochs):
             for batch in dataloader:
@@ -474,11 +481,13 @@ class GRPOTrainer:
                 metrics_history.append(metrics)
 
                 if global_step % logging_steps == 0:
-                    print(f"Step {global_step}: loss={metrics['loss']:.4f}, "
-                          f"policy_loss={metrics['policy_loss']:.4f}, "
-                          f"kl_loss={metrics['kl_loss']:.4f}, "
-                          f"reward_accepted={metrics['mean_reward_accepted']:.2f}, "
-                          f"reward_rejected={metrics['mean_reward_rejected']:.2f}")
+                    print(
+                        f"Step {global_step}: loss={metrics['loss']:.4f}, "
+                        f"policy_loss={metrics['policy_loss']:.4f}, "
+                        f"kl_loss={metrics['kl_loss']:.4f}, "
+                        f"reward_accepted={metrics['mean_reward_accepted']:.2f}, "
+                        f"reward_rejected={metrics['mean_reward_rejected']:.2f}"
+                    )
 
                 if global_step % save_steps == 0 and global_step > 0:
                     checkpoint_dir = output_dir / f"checkpoint-{global_step}"
@@ -506,13 +515,13 @@ class GRPOTrainer:
         with open(output_dir / "grpo_metrics.json", "w") as f:
             json.dump(final_metrics, f, indent=2)
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("GRPO TRAINING COMPLETE")
         print(f"  Final loss: {final_metrics['final_loss']}")
         print(f"  Final policy loss: {final_metrics['final_policy_loss']}")
         print(f"  Final KL loss: {final_metrics['final_kl_loss']}")
         print(f"  Model saved: {output_dir}")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         return final_metrics
 
@@ -524,7 +533,7 @@ def create_grpo_pairs_from_signals(
 ) -> list[GRPOPair]:
     """
     Create GRPO training pairs from capture engine signals.
-    
+
     Strategy:
     - Match accepts with rejects from same file/language
     - Use edits as additional positive examples (final_code vs original suggestion)
@@ -535,9 +544,10 @@ def create_grpo_pairs_from_signals(
     for accept in accept_signals:
         # Find a reject with similar context
         for reject in reject_signals:
-            if (accept.get("language") == reject.get("language") and
-                accept.get("file_path", "").split(".")[-1] == reject.get("file_path", "").split(".")[-1]):
-
+            if (
+                accept.get("language") == reject.get("language")
+                and accept.get("file_path", "").split(".")[-1] == reject.get("file_path", "").split(".")[-1]
+            ):
                 pair = GRPOPair(
                     prompt=accept.get("full_context", accept.get("context_before", "")),
                     accepted_response=accept.get("suggestion", ""),

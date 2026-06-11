@@ -28,6 +28,7 @@ logger = logging.getLogger("pythonai.mcp.server")
 #  MCP Server
 # ═══════════════════════════════════════
 
+
 class MCPServer:
     """MCP protocol server that exposes PythonAI tools.
 
@@ -212,6 +213,7 @@ class MCPServer:
 # ═══════════════════════════════════════
 #  Server Launchers
 # ═══════════════════════════════════════
+
 
 def create_mcp_app(get_tools_fn: Callable[[], list[dict[str, Any]]]) -> MCPServer:
     """Create an MCP server instance with tool discovery function."""

@@ -32,10 +32,12 @@ ENV_VAR_PATTERN = re.compile(r"\$\{([^}:]+)(?::([^}]*))?\}")
 
 def _resolve_env_vars(value: str) -> str:
     """Replace ${VAR} and ${VAR:default} with environment variable values."""
+
     def _replace(match: re.Match) -> str:
         var_name = match.group(1)
         default = match.group(2)
         return os.environ.get(var_name, default) if default else os.environ.get(var_name, match.group(0))
+
     return ENV_VAR_PATTERN.sub(_replace, value)
 
 
@@ -48,10 +50,7 @@ def _resolve_dict(d: dict[str, Any]) -> dict[str, Any]:
         elif isinstance(v, dict):
             resolved[k] = _resolve_dict(v)
         elif isinstance(v, list):
-            resolved[k] = [
-                _resolve_env_vars(item) if isinstance(item, str)
-                else item for item in v
-            ]
+            resolved[k] = [_resolve_env_vars(item) if isinstance(item, str) else item for item in v]
         else:
             resolved[k] = v
     return resolved
@@ -73,12 +72,14 @@ class TrainingConfig:
 
     # ── Data ────────────────────────────────────────────────────
     dataset_path: str = "data/training/training_dataset.json"
-    source_files: list[str] = field(default_factory=lambda: [
-        "training_dataset.json",
-        "python_ultra_dataset_FINAL.json",
-        "raw_chunks_godmode.json",
-        "raw_chunks.json",
-    ])
+    source_files: list[str] = field(
+        default_factory=lambda: [
+            "training_dataset.json",
+            "python_ultra_dataset_FINAL.json",
+            "raw_chunks_godmode.json",
+            "raw_chunks.json",
+        ]
+    )
     max_examples: int = 256
     max_length: int = 512
     validation_split: float = 0.1
@@ -101,13 +102,13 @@ class TrainingConfig:
 
     # ── Checkpointing ───────────────────────────────────────────
     output_dir: str = "checkpoints/local_auto_model"
-    save_strategy: str = "steps"        # "no", "steps", "epoch"
+    save_strategy: str = "steps"  # "no", "steps", "epoch"
     save_steps: int = 25
     save_total_limit: int = 3
     resume_from_checkpoint: str = ""
 
     # ── Evaluation ──────────────────────────────────────────────
-    eval_strategy: str = "steps"        # "no", "steps", "epoch"
+    eval_strategy: str = "steps"  # "no", "steps", "epoch"
     eval_steps: int = 25
 
     # ── Unsloth (Optional — 2x faster QLoRA, 70% less VRAM) ────
@@ -116,8 +117,8 @@ class TrainingConfig:
 
     # ── Advanced ────────────────────────────────────────────────
     gradient_checkpointing: bool = False
-    gradient_clip: float = 0.0          # 0 = disabled
-    early_stopping_patience: int = 0    # 0 = disabled
+    gradient_clip: float = 0.0  # 0 = disabled
+    early_stopping_patience: int = 0  # 0 = disabled
     fp16: bool = True
     bf16: bool = False
 
@@ -148,9 +149,8 @@ class TrainingConfig:
             raise ValueError(f"Unknown lr_scheduler_type: {self.lr_scheduler_type}")
         if self.use_unsloth and not self.load_in_4bit:
             import warnings
-            warnings.warn(
-                "Unsloth is optimized for 4-bit QLoRA. Consider setting --load-in-4bit for best results."
-            )
+
+            warnings.warn("Unsloth is optimized for 4-bit QLoRA. Consider setting --load-in-4bit for best results.")
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> TrainingConfig:
@@ -176,6 +176,7 @@ class TrainingConfig:
         if path.suffix in (".yaml", ".yml"):
             try:
                 import yaml
+
                 data = yaml.safe_load(content)
             except ImportError:
                 raise ImportError("PyYAML is required to load YAML configs. pip install pyyaml")
@@ -239,6 +240,7 @@ class TrainingConfig:
 
 
 # ── Preset configurations ─────────────────────────────────────────────
+
 
 def smoke_config() -> TrainingConfig:
     """Minimal config for smoke testing."""
@@ -324,6 +326,7 @@ def production_config() -> TrainingConfig:
 
 # ── INDRA Model Prompt Integration ────────────────────────────────────
 
+
 def config_with_indra(
     base_config: TrainingConfig,
     use_indra: bool = True,
@@ -333,15 +336,15 @@ def config_with_indra(
     if use_indra:
         try:
             from src.training.indra_prompt import get_indra_config
-            indra_cfg = get_indra_config()
+
+            get_indra_config()
             return base_config.update(
                 use_indra_prompt=True,
                 indra_prompt_path=custom_prompt_path or "",
                 tags=base_config.tags + ["indra"],
-                notes=(
-                    base_config.notes + "\n" if base_config.notes else ""
-                ) + "INDRA System Prompt: Built from GENERALIST_AI_MODEL_PROMPT.md "
-                    "and ANTI_GRAVITY_GOD_MODE_PROMPT.md",
+                notes=(base_config.notes + "\n" if base_config.notes else "")
+                + "INDRA System Prompt: Built from GENERALIST_AI_MODEL_PROMPT.md "
+                "and ANTI_GRAVITY_GOD_MODE_PROMPT.md",
             )
         except ImportError:
             pass
@@ -389,6 +392,7 @@ if __name__ == "__main__":
 
     # Test env var resolution
     import os
+
     os.environ["TRAIN_OUTPUT_DIR"] = "checkpoints/env_test"
     cfg3 = TrainingConfig.from_dict({"output_dir": "${TRAIN_OUTPUT_DIR}"})
     print(f"Env var resolved: {cfg3.output_dir}")

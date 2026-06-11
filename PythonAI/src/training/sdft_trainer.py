@@ -33,7 +33,8 @@ from typing import Any
 
 try:
     import torch
-    from torch.utils.data import DataLoader, Dataset
+    from torch.utils.data import Dataset
+
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -48,6 +49,7 @@ try:
         TrainingArguments,
         default_data_collator,
     )
+
     HAS_TRANSFORMERS = True
 except ImportError:
     HAS_TRANSFORMERS = False
@@ -56,25 +58,27 @@ except ImportError:
 @dataclass
 class ReplayBufferConfig:
     """Configuration for SDFT replay buffer."""
+
     # Proportion of batch from each source
-    current_week_ratio: float = 0.70      # New training data
-    previous_week_ratio: float = 0.20     # Last week's data
-    foundational_ratio: float = 0.10      # Month 1 foundational data
+    current_week_ratio: float = 0.70  # New training data
+    previous_week_ratio: float = 0.20  # Last week's data
+    foundational_ratio: float = 0.10  # Month 1 foundational data
 
     # Buffer sizes
-    max_replay_size: int = 1000           # Max examples from previous weeks
-    max_foundational_size: int = 500      # Max foundational examples
+    max_replay_size: int = 1000  # Max examples from previous weeks
+    max_foundational_size: int = 500  # Max foundational examples
 
     # Sampling strategy
-    sampling_strategy: str = "uniform"    # "uniform", "weighted", "recency"
+    sampling_strategy: str = "uniform"  # "uniform", "weighted", "recency"
 
     # Forgetting threshold (trigger additional replay if exceeded)
-    forgetting_threshold: float = 0.15    # 15% performance drop triggers alert
+    forgetting_threshold: float = 0.15  # 15% performance drop triggers alert
 
 
 @dataclass
 class TrainingExample:
     """A single training example with metadata."""
+
     instruction: str
     input: str
     output: str
@@ -116,7 +120,7 @@ class TrainingExample:
 class ReplayBuffer:
     """
     Manages replay examples for SDFT to prevent catastrophic forgetting.
-    
+
     The buffer stores representative examples from previous training runs
     and mixes them with current training data.
     """
@@ -134,7 +138,7 @@ class ReplayBuffer:
             # Keep highest quality examples
             all_examples = self.previous_week_examples + examples
             all_examples.sort(key=lambda x: x.quality_score, reverse=True)
-            self.previous_week_examples = all_examples[:self.config.max_replay_size]
+            self.previous_week_examples = all_examples[: self.config.max_replay_size]
         else:
             self.previous_week_examples.extend(examples)
 
@@ -143,7 +147,7 @@ class ReplayBuffer:
         if len(self.foundational_examples) + len(examples) > self.config.max_foundational_size:
             all_examples = self.foundational_examples + examples
             all_examples.sort(key=lambda x: x.quality_score, reverse=True)
-            self.foundational_examples = all_examples[:self.config.max_foundational_size]
+            self.foundational_examples = all_examples[: self.config.max_foundational_size]
         else:
             self.foundational_examples.extend(examples)
 
@@ -196,7 +200,7 @@ class ReplayBuffer:
     ) -> list[TrainingExample]:
         """
         Create a mixed dataset following SDFT ratios.
-        
+
         Composition:
         - 70% current week examples
         - 20% previous week examples (replay buffer)
@@ -232,11 +236,7 @@ class ReplayBuffer:
             if len(self.previous_week_examples) > target_previous:
                 if self.config.sampling_strategy == "recency":
                     # Prefer more recent examples
-                    sorted_examples = sorted(
-                        self.previous_week_examples,
-                        key=lambda x: x.timestamp,
-                        reverse=True
-                    )
+                    sorted_examples = sorted(self.previous_week_examples, key=lambda x: x.timestamp, reverse=True)
                     mixed.extend(sorted_examples[:target_previous])
                 else:
                     mixed.extend(random.sample(self.previous_week_examples, target_previous))
@@ -266,10 +266,12 @@ class ReplayBuffer:
 
     def record_performance(self, metrics: dict[str, float]):
         """Record training performance for forgetting detection."""
-        self.performance_history.append({
-            **metrics,
-            "timestamp": time.time(),
-        })
+        self.performance_history.append(
+            {
+                **metrics,
+                "timestamp": time.time(),
+            }
+        )
 
         # Keep only last 10 runs
         if len(self.performance_history) > 10:
@@ -278,7 +280,7 @@ class ReplayBuffer:
     def check_forgetting(self, current_metrics: dict[str, float]) -> dict[str, Any]:
         """
         Check if catastrophic forgetting is occurring.
-        
+
         Returns:
             dict with 'forgetting_detected' bool and details
         """
@@ -304,7 +306,7 @@ class ReplayBuffer:
             "degradation_ratio": degradation,
             "current_eval_loss": current_eval_loss,
             "best_historical_loss": best_historical_loss,
-            "details": f"Eval loss degraded by {degradation:.2%} from best ({best_historical_loss:.4f} → {current_eval_loss:.4f})"
+            "details": f"Eval loss degraded by {degradation:.2%} from best ({best_historical_loss:.4f} → {current_eval_loss:.4f})",
         }
 
 
@@ -356,7 +358,7 @@ class SDFDataset(Dataset):
             marker_pos = self._find_sequence(result["input_ids"], output_marker[0])
             if marker_pos >= 0:
                 # Mask everything up to and including the marker
-                result["labels"][:marker_pos + len(output_marker)] = -100
+                result["labels"][: marker_pos + len(output_marker)] = -100
 
         return result
 
@@ -371,7 +373,7 @@ class SDFDataset(Dataset):
 class SDFTTrainer:
     """
     SDFT (Sequential Distributed Fine-Tuning) trainer.
-    
+
     This trainer implements the MIT SDFT algorithm to prevent catastrophic
     forgetting when training sequentially on new data.
     """
@@ -464,7 +466,7 @@ class SDFTTrainer:
     ) -> dict[str, Any]:
         """
         Train with SDFT to prevent catastrophic forgetting.
-        
+
         Args:
             current_examples: New training examples for this run
             output_dir: Directory to save model
@@ -474,7 +476,7 @@ class SDFTTrainer:
             save_steps: Save checkpoint every N steps
             logging_steps: Log every N steps
             use_4bit: Use 4-bit quantization
-            
+
         Returns:
             Training metrics
         """
@@ -490,9 +492,7 @@ class SDFTTrainer:
         # Split into train/eval
         eval_size = max(1, int(len(dataset) * 0.05))
         train_size = len(dataset) - eval_size
-        train_dataset, eval_dataset = torch.utils.data.random_split(
-            dataset, [train_size, eval_size]
-        )
+        train_dataset, eval_dataset = torch.utils.data.random_split(dataset, [train_size, eval_size])
 
         # Training arguments
         output_dir = Path(output_dir)
@@ -533,14 +533,14 @@ class SDFTTrainer:
         )
 
         # Train
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("SDFT TRAINING START")
         print(f"  Model: {self.model_name}")
         print(f"  Total examples: {len(mixed_examples)}")
         print(f"  Train: {len(train_dataset)}, Eval: {len(eval_dataset)}")
         print(f"  Epochs: {num_epochs}")
         print(f"  Output: {output_dir}")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         trainer.train()
 
@@ -567,7 +567,7 @@ class SDFTTrainer:
         with open(output_dir / "sdft_metrics.json", "w") as f:
             json.dump(metrics, f, indent=2)
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("SDFT TRAINING COMPLETE")
         print(f"  Final train loss: {metrics['train_loss']}")
         print(f"  Final eval loss: {metrics['eval_loss']}")
@@ -575,7 +575,7 @@ class SDFTTrainer:
             print(f"  ⚠️  FORGETTING DETECTED: {forgetting_check['details']}")
         else:
             print("  ✓ No catastrophic forgetting detected")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         return metrics
 
@@ -587,7 +587,7 @@ class SDFTTrainer:
     ):
         """
         Update replay buffer after training run.
-        
+
         This should be called after each training run to save a portion
         of the current examples for the next run's replay buffer.
         """
@@ -607,6 +607,7 @@ class SDFTTrainer:
 # Convenience Functions
 # ═══════════════════════════════════════════════════════════════
 
+
 def train_with_sdft(
     current_examples: list[dict[str, Any]],
     model_name: str,
@@ -620,7 +621,7 @@ def train_with_sdft(
 ) -> dict[str, Any]:
     """
     Convenience function for SDFT training.
-    
+
     Args:
         current_examples: List of training examples (dict format)
         model_name: Base model name
@@ -631,7 +632,7 @@ def train_with_sdft(
         learning_rate: Learning rate
         num_epochs: Number of epochs
         batch_size: Batch size
-        
+
     Returns:
         Training metrics
     """

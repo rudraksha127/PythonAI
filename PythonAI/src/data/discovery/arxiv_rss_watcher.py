@@ -26,20 +26,20 @@ DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / ".arxiv_cache.json"
 
 # arXiv categories we monitor (with priority)
 ARXIV_CATEGORIES: list[str] = [
-    "cs.AI",       # Artificial Intelligence
-    "cs.LG",       # Machine Learning
-    "cs.CL",       # Computation and Language
-    "cs.CV",       # Computer Vision
-    "cs.SE",       # Software Engineering
-    "cs.PL",       # Programming Languages
-    "cs.CR",       # Cryptography and Security
-    "cs.NE",       # Neural and Evolutionary Computing
-    "cs.IR",       # Information Retrieval
-    "math.ST",     # Statistics
-    "math.OC",     # Optimization and Control
-    "stat.ML",     # Machine Learning (Statistics)
-    "q-bio.GN",    # Genomics
-    "q-bio.BM",    # Biomolecules
+    "cs.AI",  # Artificial Intelligence
+    "cs.LG",  # Machine Learning
+    "cs.CL",  # Computation and Language
+    "cs.CV",  # Computer Vision
+    "cs.SE",  # Software Engineering
+    "cs.PL",  # Programming Languages
+    "cs.CR",  # Cryptography and Security
+    "cs.NE",  # Neural and Evolutionary Computing
+    "cs.IR",  # Information Retrieval
+    "math.ST",  # Statistics
+    "math.OC",  # Optimization and Control
+    "stat.ML",  # Machine Learning (Statistics)
+    "q-bio.GN",  # Genomics
+    "q-bio.BM",  # Biomolecules
     "physics.med-ph",  # Medical Physics
 ]
 
@@ -64,6 +64,7 @@ GITHUB_DATASET_PATTERN = re.compile(
 @dataclass
 class ArxivPaper:
     """A single paper discovered from arXiv."""
+
     arxiv_id: str
     title: str
     authors: list[str] = field(default_factory=list)
@@ -160,9 +161,12 @@ class ArxivRSSWatcher:
             import xml.etree.ElementTree as ET
 
             url = f"https://rss.arxiv.org/rss/{category}"
-            req = urllib.request.Request(url, headers={
-                "User-Agent": "PythonAI/2.0 (discovery-engine)",
-            })
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "PythonAI/2.0 (discovery-engine)",
+                },
+            )
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = resp.read()
 

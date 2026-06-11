@@ -46,6 +46,7 @@ from src.utils.validation import (
 #  ValidationResult
 # ═══════════════════════════════════════════════
 
+
 class TestValidationResult:
     """Tests for the ValidationResult dataclass."""
 
@@ -133,6 +134,7 @@ class TestValidationResult:
 #  sanitize_text
 # ═══════════════════════════════════════════════
 
+
 class TestSanitizeText:
     """Tests for sanitize_text()."""
 
@@ -188,6 +190,7 @@ class TestSanitizeText:
 #  validate_question
 # ═══════════════════════════════════════════════
 
+
 class TestValidateQuestion:
     """Tests for validate_question()."""
 
@@ -233,6 +236,7 @@ class TestValidateQuestion:
 # ═══════════════════════════════════════════════
 #  validate_code_block
 # ═══════════════════════════════════════════════
+
 
 class TestValidateCodeBlock:
     """Tests for validate_code_block()."""
@@ -326,6 +330,7 @@ for num in fibonacci(10):
 #  validate_api_key
 # ═══════════════════════════════════════════════
 
+
 class TestValidateApiKey:
     """Tests for validate_api_key()."""
 
@@ -392,6 +397,7 @@ class TestValidateApiKey:
 # ═══════════════════════════════════════════════
 #  validate_config
 # ═══════════════════════════════════════════════
+
 
 class TestValidateConfig:
     """Tests for validate_config()."""
@@ -464,6 +470,7 @@ class TestValidateConfig:
 # ═══════════════════════════════════════════════
 #  validate_path
 # ═══════════════════════════════════════════════
+
 
 class TestValidatePath:
     """Tests for validate_path()."""
@@ -541,6 +548,7 @@ class TestValidatePath:
 #  validate_json_string
 # ═══════════════════════════════════════════════
 
+
 class TestValidateJsonString:
     """Tests for validate_json_string()."""
 
@@ -597,6 +605,7 @@ class TestValidateJsonString:
 # ═══════════════════════════════════════════════
 #  validate_training_record
 # ═══════════════════════════════════════════════
+
 
 class TestValidateTrainingRecord:
     """Tests for validate_training_record()."""
@@ -666,6 +675,7 @@ class TestValidateTrainingRecord:
 #  get_env_bool
 # ═══════════════════════════════════════════════
 
+
 class TestGetEnvBool:
     """Tests for get_env_bool()."""
 
@@ -689,6 +699,7 @@ class TestGetEnvBool:
 # ═══════════════════════════════════════════════
 #  get_env_int
 # ═══════════════════════════════════════════════
+
 
 class TestGetEnvInt:
     """Tests for get_env_int()."""
@@ -719,6 +730,7 @@ class TestGetEnvInt:
 # ═══════════════════════════════════════════════
 #  get_env_list
 # ═══════════════════════════════════════════════
+
 
 class TestGetEnvList:
     """Tests for get_env_list()."""
@@ -758,6 +770,7 @@ class TestGetEnvList:
 #  validate_dataset_file
 # ═══════════════════════════════════════════════
 
+
 class TestValidateDatasetFile:
     """Tests for validate_dataset_file()."""
 
@@ -767,10 +780,8 @@ class TestValidateDatasetFile:
 
     def test_non_json_extension(self) -> None:
         # Create an existing file with a non-JSON extension
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False, encoding="utf-8"
-        ) as f:
-            f.write("[{\"instruction\": \"test\", \"output\": \"test\"}]")
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+            f.write('[{"instruction": "test", "output": "test"}]')
             tmp_path = f.name
 
         try:
@@ -785,9 +796,7 @@ class TestValidateDatasetFile:
             {"instruction": "Write a function", "output": "def foo(): pass"},
             {"instruction": "Explain lists", "output": "Lists are ordered collections"},
         ]
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
             json.dump(data, f)
             tmp_path = f.name
 
@@ -806,9 +815,7 @@ class TestValidateDatasetFile:
             {"instruction": "", "output": "bad record"},  # Invalid
             {"output": "missing instruction"},  # Invalid
         ]
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
             json.dump(data, f)
             tmp_path = f.name
 
@@ -823,9 +830,7 @@ class TestValidateDatasetFile:
             os.unlink(tmp_path)
 
     def test_empty_dataset_array(self) -> None:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
             json.dump([], f)
             tmp_path = f.name
 
@@ -837,9 +842,7 @@ class TestValidateDatasetFile:
             os.unlink(tmp_path)
 
     def test_not_a_list_in_file(self) -> None:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
             json.dump({"not": "a list"}, f)
             tmp_path = f.name
 
@@ -851,9 +854,7 @@ class TestValidateDatasetFile:
             os.unlink(tmp_path)
 
     def test_corrupted_json_file(self) -> None:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
             f.write("{corrupted json")
             tmp_path = f.name
 
@@ -867,6 +868,7 @@ class TestValidateDatasetFile:
 # ═══════════════════════════════════════════════
 #  DANGEROUS_CODE_PATTERNS (module-level constant)
 # ═══════════════════════════════════════════════
+
 
 class TestDangerousCodePatterns:
     """Verify the DANGEROUS_CODE_PATTERNS constant is well-formed."""

@@ -34,6 +34,7 @@ BEST_CHECKPOINT_SYMLINK = "best"
 @dataclass
 class CheckpointMeta:
     """Metadata stored inside each checkpoint directory."""
+
     name: str
     created_at: str = ""  # ISO 8601
     step: int = 0
@@ -272,7 +273,7 @@ class CheckpointManager:
         keep_names.update(c.name for c in by_step[:keep_last])
 
         # Age-based deletion
-        now = time.time()
+        time.time()
         for c in all_ckpts:
             if c.name in keep_names:
                 continue
@@ -457,5 +458,6 @@ if __name__ == "__main__":
 
     # Clean up demo
     import shutil
+
     shutil.rmtree("checkpoints/demo_checkpoints", ignore_errors=True)
     print("\n[Done] Demo checkpoints cleaned up.")

@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 try:
     import torch
+
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -20,6 +21,7 @@ WORKSPACE_DIR = ROOT_DIR / "forge_workspace"
 DATA_DIR = WORKSPACE_DIR / "data"
 
 # ── HARDWARE DETECTION ──────────────────────────────────────────────────────
+
 
 def get_hardware_profile():
     cpu_cores = os.cpu_count() or 4
@@ -128,6 +130,7 @@ def select_best_model(hw_profile: dict) -> dict:
 
 # ── CONFIGURATION ────────────────────────────────────────────────────────────
 
+
 @dataclass
 class ForgeConfig:
     # ── PATHS ────────────────────────────────────────────────────────────────
@@ -185,8 +188,15 @@ class ForgeConfig:
 
     def __post_init__(self):
         # Ensure all directories exist
-        for attr_name in ["workspace_dir", "raw_data_dir", "clean_data_dir",
-                          "train_data_dir", "checkpoint_dir", "final_model_dir", "logs_dir"]:
+        for attr_name in [
+            "workspace_dir",
+            "raw_data_dir",
+            "clean_data_dir",
+            "train_data_dir",
+            "checkpoint_dir",
+            "final_model_dir",
+            "logs_dir",
+        ]:
             path_str = getattr(self, attr_name)
             Path(path_str).mkdir(parents=True, exist_ok=True)
 
@@ -236,8 +246,15 @@ class ForgeConfig:
     def setup_dirs(cls):
         """Convenience: create all required directories."""
         cfg = cls()
-        for attr_name in ["workspace_dir", "raw_data_dir", "clean_data_dir",
-                          "train_data_dir", "checkpoint_dir", "final_model_dir", "logs_dir"]:
+        for attr_name in [
+            "workspace_dir",
+            "raw_data_dir",
+            "clean_data_dir",
+            "train_data_dir",
+            "checkpoint_dir",
+            "final_model_dir",
+            "logs_dir",
+        ]:
             Path(getattr(cfg, attr_name)).mkdir(parents=True, exist_ok=True)
         print("[OK] Directory structure created")
         return cfg

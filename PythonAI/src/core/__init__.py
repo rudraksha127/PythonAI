@@ -114,6 +114,7 @@ def connect_all_mcp_servers() -> dict[str, ServerConnection]:
     """Discover and connect to all configured MCP servers."""
     return discover_mcp_servers()
 
+
 # Convenience singletons
 _provider_router: ProviderRouter | None = None
 _profile_manager: ProfileManager | None = None

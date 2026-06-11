@@ -31,10 +31,7 @@ class TestRollingAverage:
 
     def test_basic_rolling_average(self) -> None:
         """Should compute 7-day rolling average correctly."""
-        data = [
-            {"date": f"2026-06-{i:02d}", "acceptance_rate": 50.0}
-            for i in range(1, 15)
-        ]
+        data = [{"date": f"2026-06-{i:02d}", "acceptance_rate": 50.0} for i in range(1, 15)]
         result = _compute_rolling_average(data, window=7)
         # First 6 should be None (not enough data)
         for i in range(6):
@@ -45,10 +42,7 @@ class TestRollingAverage:
 
     def test_rolling_average_varying(self) -> None:
         """Should compute correct rolling average with varying values."""
-        data = [
-            {"date": f"2026-06-{i:02d}", "acceptance_rate": float(i * 10)}
-            for i in range(1, 12)
-        ]
+        data = [{"date": f"2026-06-{i:02d}", "acceptance_rate": float(i * 10)} for i in range(1, 12)]
         result = _compute_rolling_average(data, window=3)
         # Index 0-1: None
         assert result[0] is None
@@ -72,10 +66,7 @@ class TestRollingAverage:
 
     def test_rolling_average_window_1(self) -> None:
         """Window of 1 should return rates as-is."""
-        data = [
-            {"date": f"2026-06-{i:02d}", "acceptance_rate": float(i * 10)}
-            for i in range(1, 5)
-        ]
+        data = [{"date": f"2026-06-{i:02d}", "acceptance_rate": float(i * 10)} for i in range(1, 5)]
         result = _compute_rolling_average(data, window=1)
         # All should be non-None since window=1
         assert result[0] == 10.0
@@ -189,16 +180,18 @@ class TestBuildTrainingRunsTable:
 
     def test_single_run(self) -> None:
         """Single run should produce table row."""
-        runs = [{
-            "run_id": "test_run",
-            "date": "2026-06-01",
-            "model": "Qwen3-Coder-14B",
-            "signals_used": 500,
-            "train_loss": 0.5,
-            "eval_loss": 0.6,
-            "rate_before": 45.0,
-            "rate_after": 52.0,
-        }]
+        runs = [
+            {
+                "run_id": "test_run",
+                "date": "2026-06-01",
+                "model": "Qwen3-Coder-14B",
+                "signals_used": 500,
+                "train_loss": 0.5,
+                "eval_loss": 0.6,
+                "rate_before": 45.0,
+                "rate_after": 52.0,
+            }
+        ]
         html = _build_training_runs_table(runs)
         assert "2026-06-01" in html
         assert "Qwen3-Coder-14B" in html
@@ -207,16 +200,18 @@ class TestBuildTrainingRunsTable:
 
     def test_run_without_eval_loss(self) -> None:
         """Run without eval loss should show placeholder."""
-        runs = [{
-            "run_id": "test_run",
-            "date": "2026-06-01",
-            "model": "TestModel",
-            "signals_used": 100,
-            "train_loss": None,
-            "eval_loss": None,
-            "rate_before": None,
-            "rate_after": None,
-        }]
+        runs = [
+            {
+                "run_id": "test_run",
+                "date": "2026-06-01",
+                "model": "TestModel",
+                "signals_used": 100,
+                "train_loss": None,
+                "eval_loss": None,
+                "rate_before": None,
+                "rate_after": None,
+            }
+        ]
         html = _build_training_runs_table(runs)
         assert "TestModel" in html
         # Should use "—" for None values
@@ -279,8 +274,8 @@ class TestDashboardIntegration:
         data = _generate_demo_data()
         rates = [d["acceptance_rate"] for d in data["daily_data"]]
         # Should start lower and end higher
-        first_half = sum(rates[:len(rates)//2]) / max(1, len(rates)//2)
-        second_half = sum(rates[len(rates)//2:]) / max(1, len(rates) - len(rates)//2)
+        first_half = sum(rates[: len(rates) // 2]) / max(1, len(rates) // 2)
+        second_half = sum(rates[len(rates) // 2 :]) / max(1, len(rates) - len(rates) // 2)
         assert second_half > first_half, "Acceptance rate should improve over time"
 
     def test_rolling_average_matches_demo_data(self) -> None:

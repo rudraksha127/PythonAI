@@ -12,7 +12,8 @@ import streamlit as st
 
 def render() -> None:
     """Render the MCP server status dashboard page."""
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     .mcp-card {
         background: rgba(28, 28, 40, 0.8);
@@ -36,7 +37,9 @@ def render() -> None:
     .status-failed { color: #ff6b6b; }
     .status-pending { color: #f59f00; }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     st.title("MCP Server Dashboard")
     st.caption("External tool connectivity via Model Context Protocol")
@@ -105,13 +108,12 @@ def _render_mcp_config() -> None:
                 if st.button("Connect", key=f"connect_{name}"):
                     with st.spinner(f"Connecting to {name}..."):
                         from src.core.mcp import MCPClient
+
                         client = MCPClient()
                         conn = client.connect(config, name)
 
                         if conn.state.value == "connected":
-                            st.success(
-                                f"Connected! {len(conn.tools)} tools, {len(conn.resources)} resources"
-                            )
+                            st.success(f"Connected! {len(conn.tools)} tools, {len(conn.resources)} resources")
 
                             # Show tools
                             if conn.tools:
@@ -124,6 +126,7 @@ def _render_mcp_config() -> None:
 
                             # Register in registry
                             from src.core.registry import get_registry
+
                             reg = get_registry()
                             count = reg.register_mcp_server(conn)
                             st.success(f"{count} MCP tools registered in PythonAI tool system")
@@ -227,6 +230,7 @@ def _render_config_files() -> None:
             )
             if selected_file:
                 import json
+
                 content = json.loads(Path(selected_file).read_text(encoding="utf-8"))
                 st.json(content)
         else:
@@ -249,4 +253,4 @@ def _render_config_files() -> None:
         st.error(f"Config discovery error: {e}")
 
 
-from pathlib import Path
+from pathlib import Path  # noqa: E402

@@ -243,10 +243,7 @@ class StackOverflowSyncer:
                 break
 
             # Fetch accepted answers for questions that have them
-            questions_with_accepted = [
-                q for q in items
-                if q.get("accepted_answer_id")
-            ]
+            questions_with_accepted = [q for q in items if q.get("accepted_answer_id")]
 
             if questions_with_accepted:
                 # Batch fetch answers
@@ -264,7 +261,9 @@ class StackOverflowSyncer:
             quota = data.get("quota_remaining", "?")
             logger.info(
                 "Fetched %d questions (total: %d, quota remaining: %s)",
-                len(items), len(all_questions), quota,
+                len(items),
+                len(all_questions),
+                quota,
             )
 
             if not data.get("has_more", False):
@@ -319,9 +318,7 @@ class StackOverflowSyncer:
             stats["with_answers"] += 1
 
             # Dedup
-            content_hash = hashlib.sha256(
-                f"{q['question_id']}".encode()
-            ).hexdigest()[:16]
+            content_hash = hashlib.sha256(f"{q['question_id']}".encode()).hexdigest()[:16]
 
             if content_hash in self._known_hashes:
                 stats["duplicates_skipped"] += 1
@@ -401,15 +398,7 @@ def sync_stackoverflow(
     syncer = StackOverflowSyncer(api_key=api_key)
 
     if not tags:
-        tags = [
-            "python",
-            "python-3.x",
-            "python-asyncio",
-            "pandas",
-            "fastapi",
-            "django",
-            "pytest"
-        ]
+        tags = ["python", "python-3.x", "python-asyncio", "pandas", "fastapi", "django", "pytest"]
 
     overall_stats = {
         "fetched": 0,
@@ -434,9 +423,7 @@ def sync_stackoverflow(
             overall_stats["with_answers"] += 1
 
             # Dedup
-            content_hash = hashlib.sha256(
-                f"{q['question_id']}".encode()
-            ).hexdigest()[:16]
+            content_hash = hashlib.sha256(f"{q['question_id']}".encode()).hexdigest()[:16]
 
             if content_hash in syncer._known_hashes:
                 overall_stats["duplicates_skipped"] += 1

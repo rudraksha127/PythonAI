@@ -1,7 +1,8 @@
 """Patch live_server.py to replace racing with round-robin provider distribution."""
+
 import re
 
-with open('live_server.py', 'r', encoding='utf-8') as f:
+with open("live_server.py", "r", encoding="utf-8") as f:
     content = f.read()
 
 # 1. Change import and docstring
@@ -219,11 +220,11 @@ assert old5 in content, "Old5 not found!"
 content = content.replace(old5, new5, 1)
 
 # Write back
-with open('live_server.py', 'w', encoding='utf-8') as f:
+with open("live_server.py", "w", encoding="utf-8") as f:
     f.write(content)
 
 # Verify
-with open('live_server.py', 'r', encoding='utf-8', newline='') as f:
+with open("live_server.py", "r", encoding="utf-8", newline="") as f:
     final = f.read()
 
 checks = [

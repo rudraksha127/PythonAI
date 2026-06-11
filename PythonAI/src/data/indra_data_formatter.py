@@ -17,7 +17,8 @@ from src.training.indra_prompt import build_training_system_prompt
 logger = logging.getLogger(__name__)
 
 # Basic heuristics if fasttext is not available
-HINDI_PATTERN = re.compile(r'[\u0900-\u097F]')
+HINDI_PATTERN = re.compile(r"[\u0900-\u097F]")
+
 
 class INDRADataFormatter:
     def __init__(self, output_dir: str = "data/training/formatted"):
@@ -28,8 +29,8 @@ class INDRADataFormatter:
     def _get_hash(self, text: str) -> str:
         """MinHash-like simple hashing for deduplication"""
         # simplified dedup by hashing normalized text
-        norm = re.sub(r'\s+', ' ', text.lower().strip())
-        return hashlib.md5(norm.encode('utf-8')).hexdigest()
+        norm = re.sub(r"\s+", " ", text.lower().strip())
+        return hashlib.md5(norm.encode("utf-8")).hexdigest()
 
     def detect_language(self, text: str) -> str:
         """Detect language (en, hi, hinglish, other)"""
@@ -76,13 +77,9 @@ class INDRADataFormatter:
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": instruction},
-                {"role": "assistant", "content": output}
+                {"role": "assistant", "content": output},
             ],
-            "metadata": {
-                "source": source,
-                "language": lang,
-                "domain": domain
-            }
+            "metadata": {"source": source, "language": lang, "domain": domain},
         }
         return formatted
 
@@ -94,7 +91,7 @@ class INDRADataFormatter:
             return ""
 
         try:
-            with open(input_file, encoding='utf-8') as f:
+            with open(input_file, encoding="utf-8") as f:
                 data = json.load(f)
         except Exception as e:
             logger.error(f"Failed to load {input_file}: {e}")
@@ -113,12 +110,13 @@ class INDRADataFormatter:
                         formatted_data.append(fmt)
 
         out_path = self.output_dir / f"{output_name}.jsonl"
-        with open(out_path, 'w', encoding='utf-8') as f:
+        with open(out_path, "w", encoding="utf-8") as f:
             for item in formatted_data:
                 f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
         logger.info(f"Processed {len(formatted_data)} valid examples from {input_file.name}")
         return str(out_path)
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

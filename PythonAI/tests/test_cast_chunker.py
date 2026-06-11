@@ -124,6 +124,7 @@ class TestASTDependencyExtractor:
     def test_extract_imports(self) -> None:
         """Should extract import statements."""
         import ast
+
         tree = ast.parse("import os\nimport sys\nfrom pathlib import Path")
         extractor = ASTDependencyExtractor()
         extractor.visit(tree)
@@ -134,6 +135,7 @@ class TestASTDependencyExtractor:
     def test_extract_function_calls(self) -> None:
         """Should extract function call names."""
         import ast
+
         tree = ast.parse("""
 import os
 os.listdir('.')
@@ -148,6 +150,7 @@ obj.method()
     def test_extract_defined_names(self) -> None:
         """Should extract defined function/class names."""
         import ast
+
         tree = ast.parse("""
 def foo():
     pass
@@ -167,6 +170,7 @@ class MyClass:
     def test_empty_module(self) -> None:
         """Empty module should not crash."""
         import ast
+
         tree = ast.parse("")
         extractor = ASTDependencyExtractor()
         extractor.visit(tree)  # Should not raise
@@ -475,6 +479,7 @@ class ClassB:
     def test_token_count_approximation(self) -> None:
         """Token count should be roughly chars/4."""
         from src.rag.cast_chunker import _count_tokens
+
         assert _count_tokens("") == 1  # empty → max(1, 0) = 1
         assert _count_tokens("a" * 100) == 25  # 100 / 4 = 25
 
@@ -736,6 +741,7 @@ class TestCastChunkerPipeline:
     def test_chunks_are_serializable(self) -> None:
         """All chunk dicts should be JSON serializable."""
         import json
+
         source = """
 import os
 
@@ -773,31 +779,36 @@ def c(): pass
 
 
 try:
-    import tree_sitter_javascript
+    import tree_sitter_javascript  # noqa: F401
+
     HAS_TS_JS = True
 except ImportError:
     HAS_TS_JS = False
 
 try:
-    import tree_sitter_typescript
+    import tree_sitter_typescript  # noqa: F401
+
     HAS_TS_TS = True
 except ImportError:
     HAS_TS_TS = False
 
 try:
-    import tree_sitter_go
+    import tree_sitter_go  # noqa: F401
+
     HAS_TS_GO = True
 except ImportError:
     HAS_TS_GO = False
 
 try:
-    import tree_sitter_rust
+    import tree_sitter_rust  # noqa: F401
+
     HAS_TS_RUST = True
 except ImportError:
     HAS_TS_RUST = False
 
 try:
-    import tree_sitter_java
+    import tree_sitter_java  # noqa: F401
+
     HAS_TS_JAVA = True
 except ImportError:
     HAS_TS_JAVA = False

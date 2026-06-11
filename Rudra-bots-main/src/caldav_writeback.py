@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 def _stable_cal_id(remote_url: str, owner: str = "", account_id: str = "") -> str:
     # Reuse the sync module's hashing so owner+account_id scoping stays consistent.
     from src.caldav_sync import _stable_cal_id as _sync_id
+
     return _sync_id(remote_url, owner=owner, account_id=account_id)
 
 
@@ -69,28 +70,42 @@ def build_event_ical(ev: dict) -> str:
         try:
             ve.add("rrule", vRecur.from_ical(ev["rrule"]))
         except Exception:
-            logger.debug("CalDAV write-back: skipping unparseable rrule %r", ev.get("rrule"))
+            logger.debug(
+                "CalDAV write-back: skipping unparseable rrule %r", ev.get("rrule")
+            )
 
     cal.add_component(ve)
     return cal.to_ical().decode("utf-8")
 
 
-def find_remote_calendar(calendars, local_cal_id: str, owner: str = "", account_id: str = ""):
+def find_remote_calendar(
+    calendars, local_cal_id: str, owner: str = "", account_id: str = ""
+):
     """Find the remote calendar whose URL hashes to ``local_cal_id``, or None.
 
     ``owner`` and ``account_id`` must match what was used when the local calendar
     id was originally computed in ``_sync_blocking`` so the hash round-trips."""
     for cal in calendars:
         try:
-            if _stable_cal_id(str(cal.url), owner=owner, account_id=account_id) == local_cal_id:
+            if (
+                _stable_cal_id(str(cal.url), owner=owner, account_id=account_id)
+                == local_cal_id
+            ):
                 return cal
         except Exception:
             continue
     return None
 
 
-def push_event(calendars, local_cal_id: str, ev: dict, *, delete: bool = False,
-               owner: str = "", account_id: str = "") -> dict:
+def push_event(
+    calendars,
+    local_cal_id: str,
+    ev: dict,
+    *,
+    delete: bool = False,
+    owner: str = "",
+    account_id: str = "",
+) -> dict:
     """Create/update (or delete) ``ev`` on the matching remote calendar.
 
     Returns ``{"ok": bool, ...}``. ``calendars`` is the discovered caldav
@@ -102,7 +117,9 @@ def push_event(calendars, local_cal_id: str, ev: dict, *, delete: bool = False,
     if not uid:
         return {"ok": False, "error": "event uid is required"}
 
-    remote = find_remote_calendar(calendars, local_cal_id, owner=owner, account_id=account_id)
+    remote = find_remote_calendar(
+        calendars, local_cal_id, owner=owner, account_id=account_id
+    )
     if remote is None:
         return {"ok": False, "error": "remote calendar not found"}
 
@@ -130,6 +147,7 @@ def _discover_calendars(client):
     """Discover the principal's calendars, falling back to the URL itself —
     same strategy as the pull path."""
     from caldav.lib.error import AuthorizationError, NotFoundError
+
     try:
         return client.principal().calendars()
     except (AuthorizationError, NotFoundError):
@@ -141,19 +159,28 @@ def _discover_calendars(client):
             return []
 
 
-def _writeback_blocking(local_cal_id, ev, delete, url, username, password,
-                        owner="", account_id="") -> dict:
+def _writeback_blocking(
+    local_cal_id, ev, delete, url, username, password, owner="", account_id=""
+) -> dict:
     import caldav
+
     client = caldav.DAVClient(url=url, username=username, password=password)
     calendars = _discover_calendars(client)
     if not calendars:
         return {"ok": False, "error": "no remote calendars discovered"}
-    return push_event(calendars, local_cal_id, ev, delete=delete,
-                      owner=owner, account_id=account_id)
+    return push_event(
+        calendars, local_cal_id, ev, delete=delete, owner=owner, account_id=account_id
+    )
 
 
-async def writeback_event(owner: str, calendar_source: str, calendar_id: str,
-                          ev: dict, *, delete: bool = False) -> dict:
+async def writeback_event(
+    owner: str,
+    calendar_source: str,
+    calendar_id: str,
+    ev: dict,
+    *,
+    delete: bool = False,
+) -> dict:
     """Best-effort push of a local change to the remote CalDAV server.
 
     No-ops (``{"skipped": ...}``) when the calendar isn't CalDAV-backed or no
@@ -176,7 +203,9 @@ async def writeback_event(owner: str, calendar_source: str, calendar_id: str,
         if len(accounts) > 1:
             db = SessionLocal()
             try:
-                cal_row = db.query(CalendarCal).filter(CalendarCal.id == calendar_id).first()
+                cal_row = (
+                    db.query(CalendarCal).filter(CalendarCal.id == calendar_id).first()
+                )
                 cal_account_id = cal_row.account_id if cal_row else None
             finally:
                 db.close()
@@ -193,6 +222,7 @@ async def writeback_event(owner: str, calendar_source: str, calendar_id: str,
         if not (url and user and pw):
             return {"skipped": "caldav account credentials incomplete"}
         from src.caldav_sync import validate_caldav_url
+
         try:
             url = validate_caldav_url(url)
         except ValueError as e:
@@ -203,7 +233,9 @@ async def writeback_event(owner: str, calendar_source: str, calendar_id: str,
             _writeback_blocking, calendar_id, ev, delete, url, user, pw, owner, acc_id
         )
         if not result.get("ok"):
-            logger.warning("CalDAV write-back did not apply: %s", result.get("error") or result)
+            logger.warning(
+                "CalDAV write-back did not apply: %s", result.get("error") or result
+            )
         return result
     except Exception as e:
         logger.exception("CalDAV write-back raised")

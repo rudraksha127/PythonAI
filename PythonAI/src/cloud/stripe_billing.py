@@ -27,6 +27,7 @@ logger = logging.getLogger("forgeai.cloud.stripe")
 
 class StripeBillingError(Exception):
     """Raised when a Stripe operation fails."""
+
     pass
 
 
@@ -104,32 +105,36 @@ def get_prices() -> list[dict]:
         for price in stripe_prices:
             product = price.product if isinstance(price.product, dict) else {}
             unit_amount = price.unit_amount or 0
-            prices.append({
-                "id": price.id,
-                "product_id": product.get("id", ""),
-                "name": product.get("name", ""),
-                "description": product.get("description", ""),
-                "amount": unit_amount / 100,
-                "currency": price.currency.upper(),
-                "interval": price.recurring.get("interval", "month") if price.recurring else "month",
-                "lookup_key": price.lookup_key,
-                "metadata": price.metadata,
-            })
+            prices.append(
+                {
+                    "id": price.id,
+                    "product_id": product.get("id", ""),
+                    "name": product.get("name", ""),
+                    "description": product.get("description", ""),
+                    "amount": unit_amount / 100,
+                    "currency": price.currency.upper(),
+                    "interval": price.recurring.get("interval", "month") if price.recurring else "month",
+                    "lookup_key": price.lookup_key,
+                    "metadata": price.metadata,
+                }
+            )
     except stripe.error.StripeError as e:
         logger.warning(f"Failed to fetch Stripe prices: {e}")
         # Fall back to local definition
         for tier_key, tier_data in PRICING_TIERS.items():
             if tier_data["price_monthly_usd"]:
-                prices.append({
-                    "id": tier_data["stripe_price_id"] or f"price_{tier_key}",
-                    "name": tier_data["name"],
-                    "description": tier_data["description"],
-                    "amount": tier_data["price_monthly_usd"],
-                    "currency": "USD",
-                    "interval": "month",
-                    "lookup_key": f"forgeai_{tier_key}",
-                    "metadata": {},
-                })
+                prices.append(
+                    {
+                        "id": tier_data["stripe_price_id"] or f"price_{tier_key}",
+                        "name": tier_data["name"],
+                        "description": tier_data["description"],
+                        "amount": tier_data["price_monthly_usd"],
+                        "currency": "USD",
+                        "interval": "month",
+                        "lookup_key": f"forgeai_{tier_key}",
+                        "metadata": {},
+                    }
+                )
 
     return prices
 
@@ -325,9 +330,7 @@ def sync_subscription_from_stripe(subscription_id: str) -> dict:
         subscription_status = status_map.get(status, "inactive")
         current_period_end = None
         if subscription.current_period_end:
-            current_period_end = datetime.fromtimestamp(
-                subscription.current_period_end, tz=timezone.utc
-            ).isoformat()
+            current_period_end = datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc).isoformat()
 
         # Update profile in database
         now = datetime.now(timezone.utc).isoformat()
@@ -378,13 +381,7 @@ def _find_user_by_customer(stripe_customer_id: str) -> str | None:
         return None
 
     try:
-        resp = (
-            service.table("profiles")
-            .select("id")
-            .eq("stripe_customer_id", stripe_customer_id)
-            .limit(1)
-            .execute()
-        )
+        resp = service.table("profiles").select("id").eq("stripe_customer_id", stripe_customer_id).limit(1).execute()
         if resp.data:
             return resp.data[0]["id"]
         return None

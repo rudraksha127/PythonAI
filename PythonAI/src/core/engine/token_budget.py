@@ -14,14 +14,15 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 
-COMPLETION_THRESHOLD = 0.90       # Continue if under 90% of budget
-DIMINISHING_THRESHOLD = 500       # Stop if delta < 500 tokens for 2+ rounds
-MAX_CONTINUATIONS = 10            # Absolute max continuations
+COMPLETION_THRESHOLD = 0.90  # Continue if under 90% of budget
+DIMINISHING_THRESHOLD = 500  # Stop if delta < 500 tokens for 2+ rounds
+MAX_CONTINUATIONS = 10  # Absolute max continuations
 
 
 @dataclass
 class BudgetTracker:
     """Tracks token budget across model turns."""
+
     continuation_count: int = 0
     last_delta_tokens: int = 0
     last_global_turn_tokens: int = 0
@@ -36,7 +37,7 @@ class BudgetTracker:
 
 @dataclass
 class ContinueDecision:
-    action: str = "continue"   # "continue" or "stop"
+    action: str = "continue"  # "continue" or "stop"
     nudge_message: str = ""
     continuation_count: int = 0
     pct: float = 0.0
@@ -134,17 +135,8 @@ def _get_budget_nudge_message(pct: float, turn_tokens: int, budget: int) -> str:
             "Continue your response naturally.]"
         )
     elif remaining > 50_000:
-        return (
-            f"[You have {remaining:,} tokens remaining ({pct}% used). "
-            "Continue your response.]"
-        )
+        return f"[You have {remaining:,} tokens remaining ({pct}% used). Continue your response.]"
     elif remaining > 10_000:
-        return (
-            f"[You have {remaining:,} tokens remaining ({pct}% used). "
-            "Be concise but complete your response.]"
-        )
+        return f"[You have {remaining:,} tokens remaining ({pct}% used). Be concise but complete your response.]"
     else:
-        return (
-            f"[Budget nearly exhausted ({remaining:,} tokens left, {pct}% used). "
-            "Wrap up your response.]"
-        )
+        return f"[Budget nearly exhausted ({remaining:,} tokens left, {pct}% used). Wrap up your response.]"

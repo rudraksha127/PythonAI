@@ -21,16 +21,72 @@ from ..tool import (
 
 # Extensions we can read as text
 TEXT_EXTENSIONS = {
-    ".py", ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".json", ".xml",
-    ".yaml", ".yml", ".md", ".txt", ".cfg", ".ini", ".conf", ".env",
-    ".sh", ".bash", ".zsh", ".fish", ".ps1", ".bat", ".cmd",
-    ".c", ".cpp", ".h", ".hpp", ".java", ".go", ".rs", ".rb", ".php",
-    ".swift", ".kt", ".kts", ".scala", ".clj", ".cljs", ".ex", ".exs",
-    ".sql", ".r", ".m", ".mm", ".dart", ".lua", ".pl", ".pm", ".t",
-    ".vue", ".svelte", ".astro", ".ejs", ".hbs", ".mustache",
-    ".toml", ".lock", ".gitignore", ".dockerignore",
-    ".csv", ".tsv", ".log",
-    ".gradle", ".properties", ".plist",
+    ".py",
+    ".js",
+    ".ts",
+    ".jsx",
+    ".tsx",
+    ".html",
+    ".css",
+    ".json",
+    ".xml",
+    ".yaml",
+    ".yml",
+    ".md",
+    ".txt",
+    ".cfg",
+    ".ini",
+    ".conf",
+    ".env",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".fish",
+    ".ps1",
+    ".bat",
+    ".cmd",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".java",
+    ".go",
+    ".rs",
+    ".rb",
+    ".php",
+    ".swift",
+    ".kt",
+    ".kts",
+    ".scala",
+    ".clj",
+    ".cljs",
+    ".ex",
+    ".exs",
+    ".sql",
+    ".r",
+    ".m",
+    ".mm",
+    ".dart",
+    ".lua",
+    ".pl",
+    ".pm",
+    ".t",
+    ".vue",
+    ".svelte",
+    ".astro",
+    ".ejs",
+    ".hbs",
+    ".mustache",
+    ".toml",
+    ".lock",
+    ".gitignore",
+    ".dockerignore",
+    ".csv",
+    ".tsv",
+    ".log",
+    ".gradle",
+    ".properties",
+    ".plist",
 }
 
 
@@ -40,8 +96,9 @@ def _is_text_file(filepath: str) -> bool:
     return ext in TEXT_EXTENSIONS or not ext  # No extension = try to read
 
 
-def _read_file_lines(filepath: str, offset: int = 1, limit: int | None = None,
-                     max_size: int = 5 * 1024 * 1024) -> tuple[list[str], int, int]:
+def _read_file_lines(
+    filepath: str, offset: int = 1, limit: int | None = None, max_size: int = 5 * 1024 * 1024
+) -> tuple[list[str], int, int]:
     """Read lines from a file with offset and limit.
 
     Returns: (lines, total_lines, total_bytes)
@@ -72,39 +129,44 @@ def _read_file_lines(filepath: str, offset: int = 1, limit: int | None = None,
 
 
 FileReadTool = build_tool(
-    type("FileReadToolDef", (), {
-        "name": "read",
-        "description": "Read a file with line numbers. Use offset/limit for large files.",
-        "search_hint": "read files, view source code",
-        "input_schema": InputSchema(
-            file_path=Parameter(
-                type="string",
-                description="Absolute or relative path to the file to read",
-                required=True,
+    type(
+        "FileReadToolDef",
+        (),
+        {
+            "name": "read",
+            "description": "Read a file with line numbers. Use offset/limit for large files.",
+            "search_hint": "read files, view source code",
+            "input_schema": InputSchema(
+                file_path=Parameter(
+                    type="string",
+                    description="Absolute or relative path to the file to read",
+                    required=True,
+                ),
+                offset=Parameter(
+                    type="integer",
+                    description="Line number to start reading from (1-indexed, default: 1)",
+                    default=1,
+                ),
+                limit=Parameter(
+                    type="integer",
+                    description="Number of lines to read (default: read entire file)",
+                ),
             ),
-            offset=Parameter(
-                type="integer",
-                description="Line number to start reading from (1-indexed, default: 1)",
-                default=1,
+            "is_readonly": True,
+            "is_concurrency_safe": True,
+            "max_result_size_chars": 50000,
+            "call": lambda input_data, context: _read_call(input_data, context),
+            "validate_input": lambda input_data, context: _read_validate(input_data, context),
+            "get_tool_use_summary": lambda input_data: input_data.get("file_path", "") if input_data else None,
+            "get_activity_description": lambda input_data: (
+                f"Reading {input_data.get('file_path', '')}" if input_data else None
             ),
-            limit=Parameter(
-                type="integer",
-                description="Number of lines to read (default: read entire file)",
-            ),
-        ),
-        "is_readonly": True,
-        "is_concurrency_safe": True,
-        "max_result_size_chars": 50000,
-        "call": lambda input_data, context: _read_call(input_data, context),
-        "validate_input": lambda input_data, context: _read_validate(input_data, context),
-        "get_tool_use_summary": lambda input_data: input_data.get("file_path", "") if input_data else None,
-        "get_activity_description": lambda input_data: f"Reading {input_data.get('file_path', '')}" if input_data else None,
-    })
+        },
+    )
 )
 
 
-def _read_validate(input_data: dict[str, Any],
-                   context: ToolUseContext) -> ValidationResult:
+def _read_validate(input_data: dict[str, Any], context: ToolUseContext) -> ValidationResult:
     file_path = input_data.get("file_path", "")
     if not file_path:
         return ValidationResult(success=False, message="file_path is required", error_code=1)
@@ -118,8 +180,7 @@ def _read_validate(input_data: dict[str, Any],
     return ValidationResult(success=True)
 
 
-def _read_call(input_data: dict[str, Any],
-               context: ToolUseContext) -> ToolResult:
+def _read_call(input_data: dict[str, Any], context: ToolUseContext) -> ToolResult:
     file_path = input_data.get("file_path", "")
     offset = input_data.get("offset", 1)
     limit = input_data.get("limit")
@@ -129,12 +190,10 @@ def _read_call(input_data: dict[str, Any],
         file_path = os.path.join(context.cwd or os.getcwd(), file_path)
     file_path = os.path.normpath(os.path.expanduser(file_path))
 
-    max_size = (context.file_reading_limits.get("max_size_bytes", 5 * 1024 * 1024))
+    max_size = context.file_reading_limits.get("max_size_bytes", 5 * 1024 * 1024)
 
     try:
-        lines, total_lines, total_bytes = _read_file_lines(
-            file_path, offset, limit, max_size
-        )
+        lines, total_lines, total_bytes = _read_file_lines(file_path, offset, limit, max_size)
 
         # Format with line numbers
         num_width = len(str(total_lines))
@@ -157,13 +216,10 @@ def _read_call(input_data: dict[str, Any],
         return ToolResult(data=result)
 
     except FileNotFoundError:
-        return ToolResult(data={"error": f"File not found: {file_path}"},
-                          error=f"File not found: {file_path}")
+        return ToolResult(data={"error": f"File not found: {file_path}"}, error=f"File not found: {file_path}")
     except IsADirectoryError:
-        return ToolResult(data={"error": f"'{file_path}' is a directory"},
-                          error=f"'{file_path}' is a directory")
+        return ToolResult(data={"error": f"'{file_path}' is a directory"}, error=f"'{file_path}' is a directory")
     except ValueError as e:
         return ToolResult(data={"error": str(e)}, error=str(e))
     except Exception as e:
-        return ToolResult(data={"error": f"Error reading file: {e}"},
-                          error=f"Error reading file: {e}")
+        return ToolResult(data={"error": f"Error reading file: {e}"}, error=f"Error reading file: {e}")

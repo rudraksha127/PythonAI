@@ -12,7 +12,9 @@ def _route_endpoint(router, path: str, method: str):
     raise AssertionError(f"route not found: {method} {path}")
 
 
-def test_email_tag_clause_excludes_legacy_owner_rows_for_authenticated_owner(monkeypatch):
+def test_email_tag_clause_excludes_legacy_owner_rows_for_authenticated_owner(
+    monkeypatch,
+):
     import routes.email_routes as email_routes
 
     monkeypatch.setattr(
@@ -43,7 +45,9 @@ def test_email_tag_clause_keeps_legacy_rows_for_single_user_mode(monkeypatch):
     assert params == [""]
 
 
-def test_email_ai_cache_tables_are_owner_scoped_and_migrate_legacy_rows(tmp_path, monkeypatch):
+def test_email_ai_cache_tables_are_owner_scoped_and_migrate_legacy_rows(
+    tmp_path, monkeypatch
+):
     import routes.email_helpers as email_helpers
 
     db_path = tmp_path / "scheduled_emails.db"
@@ -85,7 +89,9 @@ def test_email_ai_cache_tables_are_owner_scoped_and_migrate_legacy_rows(tmp_path
             "email_urgency_alerts",
         ):
             info = conn.execute(f"PRAGMA table_info({table})").fetchall()
-            pk_cols = [r[1] for r in sorted((r for r in info if r[5]), key=lambda r: r[5])]
+            pk_cols = [
+                r[1] for r in sorted((r for r in info if r[5]), key=lambda r: r[5])
+            ]
             assert pk_cols == ["message_id", "owner"]
         assert conn.execute(
             "SELECT owner, summary FROM email_summaries WHERE message_id=?",
@@ -98,7 +104,17 @@ def test_email_ai_cache_tables_are_owner_scoped_and_migrate_legacy_rows(tmp_path
             (message_id, owner, uid, folder, subject, sender, summary, model_used, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            ("<shared@example.com>", "alice", "2", "INBOX", "Subject", "a@example.com", "alice", "m", "2026-01-02"),
+            (
+                "<shared@example.com>",
+                "alice",
+                "2",
+                "INBOX",
+                "Subject",
+                "a@example.com",
+                "alice",
+                "m",
+                "2026-01-02",
+            ),
         )
         conn.execute(
             """
@@ -106,7 +122,17 @@ def test_email_ai_cache_tables_are_owner_scoped_and_migrate_legacy_rows(tmp_path
             (message_id, owner, uid, folder, subject, sender, summary, model_used, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            ("<shared@example.com>", "bob", "3", "INBOX", "Subject", "a@example.com", "bob", "m", "2026-01-03"),
+            (
+                "<shared@example.com>",
+                "bob",
+                "3",
+                "INBOX",
+                "Subject",
+                "a@example.com",
+                "bob",
+                "m",
+                "2026-01-03",
+            ),
         )
         rows = conn.execute(
             "SELECT owner, summary FROM email_summaries WHERE message_id=? ORDER BY owner",
@@ -134,7 +160,15 @@ async def test_ai_reply_cache_lookup_is_owner_scoped(tmp_path, monkeypatch):
         (message_id, owner, uid, folder, reply, model_used, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        ("<shared@example.com>", "alice", "1", "INBOX", "alice private draft", "m-a", "2026-01-01"),
+        (
+            "<shared@example.com>",
+            "alice",
+            "1",
+            "INBOX",
+            "alice private draft",
+            "m-a",
+            "2026-01-01",
+        ),
     )
     conn.execute(
         """
@@ -142,7 +176,15 @@ async def test_ai_reply_cache_lookup_is_owner_scoped(tmp_path, monkeypatch):
         (message_id, owner, uid, folder, reply, model_used, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        ("<shared@example.com>", "bob", "2", "INBOX", "bob private draft", "m-b", "2026-01-02"),
+        (
+            "<shared@example.com>",
+            "bob",
+            "2",
+            "INBOX",
+            "bob private draft",
+            "m-b",
+            "2026-01-02",
+        ),
     )
     conn.commit()
     conn.close()
@@ -265,10 +307,18 @@ def test_scheduled_poller_resolves_config_with_row_owner(tmp_path, monkeypatch):
             calls.append(("append", folder))
 
     monkeypatch.setattr(email_pollers, "_get_email_config", fake_get_email_config)
-    monkeypatch.setattr(email_pollers, "_send_smtp_message", lambda *args, **kwargs: calls.append(("send", args[1], args[2])))
+    monkeypatch.setattr(
+        email_pollers,
+        "_send_smtp_message",
+        lambda *args, **kwargs: calls.append(("send", args[1], args[2])),
+    )
     monkeypatch.setattr(email_pollers, "_imap", FakeImap)
     monkeypatch.setattr(email_pollers, "_detect_sent_folder", lambda imap: "Sent")
-    monkeypatch.setattr(email_pollers, "_cleanup_compose_uploads", lambda attachments: calls.append(("cleanup", attachments)))
+    monkeypatch.setattr(
+        email_pollers,
+        "_cleanup_compose_uploads",
+        lambda attachments: calls.append(("cleanup", attachments)),
+    )
 
     result = email_pollers._scheduled_poll_once()
 

@@ -2,6 +2,7 @@
 MinHash LSH based deduplication for massive text collections.
 Helps remove redundant data from Common Crawl and other scrapes.
 """
+
 import re
 from collections.abc import Iterable
 
@@ -9,6 +10,7 @@ try:
     from datasketch import MinHash, MinHashLSH
 except ImportError:
     pass
+
 
 class Deduplicator:
     def __init__(self, threshold: float = 0.8, num_perm: int = 128):
@@ -25,7 +27,7 @@ class Deduplicator:
 
     def _get_tokens(self, text: str) -> set[str]:
         # Simple whitespace tokenizer
-        return set(re.findall(r'\w+', text.lower()))
+        return set(re.findall(r"\w+", text.lower()))
 
     def _get_minhash(self, text: str):
         if not self.lsh:
@@ -33,7 +35,7 @@ class Deduplicator:
         tokens = self._get_tokens(text)
         m = MinHash(num_perm=self.num_perm)
         for d in tokens:
-            m.update(d.encode('utf8'))
+            m.update(d.encode("utf8"))
         return m
 
     def is_duplicate(self, text: str, doc_id: str = None) -> bool:

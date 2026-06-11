@@ -48,58 +48,161 @@ def _make_source(
 
 ARXIV_CATEGORIES = [
     # Computer Science (cs.*)
-    "cs.AI", "cs.AR", "cs.CC", "cs.CE", "cs.CG", "cs.CL", "cs.CR",
-    "cs.CV", "cs.CY", "cs.DB", "cs.DC", "cs.DL", "cs.DM", "cs.DS",
-    "cs.ET", "cs.FL", "cs.GL", "cs.GR", "cs.GT", "cs.HC", "cs.IR",
-    "cs.IT", "cs.LG", "cs.LO", "cs.MA", "cs.MM", "cs.MS", "cs.NA",
-    "cs.NE", "cs.NI", "cs.OH", "cs.OS", "cs.PF", "cs.PL", "cs.RO",
-    "cs.SC", "cs.SD", "cs.SE", "cs.SI", "cs.SY",
+    "cs.AI",
+    "cs.AR",
+    "cs.CC",
+    "cs.CE",
+    "cs.CG",
+    "cs.CL",
+    "cs.CR",
+    "cs.CV",
+    "cs.CY",
+    "cs.DB",
+    "cs.DC",
+    "cs.DL",
+    "cs.DM",
+    "cs.DS",
+    "cs.ET",
+    "cs.FL",
+    "cs.GL",
+    "cs.GR",
+    "cs.GT",
+    "cs.HC",
+    "cs.IR",
+    "cs.IT",
+    "cs.LG",
+    "cs.LO",
+    "cs.MA",
+    "cs.MM",
+    "cs.MS",
+    "cs.NA",
+    "cs.NE",
+    "cs.NI",
+    "cs.OH",
+    "cs.OS",
+    "cs.PF",
+    "cs.PL",
+    "cs.RO",
+    "cs.SC",
+    "cs.SD",
+    "cs.SE",
+    "cs.SI",
+    "cs.SY",
     # Mathematics (math.*)
-    "math.AG", "math.AP", "math.AT", "math.CA", "math.CO", "math.CT",
-    "math.CV", "math.DG", "math.DS", "math.FA", "math.GM", "math.GN",
-    "math.GR", "math.GT", "math.HO", "math.IT", "math.KT", "math.LO",
-    "math.MG", "math.MP", "math.NA", "math.NT", "math.OA", "math.OC",
-    "math.PR", "math.QA", "math.RA", "math.RT", "math.SG", "math.SP",
+    "math.AG",
+    "math.AP",
+    "math.AT",
+    "math.CA",
+    "math.CO",
+    "math.CT",
+    "math.CV",
+    "math.DG",
+    "math.DS",
+    "math.FA",
+    "math.GM",
+    "math.GN",
+    "math.GR",
+    "math.GT",
+    "math.HO",
+    "math.IT",
+    "math.KT",
+    "math.LO",
+    "math.MG",
+    "math.MP",
+    "math.NA",
+    "math.NT",
+    "math.OA",
+    "math.OC",
+    "math.PR",
+    "math.QA",
+    "math.RA",
+    "math.RT",
+    "math.SG",
+    "math.SP",
     "math.ST",
     # Physics (physics.*)
-    "physics.acc-ph", "physics.ao-ph", "physics.app-ph", "physics.atm-clus",
-    "physics.atom-ph", "physics.bio-ph", "physics.chem-ph", "physics.class-ph",
-    "physics.comp-ph", "physics.data-an", "physics.ed-ph", "physics.flu-dyn",
-    "physics.gen-ph", "physics.geo-ph", "physics.hist-ph", "physics.ins-det",
-    "physics.med-ph", "physics.optics", "physics.plasm-ph", "physics.pop-ph",
-    "physics.soc-ph", "physics.space-ph",
+    "physics.acc-ph",
+    "physics.ao-ph",
+    "physics.app-ph",
+    "physics.atm-clus",
+    "physics.atom-ph",
+    "physics.bio-ph",
+    "physics.chem-ph",
+    "physics.class-ph",
+    "physics.comp-ph",
+    "physics.data-an",
+    "physics.ed-ph",
+    "physics.flu-dyn",
+    "physics.gen-ph",
+    "physics.geo-ph",
+    "physics.hist-ph",
+    "physics.ins-det",
+    "physics.med-ph",
+    "physics.optics",
+    "physics.plasm-ph",
+    "physics.pop-ph",
+    "physics.soc-ph",
+    "physics.space-ph",
     # Statistics (stat.*)
-    "stat.AP", "stat.CO", "stat.ME", "stat.ML", "stat.OT", "stat.TH",
+    "stat.AP",
+    "stat.CO",
+    "stat.ME",
+    "stat.ML",
+    "stat.OT",
+    "stat.TH",
     # Quantitative Biology (q-bio.*)
-    "q-bio.BM", "q-bio.CB", "q-bio.GN", "q-bio.MN", "q-bio.NC", "q-bio.OT",
-    "q-bio.PE", "q-bio.QM", "q-bio.SC", "q-bio.TO",
+    "q-bio.BM",
+    "q-bio.CB",
+    "q-bio.GN",
+    "q-bio.MN",
+    "q-bio.NC",
+    "q-bio.OT",
+    "q-bio.PE",
+    "q-bio.QM",
+    "q-bio.SC",
+    "q-bio.TO",
     # Quantitative Finance (q-fin.*)
-    "q-fin.CP", "q-fin.EC", "q-fin.GN", "q-fin.MF", "q-fin.PM", "q-fin.PR",
-    "q-fin.RM", "q-fin.ST", "q-fin.TR",
+    "q-fin.CP",
+    "q-fin.EC",
+    "q-fin.GN",
+    "q-fin.MF",
+    "q-fin.PM",
+    "q-fin.PR",
+    "q-fin.RM",
+    "q-fin.ST",
+    "q-fin.TR",
     # Electrical Engineering (eess.*)
-    "eess.AS", "eess.IV", "eess.SP", "eess.SY",
+    "eess.AS",
+    "eess.IV",
+    "eess.SP",
+    "eess.SY",
     # Economics (econ.*)
-    "econ.EM", "econ.GN", "econ.TH",
+    "econ.EM",
+    "econ.GN",
+    "econ.TH",
 ]
+
 
 def gen_arxiv_configs() -> list[dict[str, Any]]:
     """Generate 210 arXiv category configs."""
     configs = []
     for cat in ARXIV_CATEGORIES:
-        configs.append(_make_source(
-            name=f"arxiv_{cat.replace('.', '_')}",
-            source_type="arxiv",
-            params={
-                "category": cat,
-                "oai_url": "https://export.arxiv.org/oai2",
-                "metadata_prefix": "arXiv",
-                "max_pages": 20,
-            },
-            rate_limit=0.1,  # arXiv: MAX SPEED
-            output_dir="arxiv/massive",
-            batch_size=100,
-            max_records=100000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"arxiv_{cat.replace('.', '_')}",
+                source_type="arxiv",
+                params={
+                    "category": cat,
+                    "oai_url": "https://export.arxiv.org/oai2",
+                    "metadata_prefix": "arXiv",
+                    "max_pages": 20,
+                },
+                rate_limit=0.1,  # arXiv: MAX SPEED
+                output_dir="arxiv/massive",
+                batch_size=100,
+                max_records=100000,
+            )
+        )
     return configs
 
 
@@ -109,61 +212,138 @@ def gen_arxiv_configs() -> list[dict[str, Any]]:
 
 PUBMED_QUERIES = [
     # AI/ML in specific domains
-    "deep learning genomics", "machine learning drug discovery", "AI protein folding",
-    "neural network medical imaging", "NLP clinical records", "computer vision pathology",
-    "deep learning cancer genomics", "machine learning epidemiology", "AI radiology diagnosis",
-    "deep learning microscopy", "machine learning cardiology", "AI neurology diagnosis",
-    "deep learning ophthalmology", "machine learning dermatology", "AI pathology",
-    "deep learning psychiatry", "machine learning pediatrics", "AI surgery",
-    "deep learning immunology", "machine learning virology", "AI vaccine design",
-    "deep learning microbiology", "machine learning neuroscience", "AI brain imaging",
-    "deep learning genetics", "machine learning proteomics", "AI metabolomics",
-    "deep learning transcriptomics", "machine learning epigenomics", "AI single cell",
-    "deep learning drug repurposing", "machine learning clinical trial", "AI biomarker discovery",
-    "deep learning patient outcome", "machine learning health records", "AI telemedicine",
-    "deep learning wearable devices", "machine learning mobile health", "AI remote monitoring",
-    "deep learning medical ethics", "machine learning healthcare", "AI hospital management",
+    "deep learning genomics",
+    "machine learning drug discovery",
+    "AI protein folding",
+    "neural network medical imaging",
+    "NLP clinical records",
+    "computer vision pathology",
+    "deep learning cancer genomics",
+    "machine learning epidemiology",
+    "AI radiology diagnosis",
+    "deep learning microscopy",
+    "machine learning cardiology",
+    "AI neurology diagnosis",
+    "deep learning ophthalmology",
+    "machine learning dermatology",
+    "AI pathology",
+    "deep learning psychiatry",
+    "machine learning pediatrics",
+    "AI surgery",
+    "deep learning immunology",
+    "machine learning virology",
+    "AI vaccine design",
+    "deep learning microbiology",
+    "machine learning neuroscience",
+    "AI brain imaging",
+    "deep learning genetics",
+    "machine learning proteomics",
+    "AI metabolomics",
+    "deep learning transcriptomics",
+    "machine learning epigenomics",
+    "AI single cell",
+    "deep learning drug repurposing",
+    "machine learning clinical trial",
+    "AI biomarker discovery",
+    "deep learning patient outcome",
+    "machine learning health records",
+    "AI telemedicine",
+    "deep learning wearable devices",
+    "machine learning mobile health",
+    "AI remote monitoring",
+    "deep learning medical ethics",
+    "machine learning healthcare",
+    "AI hospital management",
     # Computational biology
-    "sequence alignment algorithm", "phylogenetic tree inference", "protein structure prediction",
-    "RNA folding prediction", "genome assembly algorithm", "variant calling pipeline",
-    "GWAS analysis method", "CRISPR design algorithm", "gene expression analysis",
-    "pathway enrichment analysis", "network biology inference", "systems biology model",
-    "metabolic network reconstruction", "gene regulatory network", "protein interaction network",
-    "differential expression analysis", "single cell RNA seq", "chromatin accessibility",
-    "DNA methylation analysis", "histone modification prediction", "3D genome architecture",
-    "transcription factor binding", "enhancer prediction", "promoter analysis",
-    "noncoding RNA function", "microRNA target prediction", "lncRNA analysis",
-    "epitope prediction", "neoantigen prediction", "T cell receptor analysis",
-    "antibody design algorithm", "molecular docking simulation", "virtual screening method",
-    "quantitative structure activity", "ADMET prediction", "toxicity prediction algorithm",
+    "sequence alignment algorithm",
+    "phylogenetic tree inference",
+    "protein structure prediction",
+    "RNA folding prediction",
+    "genome assembly algorithm",
+    "variant calling pipeline",
+    "GWAS analysis method",
+    "CRISPR design algorithm",
+    "gene expression analysis",
+    "pathway enrichment analysis",
+    "network biology inference",
+    "systems biology model",
+    "metabolic network reconstruction",
+    "gene regulatory network",
+    "protein interaction network",
+    "differential expression analysis",
+    "single cell RNA seq",
+    "chromatin accessibility",
+    "DNA methylation analysis",
+    "histone modification prediction",
+    "3D genome architecture",
+    "transcription factor binding",
+    "enhancer prediction",
+    "promoter analysis",
+    "noncoding RNA function",
+    "microRNA target prediction",
+    "lncRNA analysis",
+    "epitope prediction",
+    "neoantigen prediction",
+    "T cell receptor analysis",
+    "antibody design algorithm",
+    "molecular docking simulation",
+    "virtual screening method",
+    "quantitative structure activity",
+    "ADMET prediction",
+    "toxicity prediction algorithm",
     # Medical AI
-    "chest X ray deep learning", "MRI segmentation algorithm", "CT scan analysis AI",
-    "ultrasound image analysis", "pathology slide digital", "retinal image analysis",
-    "ECG signal deep learning", "EEG signal processing", "wearable sensor machine learning",
-    "ICD coding automation", "clinical decision support", "treatment recommendation system",
-    "patient readmission prediction", "hospital length of stay", "mortality prediction model",
-    "sepsis early detection", "acute kidney injury prediction", "myocardial infarction detection",
-    "stroke prediction model", "diabetes complication prediction", "cancer survival prediction",
-    "mental health chatbot", "cognitive decline prediction", "Parkinson disease monitoring",
-    "Alzheimer early detection", "epilepsy seizure prediction", "sleep apnea detection",
-    "pandemic spread modeling", "contact tracing algorithm", "vaccine distribution optimization",
-    "health disparity analysis", "social determinant health", "population health management",
+    "chest X ray deep learning",
+    "MRI segmentation algorithm",
+    "CT scan analysis AI",
+    "ultrasound image analysis",
+    "pathology slide digital",
+    "retinal image analysis",
+    "ECG signal deep learning",
+    "EEG signal processing",
+    "wearable sensor machine learning",
+    "ICD coding automation",
+    "clinical decision support",
+    "treatment recommendation system",
+    "patient readmission prediction",
+    "hospital length of stay",
+    "mortality prediction model",
+    "sepsis early detection",
+    "acute kidney injury prediction",
+    "myocardial infarction detection",
+    "stroke prediction model",
+    "diabetes complication prediction",
+    "cancer survival prediction",
+    "mental health chatbot",
+    "cognitive decline prediction",
+    "Parkinson disease monitoring",
+    "Alzheimer early detection",
+    "epilepsy seizure prediction",
+    "sleep apnea detection",
+    "pandemic spread modeling",
+    "contact tracing algorithm",
+    "vaccine distribution optimization",
+    "health disparity analysis",
+    "social determinant health",
+    "population health management",
 ]
+
 
 def gen_pubmed_configs() -> list[dict[str, Any]]:
     """Generate 95 PubMed query configs."""
     configs = []
     for q in PUBMED_QUERIES:
         safe_name = q.replace(" ", "_").replace("-", "_").replace(",", "")[:60]
-        configs.append(_make_source(
-            name=f"pubmed_{safe_name}",
-            source_type="pubmed",
-            params={"query": q, "retmax": 10000},
-            rate_limit=0.05,
-            output_dir="pubmed/massive",
-            batch_size=50,
-            max_records=100000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"pubmed_{safe_name}",
+                source_type="pubmed",
+                params={"query": q, "retmax": 10000},
+                rate_limit=0.05,
+                output_dir="pubmed/massive",
+                batch_size=50,
+                max_records=100000,
+            )
+        )
     return configs
 
 
@@ -172,53 +352,124 @@ def gen_pubmed_configs() -> list[dict[str, Any]]:
 # ════════════════════════════════════════════
 
 CROSSREF_FIELDS = [
-    "machine learning", "deep learning", "computer science", "data science",
-    "artificial intelligence", "software engineering", "computer engineering",
-    "information technology", "computational mathematics", "statistical modeling",
-    "algorithm design", "data structure", "network security", "database management",
-    "web development", "mobile computing", "human computer interaction", "computer graphics",
-    "scientific computing", "computational physics", "computational chemistry",
-    "computational biology", "bioinformatics", "computational neuroscience",
-    "quantum computing", "quantum information", "quantum cryptography",
-    "cryptography", "cryptocurrency", "blockchain technology",
-    "distributed systems", "cloud computing", "edge computing", "fog computing",
-    "internet of things", "cyber physical systems", "embedded systems",
-    "operating systems", "compiler design", "programming languages",
-    "formal verification", "software testing", "software architecture",
-    "requirements engineering", "software maintenance", "software quality",
-    "computer vision", "image processing", "pattern recognition",
-    "natural language processing", "speech recognition", "text mining",
-    "information retrieval", "recommender system", "search engine",
-    "data mining", "knowledge discovery", "big data analytics",
-    "machine learning engineering", "MLOps", "feature engineering",
-    "reinforcement learning", "deep reinforcement learning", "transfer learning",
-    "multi task learning", "meta learning", "few shot learning",
-    "zero shot learning", "self supervised learning", "semi supervised learning",
-    "active learning", "online learning", "federated learning",
-    "generative adversarial network", "variational autoencoder", "diffusion model",
-    "transformer architecture", "attention mechanism", "language model",
-    "large language model", "foundation model", "neural machine translation",
-    "computer architecture", "parallel computing", "high performance computing",
-    "GPU computing", "FPGA design", "ASIC design", "VLSI design",
-    "computer networks", "wireless networks", "sensor networks",
-    "5G technology", "6G networks", "network protocol", "network security",
-    "cybersecurity", "privacy preservation", "differential privacy",
+    "machine learning",
+    "deep learning",
+    "computer science",
+    "data science",
+    "artificial intelligence",
+    "software engineering",
+    "computer engineering",
+    "information technology",
+    "computational mathematics",
+    "statistical modeling",
+    "algorithm design",
+    "data structure",
+    "network security",
+    "database management",
+    "web development",
+    "mobile computing",
+    "human computer interaction",
+    "computer graphics",
+    "scientific computing",
+    "computational physics",
+    "computational chemistry",
+    "computational biology",
+    "bioinformatics",
+    "computational neuroscience",
+    "quantum computing",
+    "quantum information",
+    "quantum cryptography",
+    "cryptography",
+    "cryptocurrency",
+    "blockchain technology",
+    "distributed systems",
+    "cloud computing",
+    "edge computing",
+    "fog computing",
+    "internet of things",
+    "cyber physical systems",
+    "embedded systems",
+    "operating systems",
+    "compiler design",
+    "programming languages",
+    "formal verification",
+    "software testing",
+    "software architecture",
+    "requirements engineering",
+    "software maintenance",
+    "software quality",
+    "computer vision",
+    "image processing",
+    "pattern recognition",
+    "natural language processing",
+    "speech recognition",
+    "text mining",
+    "information retrieval",
+    "recommender system",
+    "search engine",
+    "data mining",
+    "knowledge discovery",
+    "big data analytics",
+    "machine learning engineering",
+    "MLOps",
+    "feature engineering",
+    "reinforcement learning",
+    "deep reinforcement learning",
+    "transfer learning",
+    "multi task learning",
+    "meta learning",
+    "few shot learning",
+    "zero shot learning",
+    "self supervised learning",
+    "semi supervised learning",
+    "active learning",
+    "online learning",
+    "federated learning",
+    "generative adversarial network",
+    "variational autoencoder",
+    "diffusion model",
+    "transformer architecture",
+    "attention mechanism",
+    "language model",
+    "large language model",
+    "foundation model",
+    "neural machine translation",
+    "computer architecture",
+    "parallel computing",
+    "high performance computing",
+    "GPU computing",
+    "FPGA design",
+    "ASIC design",
+    "VLSI design",
+    "computer networks",
+    "wireless networks",
+    "sensor networks",
+    "5G technology",
+    "6G networks",
+    "network protocol",
+    "network security",
+    "cybersecurity",
+    "privacy preservation",
+    "differential privacy",
 ]
+
 
 def gen_crossref_configs() -> list[dict[str, Any]]:
     """Generate 100 CrossRef field configs."""
     configs = []
     for field in CROSSREF_FIELDS:
         safe_name = field.replace(" ", "_").replace("-", "_")[:50]
-        configs.append(_make_source(
-            name=f"crossref_{safe_name}",
-            source_type="crossref",
-            params={"query": field, "rows": 100, "filter": "type:journal-article"},
-            rate_limit=0.05,
-            output_dir="crossref/massive",
-            batch_size=100,
-            max_records=100000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"crossref_{safe_name}",
+                source_type="crossref",
+                params={"query": field, "rows": 100, "filter": "type:journal-article"},
+                rate_limit=0.05,
+                output_dir="crossref/massive",
+                batch_size=100,
+                max_records=100000,
+            )
+        )
     return configs
 
 
@@ -227,49 +478,106 @@ def gen_crossref_configs() -> list[dict[str, Any]]:
 # ════════════════════════════════════════════
 
 SEMANTIC_SCHOLAR_TOPICS = [
-    "transformer neural network", "large language model", "diffusion model",
-    "graph neural network", "federated learning", "contrastive learning",
-    "representation learning", "multi task learning", "meta learning",
-    "few shot learning", "self supervised learning", "active learning",
-    "online learning", "ensemble learning", "knowledge distillation",
-    "neural architecture search", "bayesian deep learning", "causal inference",
-    "time series analysis", "anomaly detection", "dimensionality reduction",
-    "feature selection", "clustering algorithm", "classification algorithm",
-    "regression analysis", "optimization method", "evolutionary algorithm",
-    "swarm intelligence", "multi agent system", "game theory",
-    "decision theory", "information theory", "control theory",
-    "signal processing", "image segmentation", "object detection",
-    "face recognition", "gesture recognition", "activity recognition",
-    "autonomous driving", "robot navigation", "motion planning",
-    "simultaneous localization", "robot manipulation", "human robot interaction",
-    "knowledge graph", "semantic web", "ontology engineering",
-    "question answering", "dialogue system", "chatbot",
-    "sentiment analysis", "emotion recognition", "opinion mining",
-    "fake news detection", "hate speech detection", "misinformation detection",
-    "fact checking", "text summarization", "text generation",
-    "code generation", "program synthesis", "automated debugging",
-    "software defect prediction", "code review automation", "test generation",
-    "program repair", "binary analysis", "malware detection",
-    "intrusion detection", "vulnerability analysis", "penetration testing",
-    "digital forensics", "biometric authentication", "behavioral biometrics",
-    "zero trust architecture", "secure multiparty computation", "homomorphic encryption",
-    "post quantum cryptography", "blockchain consensus", "smart contract verification",
+    "transformer neural network",
+    "large language model",
+    "diffusion model",
+    "graph neural network",
+    "federated learning",
+    "contrastive learning",
+    "representation learning",
+    "multi task learning",
+    "meta learning",
+    "few shot learning",
+    "self supervised learning",
+    "active learning",
+    "online learning",
+    "ensemble learning",
+    "knowledge distillation",
+    "neural architecture search",
+    "bayesian deep learning",
+    "causal inference",
+    "time series analysis",
+    "anomaly detection",
+    "dimensionality reduction",
+    "feature selection",
+    "clustering algorithm",
+    "classification algorithm",
+    "regression analysis",
+    "optimization method",
+    "evolutionary algorithm",
+    "swarm intelligence",
+    "multi agent system",
+    "game theory",
+    "decision theory",
+    "information theory",
+    "control theory",
+    "signal processing",
+    "image segmentation",
+    "object detection",
+    "face recognition",
+    "gesture recognition",
+    "activity recognition",
+    "autonomous driving",
+    "robot navigation",
+    "motion planning",
+    "simultaneous localization",
+    "robot manipulation",
+    "human robot interaction",
+    "knowledge graph",
+    "semantic web",
+    "ontology engineering",
+    "question answering",
+    "dialogue system",
+    "chatbot",
+    "sentiment analysis",
+    "emotion recognition",
+    "opinion mining",
+    "fake news detection",
+    "hate speech detection",
+    "misinformation detection",
+    "fact checking",
+    "text summarization",
+    "text generation",
+    "code generation",
+    "program synthesis",
+    "automated debugging",
+    "software defect prediction",
+    "code review automation",
+    "test generation",
+    "program repair",
+    "binary analysis",
+    "malware detection",
+    "intrusion detection",
+    "vulnerability analysis",
+    "penetration testing",
+    "digital forensics",
+    "biometric authentication",
+    "behavioral biometrics",
+    "zero trust architecture",
+    "secure multiparty computation",
+    "homomorphic encryption",
+    "post quantum cryptography",
+    "blockchain consensus",
+    "smart contract verification",
 ]
+
 
 def gen_semantic_scholar_configs() -> list[dict[str, Any]]:
     """Generate 80 Semantic Scholar topic configs."""
     configs = []
     for topic in SEMANTIC_SCHOLAR_TOPICS:
         safe_name = topic.replace(" ", "_").replace("-", "_")[:50]
-        configs.append(_make_source(
-            name=f"semscholar_{safe_name}",
-            source_type="semantic_scholar",
-            params={"query": topic, "limit": 100, "fields": "title,abstract,year,citationCount,venue,authors"},
-            rate_limit=0.1,
-            output_dir="semantic_scholar/massive",
-            batch_size=100,
-            max_records=50000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"semscholar_{safe_name}",
+                source_type="semantic_scholar",
+                params={"query": topic, "limit": 100, "fields": "title,abstract,year,citationCount,venue,authors"},
+                rate_limit=0.1,
+                output_dir="semantic_scholar/massive",
+                batch_size=100,
+                max_records=50000,
+            )
+        )
     return configs
 
 
@@ -278,21 +586,56 @@ def gen_semantic_scholar_configs() -> list[dict[str, Any]]:
 # ════════════════════════════════════════════
 
 GITHUB_TOPICS = [
-    "machine-learning", "deep-learning", "neural-network", "natural-language-processing",
-    "computer-vision", "reinforcement-learning", "data-science", "data-analysis",
-    "web-development", "mobile-development", "api-rest", "microservices",
-    "devops", "cloud-computing", "cybersecurity", "blockchain",
-    "game-development", "robotics", "internet-of-things", "embedded-systems",
-    "compiler", "operating-system", "database", "networking",
-    "cryptography", "algorithm", "data-structure", "design-patterns",
-    "software-testing", "automation",
+    "machine-learning",
+    "deep-learning",
+    "neural-network",
+    "natural-language-processing",
+    "computer-vision",
+    "reinforcement-learning",
+    "data-science",
+    "data-analysis",
+    "web-development",
+    "mobile-development",
+    "api-rest",
+    "microservices",
+    "devops",
+    "cloud-computing",
+    "cybersecurity",
+    "blockchain",
+    "game-development",
+    "robotics",
+    "internet-of-things",
+    "embedded-systems",
+    "compiler",
+    "operating-system",
+    "database",
+    "networking",
+    "cryptography",
+    "algorithm",
+    "data-structure",
+    "design-patterns",
+    "software-testing",
+    "automation",
 ]
 
 GITHUB_LANGUAGES = [
-    "python", "javascript", "typescript", "rust", "go", "java",
-    "c++", "c", "swift", "kotlin", "ruby", "scala", "haskell",
-    "julia", "r",
+    "python",
+    "javascript",
+    "typescript",
+    "rust",
+    "go",
+    "java",
+    "c++",
+    "c",
+    "swift",
+    "kotlin",
+    "ruby",
+    "scala",
+    "haskell",
+    "julia",
+    "r",
 ]
+
 
 def gen_github_configs() -> list[dict[str, Any]]:
     """Generate 450 GitHub topic×language configs."""
@@ -300,21 +643,23 @@ def gen_github_configs() -> list[dict[str, Any]]:
     for topic in GITHUB_TOPICS:
         for lang in GITHUB_LANGUAGES:
             name = f"github_{topic}_{lang}"
-            configs.append(_make_source(
-                name=name[:80],
-                source_type="github",
-                params={
-                    "query": f"topic:{topic} language:{lang}",
-                    "sort": "stars",
-                    "order": "desc",
-                    "max_pages": 5,
-                    "per_page": 30,
-                },
-                rate_limit=0.05,  # MAX SPEED
-                output_dir=f"github/{topic}/{lang}",
-                batch_size=30,
-                max_records=5000,
-            ))
+            configs.append(
+                _make_source(
+                    name=name[:80],
+                    source_type="github",
+                    params={
+                        "query": f"topic:{topic} language:{lang}",
+                        "sort": "stars",
+                        "order": "desc",
+                        "max_pages": 5,
+                        "per_page": 30,
+                    },
+                    rate_limit=0.05,  # MAX SPEED
+                    output_dir=f"github/{topic}/{lang}",
+                    batch_size=30,
+                    max_records=5000,
+                )
+            )
     return configs
 
 
@@ -323,40 +668,81 @@ def gen_github_configs() -> list[dict[str, Any]]:
 # ════════════════════════════════════════════
 
 STACKEXCHANGE_SITES = [
-    "stackoverflow", "serverfault", "superuser", "askubuntu",
-    "programmers", "codegolf", "codereview", "softwareengineering",
-    "cs", "datascience", "ai", "cstheory", "scicomp",
-    "stats", "math", "mathematica", "cryptography",
-    "quantumcomputing", "physics", "chemistry", "biology",
-    "gis", "electronics", "robotics", "engineering",
-    "security", "reverseengineering", "webmasters", "dba",
-    "devops", "sqa", "unix", "vi", "emacs",
-    "git", "docker", "kubernetes", "ansible",
-    "terraform", "aws", "googlecloud", "serverless",
-    "reactjs", "angular", "vuejs", "django",
-    "flask", "spring", "rails", "laravel",
+    "stackoverflow",
+    "serverfault",
+    "superuser",
+    "askubuntu",
+    "programmers",
+    "codegolf",
+    "codereview",
+    "softwareengineering",
+    "cs",
+    "datascience",
+    "ai",
+    "cstheory",
+    "scicomp",
+    "stats",
+    "math",
+    "mathematica",
+    "cryptography",
+    "quantumcomputing",
+    "physics",
+    "chemistry",
+    "biology",
+    "gis",
+    "electronics",
+    "robotics",
+    "engineering",
+    "security",
+    "reverseengineering",
+    "webmasters",
+    "dba",
+    "devops",
+    "sqa",
+    "unix",
+    "vi",
+    "emacs",
+    "git",
+    "docker",
+    "kubernetes",
+    "ansible",
+    "terraform",
+    "aws",
+    "googlecloud",
+    "serverless",
+    "reactjs",
+    "angular",
+    "vuejs",
+    "django",
+    "flask",
+    "spring",
+    "rails",
+    "laravel",
 ]
+
 
 def gen_stackexchange_configs() -> list[dict[str, Any]]:
     """Generate 50 Stack Exchange site configs."""
     configs = []
     for site in STACKEXCHANGE_SITES:
-        configs.append(_make_source(
-            name=f"stackexchange_{site}",
-            source_type="stackexchange",
-            params={
-                "site": site,
-                "sort": "votes",
-                "order": "desc",
-                "pages": 10,
-                "pagesize": 100,
-                "tagged": "" if site == "stackoverflow" else None,
-            },
-            rate_limit=0.1,
-            output_dir=f"stackexchange/{site}",
-            batch_size=100,
-            max_records=50000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"stackexchange_{site}",
+                source_type="stackexchange",
+                params={
+                    "site": site,
+                    "sort": "votes",
+                    "order": "desc",
+                    "pages": 10,
+                    "pagesize": 100,
+                    "tagged": "" if site == "stackoverflow" else None,
+                },
+                rate_limit=0.1,
+                output_dir=f"stackexchange/{site}",
+                batch_size=100,
+                max_records=50000,
+            )
+        )
     return configs
 
 
@@ -365,60 +751,131 @@ def gen_stackexchange_configs() -> list[dict[str, Any]]:
 # ════════════════════════════════════════════
 
 OPENALEX_TOPICS = [
-    "machine learning", "artificial intelligence", "neural network",
-    "natural language processing", "computer vision", "quantum computing",
-    "reinforcement learning", "deep learning", "generative AI", "robotics",
-    "data mining", "computer graphics", "information retrieval",
-    "computational biology", "cybersecurity", "software engineering",
-    "distributed systems", "database systems", "computer networks",
-    "operating systems", "programming languages", "compiler design",
-    "cryptography", "formal methods", "human computer interaction",
-    "bioinformatics", "computational linguistics", "knowledge representation",
-    "computer architecture", "parallel computing", "cloud computing",
-    "embedded systems", "pattern recognition", "evolutionary computation",
-    "fuzzy logic", "swarm intelligence", "multi agent systems",
-    "game theory", "optimization algorithms", "decision theory",
-    "information theory", "signal processing", "control systems",
-    "computational geometry", "numerical analysis", "symbolic computation",
-    "verification", "synthesis", "computer aided design", "VLSI design",
-    "computer vision", "augmented reality", "virtual reality",
-    "speech processing", "audio engineering", "music information retrieval",
-    "biometrics", "affective computing", "social network analysis",
-    "recommender systems", "personalization", "user modeling",
-    "web science", "semantic web", "linked data",
-    "knowledge graph", "ontology", "taxonomy",
-    "natural language generation", "machine translation", "dialogue systems",
-    "question answering", "text summarization", "information extraction",
-    "sentiment analysis", "opinion mining", "argumentation mining",
-    "discourse analysis", "pragmatics", "computational semantics",
-    "graph theory", "combinatorics", "discrete mathematics",
-    "probability theory", "stochastic processes", "statistical inference",
-    "causal inference", "experimental design", "survey methodology",
-    "psychometrics", "econometrics", "social science methodology",
-    "scientific computing", "high performance computing", "GPU computing",
-    "edge computing", "fog computing", "serverless computing",
-    "software architecture", "design patterns", "domain driven design",
+    "machine learning",
+    "artificial intelligence",
+    "neural network",
+    "natural language processing",
+    "computer vision",
+    "quantum computing",
+    "reinforcement learning",
+    "deep learning",
+    "generative AI",
+    "robotics",
+    "data mining",
+    "computer graphics",
+    "information retrieval",
+    "computational biology",
+    "cybersecurity",
+    "software engineering",
+    "distributed systems",
+    "database systems",
+    "computer networks",
+    "operating systems",
+    "programming languages",
+    "compiler design",
+    "cryptography",
+    "formal methods",
+    "human computer interaction",
+    "bioinformatics",
+    "computational linguistics",
+    "knowledge representation",
+    "computer architecture",
+    "parallel computing",
+    "cloud computing",
+    "embedded systems",
+    "pattern recognition",
+    "evolutionary computation",
+    "fuzzy logic",
+    "swarm intelligence",
+    "multi agent systems",
+    "game theory",
+    "optimization algorithms",
+    "decision theory",
+    "information theory",
+    "signal processing",
+    "control systems",
+    "computational geometry",
+    "numerical analysis",
+    "symbolic computation",
+    "verification",
+    "synthesis",
+    "computer aided design",
+    "VLSI design",
+    "computer vision",
+    "augmented reality",
+    "virtual reality",
+    "speech processing",
+    "audio engineering",
+    "music information retrieval",
+    "biometrics",
+    "affective computing",
+    "social network analysis",
+    "recommender systems",
+    "personalization",
+    "user modeling",
+    "web science",
+    "semantic web",
+    "linked data",
+    "knowledge graph",
+    "ontology",
+    "taxonomy",
+    "natural language generation",
+    "machine translation",
+    "dialogue systems",
+    "question answering",
+    "text summarization",
+    "information extraction",
+    "sentiment analysis",
+    "opinion mining",
+    "argumentation mining",
+    "discourse analysis",
+    "pragmatics",
+    "computational semantics",
+    "graph theory",
+    "combinatorics",
+    "discrete mathematics",
+    "probability theory",
+    "stochastic processes",
+    "statistical inference",
+    "causal inference",
+    "experimental design",
+    "survey methodology",
+    "psychometrics",
+    "econometrics",
+    "social science methodology",
+    "scientific computing",
+    "high performance computing",
+    "GPU computing",
+    "edge computing",
+    "fog computing",
+    "serverless computing",
+    "software architecture",
+    "design patterns",
+    "domain driven design",
 ]
+
 
 def gen_openalex_configs() -> list[dict[str, Any]]:
     """Generate 100 OpenAlex topic configs."""
     configs = []
     for topic in OPENALEX_TOPICS:
         safe_name = topic.replace(" ", "_").replace("-", "_")[:50]
-        configs.append(_make_source(
-            name=f"openalex_{safe_name}",
-            source_type="openalex",
-            params={
-                "search": topic,
-                "filter": "open_access.is_oa:true",
-                "per_page": 200,
-                "select": "id,title,abstract_inverted_index,cited_by_count,publication_year,doi",
-            },
-            rate_limit=0.02,
-            output_dir="openalex/massive",
-            batch_size=200,
-            max_records=100000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"openalex_{safe_name}",
+                source_type="openalex",
+                params={
+                    "search": topic,
+                    "filter": "open_access.is_oa:true",
+                    "per_page": 200,
+                    "select": "id,title,abstract_inverted_index,cited_by_count,publication_year,doi",
+                },
+                rate_limit=0.02,
+                output_dir="openalex/massive",
+                batch_size=200,
+                max_records=100000,
+            )
+        )
     return configs
 
 
@@ -427,52 +884,124 @@ def gen_openalex_configs() -> list[dict[str, Any]]:
 # ════════════════════════════════════════════
 
 WIKIPEDIA_CATEGORIES = [
-    "Artificial intelligence", "Machine learning", "Deep learning",
-    "Natural language processing", "Computer vision", "Programming languages",
-    "Data structures", "Algorithms", "Software engineering", "Python (programming language)",
-    "Neural network", "Reinforcement learning", "Data science", "Database",
-    "Operating system", "Computer network", "Compiler", "Cryptography",
-    "Computational biology", "Quantum computing", "Robotics", "Computer security",
-    "Computer graphics", "Information retrieval", "Human-computer interaction",
-    "Distributed computing", "Parallel computing", "Cloud computing",
-    "Embedded system", "Computer architecture", "Formal verification",
-    "Programming paradigm", "Software testing", "Web development", "Mobile app",
-    "Computer simulation", "Numerical analysis", "Optimization", "Game theory",
-    "Pattern recognition", "Data mining", "Information theory",
-    "Control theory", "Signal processing", "Computational linguistics",
-    "Knowledge management", "Business intelligence", "Big data",
-    "Internet of things", "Virtual reality", "Augmented reality",
-    "Mathematics", "Statistics", "Probability", "Linear algebra",
-    "Calculus", "Differential equation", "Discrete mathematics",
-    "Graph theory", "Combinatorics", "Number theory",
-    "Physics", "Mechanics", "Thermodynamics", "Electromagnetism",
-    "Quantum mechanics", "Relativity", "Particle physics",
-    "Astrophysics", "Cosmology", "Nuclear physics",
-    "Chemistry", "Organic chemistry", "Inorganic chemistry",
-    "Biochemistry", "Physical chemistry", "Analytical chemistry",
-    "Biology", "Genetics", "Evolution", "Cell biology",
-    "Molecular biology", "Microbiology", "Immunology",
-    "Neuroscience", "Psychology", "Cognitive science",
-    "Economics", "Finance", "Accounting",
-    "Philosophy", "Logic", "Ethics",
-    "Linguistics", "Anthropology", "Sociology",
-    "History of science", "Philosophy of science", "Scientific method",
+    "Artificial intelligence",
+    "Machine learning",
+    "Deep learning",
+    "Natural language processing",
+    "Computer vision",
+    "Programming languages",
+    "Data structures",
+    "Algorithms",
+    "Software engineering",
+    "Python (programming language)",
+    "Neural network",
+    "Reinforcement learning",
+    "Data science",
+    "Database",
+    "Operating system",
+    "Computer network",
+    "Compiler",
+    "Cryptography",
+    "Computational biology",
+    "Quantum computing",
+    "Robotics",
+    "Computer security",
+    "Computer graphics",
+    "Information retrieval",
+    "Human-computer interaction",
+    "Distributed computing",
+    "Parallel computing",
+    "Cloud computing",
+    "Embedded system",
+    "Computer architecture",
+    "Formal verification",
+    "Programming paradigm",
+    "Software testing",
+    "Web development",
+    "Mobile app",
+    "Computer simulation",
+    "Numerical analysis",
+    "Optimization",
+    "Game theory",
+    "Pattern recognition",
+    "Data mining",
+    "Information theory",
+    "Control theory",
+    "Signal processing",
+    "Computational linguistics",
+    "Knowledge management",
+    "Business intelligence",
+    "Big data",
+    "Internet of things",
+    "Virtual reality",
+    "Augmented reality",
+    "Mathematics",
+    "Statistics",
+    "Probability",
+    "Linear algebra",
+    "Calculus",
+    "Differential equation",
+    "Discrete mathematics",
+    "Graph theory",
+    "Combinatorics",
+    "Number theory",
+    "Physics",
+    "Mechanics",
+    "Thermodynamics",
+    "Electromagnetism",
+    "Quantum mechanics",
+    "Relativity",
+    "Particle physics",
+    "Astrophysics",
+    "Cosmology",
+    "Nuclear physics",
+    "Chemistry",
+    "Organic chemistry",
+    "Inorganic chemistry",
+    "Biochemistry",
+    "Physical chemistry",
+    "Analytical chemistry",
+    "Biology",
+    "Genetics",
+    "Evolution",
+    "Cell biology",
+    "Molecular biology",
+    "Microbiology",
+    "Immunology",
+    "Neuroscience",
+    "Psychology",
+    "Cognitive science",
+    "Economics",
+    "Finance",
+    "Accounting",
+    "Philosophy",
+    "Logic",
+    "Ethics",
+    "Linguistics",
+    "Anthropology",
+    "Sociology",
+    "History of science",
+    "Philosophy of science",
+    "Scientific method",
 ]
+
 
 def gen_wikipedia_configs() -> list[dict[str, Any]]:
     """Generate 100 Wikipedia category configs."""
     configs = []
     for cat in WIKIPEDIA_CATEGORIES:
         safe_name = cat.replace(" ", "_").replace("(", "").replace(")", "").lower()[:50]
-        configs.append(_make_source(
-            name=f"wikipedia_{safe_name}",
-            source_type="wikipedia",
-            params={"category": cat, "max_articles": 200},
-            rate_limit=0.02,
-            output_dir="wikipedia/massive",
-            batch_size=10,
-            max_records=50000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"wikipedia_{safe_name}",
+                source_type="wikipedia",
+                params={"category": cat, "max_articles": 200},
+                rate_limit=0.02,
+                output_dir="wikipedia/massive",
+                batch_size=10,
+                max_records=50000,
+            )
+        )
     return configs
 
 
@@ -481,36 +1010,75 @@ def gen_wikipedia_configs() -> list[dict[str, Any]]:
 # ════════════════════════════════════════════
 
 DOAJ_SUBJECTS = [
-    "computer science", "engineering", "mathematics", "technology",
-    "artificial intelligence", "data science", "physics", "biology",
-    "chemistry", "medicine", "psychology", "economics", "sociology",
-    "political science", "education", "philosophy", "linguistics",
-    "geography", "environmental science", "materials science",
-    "neuroscience", "immunology", "genetics", "astronomy",
-    "geology", "oceanography", "ecology", "archaeology",
-    "anthropology", "statistics", "engineering design",
-    "biomedical engineering", "chemical engineering", "civil engineering",
-    "electrical engineering", "mechanical engineering", "software engineering",
-    "environmental engineering", "industrial engineering", "materials engineering",
-    "nuclear engineering", "petroleum engineering", "aerospace engineering",
-    "agricultural science", "veterinary science", "public health",
-    "pharmacology", "toxicology", "nursing", "dentistry",
+    "computer science",
+    "engineering",
+    "mathematics",
+    "technology",
+    "artificial intelligence",
+    "data science",
+    "physics",
+    "biology",
+    "chemistry",
+    "medicine",
+    "psychology",
+    "economics",
+    "sociology",
+    "political science",
+    "education",
+    "philosophy",
+    "linguistics",
+    "geography",
+    "environmental science",
+    "materials science",
+    "neuroscience",
+    "immunology",
+    "genetics",
+    "astronomy",
+    "geology",
+    "oceanography",
+    "ecology",
+    "archaeology",
+    "anthropology",
+    "statistics",
+    "engineering design",
+    "biomedical engineering",
+    "chemical engineering",
+    "civil engineering",
+    "electrical engineering",
+    "mechanical engineering",
+    "software engineering",
+    "environmental engineering",
+    "industrial engineering",
+    "materials engineering",
+    "nuclear engineering",
+    "petroleum engineering",
+    "aerospace engineering",
+    "agricultural science",
+    "veterinary science",
+    "public health",
+    "pharmacology",
+    "toxicology",
+    "nursing",
+    "dentistry",
 ]
+
 
 def gen_doaj_configs() -> list[dict[str, Any]]:
     """Generate 50 DOAJ subject configs."""
     configs = []
     for subject in DOAJ_SUBJECTS:
         safe_name = subject.replace(" ", "_").replace("-", "_")[:40]
-        configs.append(_make_source(
-            name=f"doaj_{safe_name}",
-            source_type="doaj",
-            params={"query": subject, "pageSize": 100},
-            rate_limit=0.05,
-            output_dir="doaj/massive",
-            batch_size=100,
-            max_records=100000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"doaj_{safe_name}",
+                source_type="doaj",
+                params={"query": subject, "pageSize": 100},
+                rate_limit=0.05,
+                output_dir="doaj/massive",
+                batch_size=100,
+                max_records=100000,
+            )
+        )
     return configs
 
 
@@ -519,41 +1087,88 @@ def gen_doaj_configs() -> list[dict[str, Any]]:
 # ════════════════════════════════════════════
 
 REDDIT_SUBREDDITS = [
-    "MachineLearning", "artificial", "deeplearning", "learnmachinelearning",
-    "datascience", "Python", "programming", "coding", "webdev",
-    "reactjs", "javascript", "typescript", "rust", "golang",
-    "cpp", "java", "swift", "kotlin",
-    "devops", "kubernetes", "docker", "aws", "azure", "googlecloud",
-    "cybersecurity", "netsec", "privacy",
-    "algorithms", "compilers", "osdev", "compsci",
-    "neuralnetworks", "reinforcementlearning", "computervision",
-    "NLP", "bigdata", "databases", "PostgreSQL", "redis",
-    "git", "vim", "emacs", "linux", "unix",
-    "opensource", "github", "selfhosted",
-    "startups", "sideproject", "softwaretesting",
-    "functionalprogramming", "haskell", "scala", "clojure",
-    "erlang", "elixir", "lua", "racket",
+    "MachineLearning",
+    "artificial",
+    "deeplearning",
+    "learnmachinelearning",
+    "datascience",
+    "Python",
+    "programming",
+    "coding",
+    "webdev",
+    "reactjs",
+    "javascript",
+    "typescript",
+    "rust",
+    "golang",
+    "cpp",
+    "java",
+    "swift",
+    "kotlin",
+    "devops",
+    "kubernetes",
+    "docker",
+    "aws",
+    "azure",
+    "googlecloud",
+    "cybersecurity",
+    "netsec",
+    "privacy",
+    "algorithms",
+    "compilers",
+    "osdev",
+    "compsci",
+    "neuralnetworks",
+    "reinforcementlearning",
+    "computervision",
+    "NLP",
+    "bigdata",
+    "databases",
+    "PostgreSQL",
+    "redis",
+    "git",
+    "vim",
+    "emacs",
+    "linux",
+    "unix",
+    "opensource",
+    "github",
+    "selfhosted",
+    "startups",
+    "sideproject",
+    "softwaretesting",
+    "functionalprogramming",
+    "haskell",
+    "scala",
+    "clojure",
+    "erlang",
+    "elixir",
+    "lua",
+    "racket",
 ]
+
 
 def gen_reddit_configs() -> list[dict[str, Any]]:
     """Generate 50 Reddit subreddit configs."""
     configs = []
     for subreddit in REDDIT_SUBREDDITS:
-        configs.append(_make_source(
-            name=f"reddit_{subreddit.lower()}",
-            source_type="reddit",
-            params={
-                "subreddit": subreddit,
-                "sort": "top",
-                "timeframe": "all",
-                "max_posts": 1000,
-                "include_comments": True,
-            },
-            rate_limit=0.2,
-            output_dir="reddit/massive",
-            batch_size=100,
-            max_records=50000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"reddit_{subreddit.lower()}",
+                source_type="reddit",
+                params={
+                    "subreddit": subreddit,
+                    "sort": "top",
+                    "timeframe": "all",
+                    "max_posts": 1000,
+                    "include_comments": True,
+                },
+                rate_limit=0.2,
+                output_dir="reddit/massive",
+                batch_size=100,
+                max_records=50000,
+            )
+        )
     return configs
 
 
@@ -604,20 +1219,23 @@ RSS_FEEDS = [
     ("Comet ML Blog", "https://www.comet.com/blog/feed/"),
 ]
 
+
 def gen_rss_configs() -> list[dict[str, Any]]:
     """Generate 40 RSS feed configs."""
     configs = []
     for name, url in RSS_FEEDS:
         safe_name = name.replace(" ", "_").replace("/", "_")[:50]
-        configs.append(_make_source(
-            name=f"rss_{safe_name.lower()}",
-            source_type="rss",
-            params={"url": url, "max_items": 500},
-            rate_limit=0.2,
-            output_dir="rss/massive",
-            batch_size=100,
-            max_records=100000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"rss_{safe_name.lower()}",
+                source_type="rss",
+                params={"url": url, "max_items": 500},
+                rate_limit=0.2,
+                output_dir="rss/massive",
+                batch_size=100,
+                max_records=100000,
+            )
+        )
     return configs
 
 
@@ -627,69 +1245,203 @@ def gen_rss_configs() -> list[dict[str, Any]]:
 
 PYPI_PACKAGES = [
     # AI/ML Core
-    "numpy", "pandas", "scipy", "scikit-learn", "tensorflow", "torch", "jax",
-    "transformers", "datasets", "diffusers", "accelerate", "flax", "optax",
-    "sentence-transformers", "chromadb", "langchain", "llama-index",
-    "openai", "anthropic", "mistralai", "cohere", "huggingface-hub",
-    "mlflow", "wandb", "tensorboard", "optuna", "hyperopt", "ray",
-    "dask", "polars", "duckdb", "pyarrow", "fastparquet",
-    "shap", "lime", "interpret", "fairlearn", "evaluate",
-    "gym", "stable-baselines3", "pettingzoo",
-    "networkx", "igraph",
-    "nltk", "spacy", "gensim", "torchvision", "torchaudio", "opencv-python",
+    "numpy",
+    "pandas",
+    "scipy",
+    "scikit-learn",
+    "tensorflow",
+    "torch",
+    "jax",
+    "transformers",
+    "datasets",
+    "diffusers",
+    "accelerate",
+    "flax",
+    "optax",
+    "sentence-transformers",
+    "chromadb",
+    "langchain",
+    "llama-index",
+    "openai",
+    "anthropic",
+    "mistralai",
+    "cohere",
+    "huggingface-hub",
+    "mlflow",
+    "wandb",
+    "tensorboard",
+    "optuna",
+    "hyperopt",
+    "ray",
+    "dask",
+    "polars",
+    "duckdb",
+    "pyarrow",
+    "fastparquet",
+    "shap",
+    "lime",
+    "interpret",
+    "fairlearn",
+    "evaluate",
+    "gym",
+    "stable-baselines3",
+    "pettingzoo",
+    "networkx",
+    "igraph",
+    "nltk",
+    "spacy",
+    "gensim",
+    "torchvision",
+    "torchaudio",
+    "opencv-python",
     # Web
-    "fastapi", "uvicorn", "pydantic", "sqlalchemy", "alembic",
-    "django", "flask", "boto3", "httpx", "aiohttp",
-    "requests", "beautifulsoup4", "lxml", "selenium", "playwright",
-    "scrapy", "gunicorn", "nginx", "celery", "redis",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "sqlalchemy",
+    "alembic",
+    "django",
+    "flask",
+    "boto3",
+    "httpx",
+    "aiohttp",
+    "requests",
+    "beautifulsoup4",
+    "lxml",
+    "selenium",
+    "playwright",
+    "scrapy",
+    "gunicorn",
+    "nginx",
+    "celery",
+    "redis",
     # Dev Tools
-    "pytest", "mypy", "black", "ruff", "isort", "flake8",
-    "pylint", "bandit", "safety", "pre-commit",
-    "sphinx", "mkdocs", "jupyter", "ipython",
-    "click", "typer", "rich", "tqdm",
-    "pathlib", "python-dotenv", "dynaconf", "hydra",
-    "loguru", "structlog", "coloredlogs",
+    "pytest",
+    "mypy",
+    "black",
+    "ruff",
+    "isort",
+    "flake8",
+    "pylint",
+    "bandit",
+    "safety",
+    "pre-commit",
+    "sphinx",
+    "mkdocs",
+    "jupyter",
+    "ipython",
+    "click",
+    "typer",
+    "rich",
+    "tqdm",
+    "pathlib",
+    "python-dotenv",
+    "dynaconf",
+    "hydra",
+    "loguru",
+    "structlog",
+    "coloredlogs",
     # Data Viz
-    "matplotlib", "seaborn", "plotly", "dash", "streamlit", "gradio",
-    "bokeh", "altair", "holoviews", "panel", "hvplot",
+    "matplotlib",
+    "seaborn",
+    "plotly",
+    "dash",
+    "streamlit",
+    "gradio",
+    "bokeh",
+    "altair",
+    "holoviews",
+    "panel",
+    "hvplot",
     # Databases
-    "psycopg2", "motor", "pymongo", "redis-py", "elasticsearch",
-    "sqlite3", "aiosqlite", "asyncpg", "aiomysql",
-    "cassandra-driver", "neo4j", "pymemcache",
+    "psycopg2",
+    "motor",
+    "pymongo",
+    "redis-py",
+    "elasticsearch",
+    "sqlite3",
+    "aiosqlite",
+    "asyncpg",
+    "aiomysql",
+    "cassandra-driver",
+    "neo4j",
+    "pymemcache",
     # Cloud/DevOps
-    "docker", "kubernetes", "apache-airflow", "prefect", "dagster",
-    "terraform", "ansible", "pulumi", "fabric",
-    "boto3", "gcsfs", "s3fs", "adlfs", "fsspec",
+    "docker",
+    "kubernetes",
+    "apache-airflow",
+    "prefect",
+    "dagster",
+    "terraform",
+    "ansible",
+    "pulumi",
+    "fabric",
+    "boto3",
+    "gcsfs",
+    "s3fs",
+    "adlfs",
+    "fsspec",
     # Async
-    "asyncio", "uvloop", "httptools", "websockets",
-    "aiofiles", "aiocache", "aioredis", "aiokafka",
-    "grpcio", "grpcio-tools", "protobuf",
+    "asyncio",
+    "uvloop",
+    "httptools",
+    "websockets",
+    "aiofiles",
+    "aiocache",
+    "aioredis",
+    "aiokafka",
+    "grpcio",
+    "grpcio-tools",
+    "protobuf",
     # Security
-    "cryptography", "pycryptodome", "nacl", "jwcrypto",
-    "oauthlib", "python-jose", "passlib",
+    "cryptography",
+    "pycryptodome",
+    "nacl",
+    "jwcrypto",
+    "oauthlib",
+    "python-jose",
+    "passlib",
     # Data
-    "h5py", "zarr", "xarray", "netcdf4", "pint",
-    "json", "orjson", "ujson", "simdjson",
+    "h5py",
+    "zarr",
+    "xarray",
+    "netcdf4",
+    "pint",
+    "json",
+    "orjson",
+    "ujson",
+    "simdjson",
     # Science
-    "biopython", "rdkit", "astropy", "sunpy",
-    "qiskit", "cirq", "pennylane",
+    "biopython",
+    "rdkit",
+    "astropy",
+    "sunpy",
+    "qiskit",
+    "cirq",
+    "pennylane",
     # Compilers/LLVM
-    "llvmlite", "numba", "cython", "mypyc",
+    "llvmlite",
+    "numba",
+    "cython",
+    "mypyc",
 ]
+
 
 def gen_pypi_configs() -> list[dict[str, Any]]:
     """Generate 200 PyPI package configs."""
     configs = []
     for pkg in PYPI_PACKAGES:
-        configs.append(_make_source(
-            name=f"pypi_{pkg}",
-            source_type="pypi",
-            params={"package": pkg},
-            rate_limit=0.05,
-            output_dir="pypi/massive",
-            batch_size=1,
-            max_records=1,  # 1 package = 1 record
-        ))
+        configs.append(
+            _make_source(
+                name=f"pypi_{pkg}",
+                source_type="pypi",
+                params={"package": pkg},
+                rate_limit=0.05,
+                output_dir="pypi/massive",
+                batch_size=1,
+                max_records=1,  # 1 package = 1 record
+            )
+        )
     return configs
 
 
@@ -730,19 +1482,22 @@ OTHER_SOURCES = [
     ("gutendex_economics", "gutendex", {"query": "Economics", "limit": 200}),
 ]
 
+
 def gen_other_configs() -> list[dict[str, Any]]:
     """Generate 30 other API configs."""
     configs = []
     for name, stype, params in OTHER_SOURCES:
-        configs.append(_make_source(
-            name=name,
-            source_type=stype,
-            params=params,
-            rate_limit=0.1,
-            output_dir=f"{stype}/massive",
-            batch_size=100,
-            max_records=50000,
-        ))
+        configs.append(
+            _make_source(
+                name=name,
+                source_type=stype,
+                params=params,
+                rate_limit=0.1,
+                output_dir=f"{stype}/massive",
+                batch_size=100,
+                max_records=50000,
+            )
+        )
     return configs
 
 
@@ -773,19 +1528,22 @@ PREPRINT_CONFIGS = [
     ("medrxiv_infect", "medrxiv", {"server": "medrxiv", "category": "infectious disease"}),
 ]
 
+
 def gen_preprint_configs() -> list[dict[str, Any]]:
     """Generate 20 preprint server configs."""
     configs = []
     for name, stype, params in PREPRINT_CONFIGS:
-        configs.append(_make_source(
-            name=name,
-            source_type=stype,
-            params=params,
-            rate_limit=0.2,
-            output_dir=f"preprints/{params['server']}/massive",
-            batch_size=100,
-            max_records=50000,
-        ))
+        configs.append(
+            _make_source(
+                name=name,
+                source_type=stype,
+                params=params,
+                rate_limit=0.2,
+                output_dir=f"preprints/{params['server']}/massive",
+                batch_size=100,
+                max_records=50000,
+            )
+        )
     return configs
 
 
@@ -794,40 +1552,79 @@ def gen_preprint_configs() -> list[dict[str, Any]]:
 # ════════════════════════════════════════════
 
 WORLD_BANK_INDICATORS = [
-    "NY.GDP.MKTP.CD", "NY.GDP.PCAP.CD", "NY.GDP.MKTP.KD.ZG",  # GDP
-    "NY.GNP.PCAP.CD", "SL.UEM.TOTL.ZS", "SL.UEM.1524.ZS",     # Employment
-    "SP.POP.TOTL", "SP.POP.GROW", "SP.DYN.LE00.IN",           # Population
-    "SP.DYN.CDRT.IN", "SP.DYN.IMRT.IN", "SE.PRM.ENRR",       # Health/Education
-    "SE.SEC.ENRR", "SE.TER.ENRR", "SE.ADT.LITR.ZS",
-    "EN.ATM.CO2E.KT", "EN.ATM.CO2E.PC", "EG.USE.ELEC.KH.PC",  # Environment
-    "EG.FEC.RNEW.ZS", "AG.LND.FRST.ZS", "ER.H2O.FWTL.ZS",
-    "DT.ODA.ODAT.PC.ZS", "BX.KLT.DINV.WD.GD.ZS", "BN.CAB.XOKA.GD.ZS",  # Economy
-    "GC.DOD.TOTL.GD.ZS", "GC.REV.XGRT.GD.ZS", "GC.XPN.TOTL.GD.ZS",
-    "FP.CPI.TOTL.ZG", "NY.GDP.DEFL.KD.ZG", "PA.NUS.FCRF",      # Prices
-    "BX.TRF.PWKR.CD.DT", "BM.TRF.PWKR.CD.DT", "SI.POV.GINI",   # Inequality
-    "SH.XPD.CHEX.GD.ZS", "SH.XPD.PVTD.CD", "SH.MED.BEDS.ZS",  # Health spending
-    "SH.IMM.MEAS", "SH.STA.MALN.ZS", "SH.DYN.NMRT",
-    "IC.BUS.EASE.XQ", "IC.REG.PROC", "IC.TAX.DURS",           # Business
-    "NY.GDP.TOTL.RT.ZS", "NV.AGR.TOTL.ZS", "NV.IND.TOTL.ZS",  # Sectoral
-    "NV.SRV.TOTL.ZS", "NV.MNF.CHEM.ZS.UN", "NV.MNF.MTRN.ZS.UN",
-    "BX.GSR.MRCH.TOTL.ZS", "BM.GSR.MRCH.TOTL.ZS",              # Trade
-    "IT.CEL.SETS.P2", "IT.NET.USER.ZS", "IT.MOB.REG.P2",      # Technology
-    "TM.VAL.MRCH.XD.WD.GD.ZS", "TX.VAL.MRCH.XD.WD.GD.ZS",
+    "NY.GDP.MKTP.CD",
+    "NY.GDP.PCAP.CD",
+    "NY.GDP.MKTP.KD.ZG",  # GDP
+    "NY.GNP.PCAP.CD",
+    "SL.UEM.TOTL.ZS",
+    "SL.UEM.1524.ZS",  # Employment
+    "SP.POP.TOTL",
+    "SP.POP.GROW",
+    "SP.DYN.LE00.IN",  # Population
+    "SP.DYN.CDRT.IN",
+    "SP.DYN.IMRT.IN",
+    "SE.PRM.ENRR",  # Health/Education
+    "SE.SEC.ENRR",
+    "SE.TER.ENRR",
+    "SE.ADT.LITR.ZS",
+    "EN.ATM.CO2E.KT",
+    "EN.ATM.CO2E.PC",
+    "EG.USE.ELEC.KH.PC",  # Environment
+    "EG.FEC.RNEW.ZS",
+    "AG.LND.FRST.ZS",
+    "ER.H2O.FWTL.ZS",
+    "DT.ODA.ODAT.PC.ZS",
+    "BX.KLT.DINV.WD.GD.ZS",
+    "BN.CAB.XOKA.GD.ZS",  # Economy
+    "GC.DOD.TOTL.GD.ZS",
+    "GC.REV.XGRT.GD.ZS",
+    "GC.XPN.TOTL.GD.ZS",
+    "FP.CPI.TOTL.ZG",
+    "NY.GDP.DEFL.KD.ZG",
+    "PA.NUS.FCRF",  # Prices
+    "BX.TRF.PWKR.CD.DT",
+    "BM.TRF.PWKR.CD.DT",
+    "SI.POV.GINI",  # Inequality
+    "SH.XPD.CHEX.GD.ZS",
+    "SH.XPD.PVTD.CD",
+    "SH.MED.BEDS.ZS",  # Health spending
+    "SH.IMM.MEAS",
+    "SH.STA.MALN.ZS",
+    "SH.DYN.NMRT",
+    "IC.BUS.EASE.XQ",
+    "IC.REG.PROC",
+    "IC.TAX.DURS",  # Business
+    "NY.GDP.TOTL.RT.ZS",
+    "NV.AGR.TOTL.ZS",
+    "NV.IND.TOTL.ZS",  # Sectoral
+    "NV.SRV.TOTL.ZS",
+    "NV.MNF.CHEM.ZS.UN",
+    "NV.MNF.MTRN.ZS.UN",
+    "BX.GSR.MRCH.TOTL.ZS",
+    "BM.GSR.MRCH.TOTL.ZS",  # Trade
+    "IT.CEL.SETS.P2",
+    "IT.NET.USER.ZS",
+    "IT.MOB.REG.P2",  # Technology
+    "TM.VAL.MRCH.XD.WD.GD.ZS",
+    "TX.VAL.MRCH.XD.WD.GD.ZS",
 ]
+
 
 def gen_worldbank_configs() -> list[dict[str, Any]]:
     """Generate 50 World Bank indicator configs."""
     configs = []
     for ind in WORLD_BANK_INDICATORS:
-        configs.append(_make_source(
-            name=f"worldbank_{ind.lower()}",
-            source_type="worldbank",
-            params={"indicator": ind, "format": "json", "per_page": 5000},
-            rate_limit=0.05,
-            output_dir="worldbank/massive",
-            batch_size=1000,
-            max_records=100000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"worldbank_{ind.lower()}",
+                source_type="worldbank",
+                params={"indicator": ind, "format": "json", "per_page": 5000},
+                rate_limit=0.05,
+                output_dir="worldbank/massive",
+                batch_size=1000,
+                max_records=100000,
+            )
+        )
     return configs
 
 
@@ -836,36 +1633,77 @@ def gen_worldbank_configs() -> list[dict[str, Any]]:
 # ════════════════════════════════════════════
 
 CLINICAL_CONDITIONS = [
-    "cancer", "heart disease", "diabetes", "stroke", "hypertension",
-    "COVID-19", "HIV", "tuberculosis", "malaria", "pneumonia",
-    "Alzheimer disease", "Parkinson disease", "epilepsy", "multiple sclerosis",
-    "depression", "anxiety", "schizophrenia", "bipolar disorder",
-    "asthma", "COPD", "cystic fibrosis", "pulmonary fibrosis",
-    "arthritis", "osteoporosis", "back pain", "fibromyalgia",
-    "chronic kidney disease", "kidney failure", "urinary tract infection",
-    "hepatitis B", "hepatitis C", "cirrhosis", "non-alcoholic fatty liver",
-    "Crohn disease", "ulcerative colitis", "irritable bowel syndrome",
-    "breast cancer", "lung cancer", "prostate cancer", "colorectal cancer",
-    "leukemia", "lymphoma", "melanoma",
-    "autism", "ADHD", "dementia",
-    "obesity", "malnutrition", "vitamin D deficiency",
-    "eczema", "psoriasis", "glaucoma",
+    "cancer",
+    "heart disease",
+    "diabetes",
+    "stroke",
+    "hypertension",
+    "COVID-19",
+    "HIV",
+    "tuberculosis",
+    "malaria",
+    "pneumonia",
+    "Alzheimer disease",
+    "Parkinson disease",
+    "epilepsy",
+    "multiple sclerosis",
+    "depression",
+    "anxiety",
+    "schizophrenia",
+    "bipolar disorder",
+    "asthma",
+    "COPD",
+    "cystic fibrosis",
+    "pulmonary fibrosis",
+    "arthritis",
+    "osteoporosis",
+    "back pain",
+    "fibromyalgia",
+    "chronic kidney disease",
+    "kidney failure",
+    "urinary tract infection",
+    "hepatitis B",
+    "hepatitis C",
+    "cirrhosis",
+    "non-alcoholic fatty liver",
+    "Crohn disease",
+    "ulcerative colitis",
+    "irritable bowel syndrome",
+    "breast cancer",
+    "lung cancer",
+    "prostate cancer",
+    "colorectal cancer",
+    "leukemia",
+    "lymphoma",
+    "melanoma",
+    "autism",
+    "ADHD",
+    "dementia",
+    "obesity",
+    "malnutrition",
+    "vitamin D deficiency",
+    "eczema",
+    "psoriasis",
+    "glaucoma",
 ]
+
 
 def gen_clinicaltrials_configs() -> list[dict[str, Any]]:
     """Generate 50 ClinicalTrials.gov condition configs."""
     configs = []
     for cond in CLINICAL_CONDITIONS:
         safe_name = cond.replace(" ", "_").replace("-", "_").replace(",", "")[:50]
-        configs.append(_make_source(
-            name=f"clinicaltrials_{safe_name}",
-            source_type="clinicaltrials",
-            params={"condition": cond, "pageSize": 100},
-            rate_limit=0.1,
-            output_dir="clinicaltrials/massive",
-            batch_size=100,
-            max_records=50000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"clinicaltrials_{safe_name}",
+                source_type="clinicaltrials",
+                params={"condition": cond, "pageSize": 100},
+                rate_limit=0.1,
+                output_dir="clinicaltrials/massive",
+                batch_size=100,
+                max_records=50000,
+            )
+        )
     return configs
 
 
@@ -874,35 +1712,78 @@ def gen_clinicaltrials_configs() -> list[dict[str, Any]]:
 # ════════════════════════════════════════════
 
 FRED_SERIES = [
-    "GDP", "GDPC1", "GDPPOT", "GDPNOW",                         # GDP
-    "UNRATE", "UEMPMEAN", "UEMPMED", "CLF16OV",                  # Employment
-    "CPIAUCSL", "CPILFESL", "PPIACO", "PCEPILFE",               # Inflation
-    "FEDFUNDS", "DFF", "T10Y2Y", "DGS10", "DGS2",            # Interest rates
-    "SP500", "DJIA", "NASDAQCOM", "VIXCLS",                    # Stock market
-    "M2SL", "M1SL", "TOTRESNS", "BUSLOANS",                    # Money supply
-    "HOUST", "PERMIT", "CSUSHPISA", "EXHOSLUSM495S",           # Housing
-    "INDPRO", "TCU", "CAPUTL", "MANEMP",                       # Industry
-    "PAYEMS", "CES0000000001", "AWHMAN", "AHETPI",             # Employment detail
-    "PCE", "PCEC96", "DPCERY2M096SBEA",                         # Spending
-    "PSAVERT", "DSPIC96", "W875RX1",                            # Savings/Income
-    "RSXFS", "RSAFS", "BUSINV",                                 # Retail/Sales
-    "EXCAUS", "EXJPUS", "EXUSUK", "DTWEXBGS",                  # Exchange rates
-    "TOTEXPCA", "IMPEXPCA", "BOPTEXP", "BOPIMP",               # Trade
+    "GDP",
+    "GDPC1",
+    "GDPPOT",
+    "GDPNOW",  # GDP
+    "UNRATE",
+    "UEMPMEAN",
+    "UEMPMED",
+    "CLF16OV",  # Employment
+    "CPIAUCSL",
+    "CPILFESL",
+    "PPIACO",
+    "PCEPILFE",  # Inflation
+    "FEDFUNDS",
+    "DFF",
+    "T10Y2Y",
+    "DGS10",
+    "DGS2",  # Interest rates
+    "SP500",
+    "DJIA",
+    "NASDAQCOM",
+    "VIXCLS",  # Stock market
+    "M2SL",
+    "M1SL",
+    "TOTRESNS",
+    "BUSLOANS",  # Money supply
+    "HOUST",
+    "PERMIT",
+    "CSUSHPISA",
+    "EXHOSLUSM495S",  # Housing
+    "INDPRO",
+    "TCU",
+    "CAPUTL",
+    "MANEMP",  # Industry
+    "PAYEMS",
+    "CES0000000001",
+    "AWHMAN",
+    "AHETPI",  # Employment detail
+    "PCE",
+    "PCEC96",
+    "DPCERY2M096SBEA",  # Spending
+    "PSAVERT",
+    "DSPIC96",
+    "W875RX1",  # Savings/Income
+    "RSXFS",
+    "RSAFS",
+    "BUSINV",  # Retail/Sales
+    "EXCAUS",
+    "EXJPUS",
+    "EXUSUK",
+    "DTWEXBGS",  # Exchange rates
+    "TOTEXPCA",
+    "IMPEXPCA",
+    "BOPTEXP",
+    "BOPIMP",  # Trade
 ]
+
 
 def gen_fred_configs() -> list[dict[str, Any]]:
     """Generate 50 FRED economic series configs."""
     configs = []
     for series_id in FRED_SERIES:
-        configs.append(_make_source(
-            name=f"fred_{series_id.lower()}",
-            source_type="fred",
-            params={"series_id": series_id, "frequency": "q", "sort": "desc", "limit": 1000},
-            rate_limit=0.05,
-            output_dir="fred/massive",
-            batch_size=100,
-            max_records=100000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"fred_{series_id.lower()}",
+                source_type="fred",
+                params={"series_id": series_id, "frequency": "q", "sort": "desc", "limit": 1000},
+                rate_limit=0.05,
+                output_dir="fred/massive",
+                batch_size=100,
+                max_records=100000,
+            )
+        )
     return configs
 
 
@@ -911,29 +1792,74 @@ def gen_fred_configs() -> list[dict[str, Any]]:
 # ════════════════════════════════════════════
 
 WIKIDATA_ENTITIES = [
-    "Q5", "Q42", "Q76", "Q937", "Q91", "Q2", "Q30", "Q55", "Q96", "Q25225",
-    "Q22686", "Q11660", "Q8008", "Q7270", "Q5296", "Q61877", "Q349", "Q2013",
-    "Q48349", "Q3305213", "Q167270", "Q491501", "Q287315", "Q190307",
-    "Q40278", "Q838735", "Q234704", "Q427013", "Q105543609", "Q15711970",
-    "Q2405480", "Q340169", "Q207694", "Q8142", "Q24869", "Q11424",
-    "Q16521", "Q747381", "Q3220391", "Q1200710", "Q128920", "Q42289",
-    "Q189780", "Q166142", "Q177541", "Q209660", "Q211431", "Q39715",
-    "Q199700", "Q18616576",
+    "Q5",
+    "Q42",
+    "Q76",
+    "Q937",
+    "Q91",
+    "Q2",
+    "Q30",
+    "Q55",
+    "Q96",
+    "Q25225",
+    "Q22686",
+    "Q11660",
+    "Q8008",
+    "Q7270",
+    "Q5296",
+    "Q61877",
+    "Q349",
+    "Q2013",
+    "Q48349",
+    "Q3305213",
+    "Q167270",
+    "Q491501",
+    "Q287315",
+    "Q190307",
+    "Q40278",
+    "Q838735",
+    "Q234704",
+    "Q427013",
+    "Q105543609",
+    "Q15711970",
+    "Q2405480",
+    "Q340169",
+    "Q207694",
+    "Q8142",
+    "Q24869",
+    "Q11424",
+    "Q16521",
+    "Q747381",
+    "Q3220391",
+    "Q1200710",
+    "Q128920",
+    "Q42289",
+    "Q189780",
+    "Q166142",
+    "Q177541",
+    "Q209660",
+    "Q211431",
+    "Q39715",
+    "Q199700",
+    "Q18616576",
 ]
+
 
 def gen_wikidata_configs() -> list[dict[str, Any]]:
     """Generate 50 Wikidata entity configs."""
     configs = []
     for qid in WIKIDATA_ENTITIES:
-        configs.append(_make_source(
-            name=f"wikidata_{qid.lower()}",
-            source_type="wikidata",
-            params={"qid": qid, "format": "json"},
-            rate_limit=0.02,
-            output_dir="wikidata/massive",
-            batch_size=1,
-            max_records=1,
-        ))
+        configs.append(
+            _make_source(
+                name=f"wikidata_{qid.lower()}",
+                source_type="wikidata",
+                params={"qid": qid, "format": "json"},
+                rate_limit=0.02,
+                output_dir="wikidata/massive",
+                batch_size=1,
+                max_records=1,
+            )
+        )
     return configs
 
 
@@ -942,30 +1868,55 @@ def gen_wikidata_configs() -> list[dict[str, Any]]:
 # ════════════════════════════════════════════
 
 EUROPEANA_TOPICS = [
-    "renaissance painting", "medieval manuscript", "ancient rome", "greek sculpture",
-    "baroque music", "classical art", "world war", "industrial revolution",
-    "map 18th century", "photography 1800s", "textile design", "architecture gothic",
-    "folk music", "portrait 17th century", "botanical illustration", "printmaking",
-    "cave painting", "fashion history", "ceramics pottery", "illuminated manuscript",
-    "historical costume", "ancient egypt", "olympic games history", "caricature",
-    "poster art", "silver jewelry", "stained glass", "sculpture renaissance",
-    "mosaic art", "calligraphy",
+    "renaissance painting",
+    "medieval manuscript",
+    "ancient rome",
+    "greek sculpture",
+    "baroque music",
+    "classical art",
+    "world war",
+    "industrial revolution",
+    "map 18th century",
+    "photography 1800s",
+    "textile design",
+    "architecture gothic",
+    "folk music",
+    "portrait 17th century",
+    "botanical illustration",
+    "printmaking",
+    "cave painting",
+    "fashion history",
+    "ceramics pottery",
+    "illuminated manuscript",
+    "historical costume",
+    "ancient egypt",
+    "olympic games history",
+    "caricature",
+    "poster art",
+    "silver jewelry",
+    "stained glass",
+    "sculpture renaissance",
+    "mosaic art",
+    "calligraphy",
 ]
+
 
 def gen_europeana_configs() -> list[dict[str, Any]]:
     """Generate 30 Europeana topic configs."""
     configs = []
     for topic in EUROPEANA_TOPICS:
         safe_name = topic.replace(" ", "_")[:40]
-        configs.append(_make_source(
-            name=f"europeana_{safe_name}",
-            source_type="europeana",
-            params={"query": topic, "rows": 100, "qf": "TYPE:IMAGE"},
-            rate_limit=0.1,
-            output_dir="europeana/massive",
-            batch_size=100,
-            max_records=50000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"europeana_{safe_name}",
+                source_type="europeana",
+                params={"query": topic, "rows": 100, "qf": "TYPE:IMAGE"},
+                rate_limit=0.1,
+                output_dir="europeana/massive",
+                batch_size=100,
+                max_records=50000,
+            )
+        )
     return configs
 
 
@@ -974,32 +1925,55 @@ def gen_europeana_configs() -> list[dict[str, Any]]:
 # ════════════════════════════════════════════
 
 MUSICBRAINZ_QUERIES = [
-    "artist:bach", "artist:beethoven", "artist:mojart", "artist:chopin",
-    "artist:liszt", "artist:brahms", "artist:debussy", "artist:ravel",
-    "artist:stravinsky", "artist:schumann", "artist:schubert",
-    "artist:bartok", "artist:verdi", "artist:puccini", "artist:wagner",
-    "artist:beatles", "artist:rolling stones", "artist:led zeppelin",
-    "artist:pink floyd", "artist:queen", "artist:radiohead",
-    "artist:miles davis", "artist:john coltrane", "artist:duke ellington",
-    "artist:charlie parker", "artist:louis armstrong",
-    "work:symphony", "work:sonata", "work:concerto",
+    "artist:bach",
+    "artist:beethoven",
+    "artist:mojart",
+    "artist:chopin",
+    "artist:liszt",
+    "artist:brahms",
+    "artist:debussy",
+    "artist:ravel",
+    "artist:stravinsky",
+    "artist:schumann",
+    "artist:schubert",
+    "artist:bartok",
+    "artist:verdi",
+    "artist:puccini",
+    "artist:wagner",
+    "artist:beatles",
+    "artist:rolling stones",
+    "artist:led zeppelin",
+    "artist:pink floyd",
+    "artist:queen",
+    "artist:radiohead",
+    "artist:miles davis",
+    "artist:john coltrane",
+    "artist:duke ellington",
+    "artist:charlie parker",
+    "artist:louis armstrong",
+    "work:symphony",
+    "work:sonata",
+    "work:concerto",
     "tag:jazz",
 ]
+
 
 def gen_musicbrainz_configs() -> list[dict[str, Any]]:
     """Generate 30 MusicBrainz artist/work configs."""
     configs = []
     for query in MUSICBRAINZ_QUERIES:
         safe_name = query.replace(":", "_").replace(" ", "_")[:50]
-        configs.append(_make_source(
-            name=f"musicbrainz_{safe_name}",
-            source_type="musicbrainz",
-            params={"query": query, "fmt": "json", "limit": 100},
-            rate_limit=0.2,
-            output_dir="musicbrainz/massive",
-            batch_size=100,
-            max_records=10000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"musicbrainz_{safe_name}",
+                source_type="musicbrainz",
+                params={"query": query, "fmt": "json", "limit": 100},
+                rate_limit=0.2,
+                output_dir="musicbrainz/massive",
+                batch_size=100,
+                max_records=10000,
+            )
+        )
     return configs
 
 
@@ -1008,27 +1982,45 @@ def gen_musicbrainz_configs() -> list[dict[str, Any]]:
 # ════════════════════════════════════════════
 
 DATAGOVIN_SECTORS = [
-    "agriculture", "health", "education", "finance", "census",
-    "economy", "energy", "environment", "transport", "urban",
-    "rural development", "water", "food", "industry", "tourism",
-    "social justice", "tribal affairs", "minority", "woman child",
+    "agriculture",
+    "health",
+    "education",
+    "finance",
+    "census",
+    "economy",
+    "energy",
+    "environment",
+    "transport",
+    "urban",
+    "rural development",
+    "water",
+    "food",
+    "industry",
+    "tourism",
+    "social justice",
+    "tribal affairs",
+    "minority",
+    "woman child",
     "science technology",
 ]
+
 
 def gen_datagovin_configs() -> list[dict[str, Any]]:
     """Generate 20 data.gov.in sector configs."""
     configs = []
     for sector in DATAGOVIN_SECTORS:
         safe_name = sector.replace(" ", "_")[:30]
-        configs.append(_make_source(
-            name=f"datagovin_{safe_name}",
-            source_type="datagovin",
-            params={"sector": sector, "format": "json", "limit": 1000, "offset": 0},
-            rate_limit=0.1,
-            output_dir="datagovin/massive",
-            batch_size=100,
-            max_records=50000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"datagovin_{safe_name}",
+                source_type="datagovin",
+                params={"sector": sector, "format": "json", "limit": 1000, "offset": 0},
+                rate_limit=0.1,
+                output_dir="datagovin/massive",
+                batch_size=100,
+                max_records=50000,
+            )
+        )
     return configs
 
 
@@ -1069,19 +2061,22 @@ OPENCORPORATES_QUERIES = [
     ("miningtech", "mining technology"),
 ]
 
+
 def gen_opencorporates_configs() -> list[dict[str, Any]]:
     """Generate 30 OpenCorporates configs."""
     configs = []
     for safe_name, search in OPENCORPORATES_QUERIES:
-        configs.append(_make_source(
-            name=f"opencorporates_{safe_name}",
-            source_type="opencorporates",
-            params={"q": search, "jurisdiction_code": "all", "format": "json", "per_page": 50},
-            rate_limit=0.2,
-            output_dir="opencorporates/massive",
-            batch_size=50,
-            max_records=10000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"opencorporates_{safe_name}",
+                source_type="opencorporates",
+                params={"q": search, "jurisdiction_code": "all", "format": "json", "per_page": 50},
+                rate_limit=0.2,
+                output_dir="opencorporates/massive",
+                batch_size=50,
+                max_records=10000,
+            )
+        )
     return configs
 
 
@@ -1122,6 +2117,7 @@ GBIF_QUERIES = [
     {"label": "invasive_species", "taxonKey": 1, "establishmentMeans": "introduced"},
 ]
 
+
 def gen_gbif_configs() -> list[dict[str, Any]]:
     """Generate 30 GBIF biodiversity configs."""
     configs = []
@@ -1129,15 +2125,17 @@ def gen_gbif_configs() -> list[dict[str, Any]]:
         # Copy to avoid mutating the original module-level list
         label = q.get("label", f"gbif_{len(configs)}")
         params = {k: v for k, v in q.items() if k != "label"}
-        configs.append(_make_source(
-            name=f"gbif_{label}",
-            source_type="gbif",
-            params=params,
-            rate_limit=0.1,
-            output_dir="gbif/massive",
-            batch_size=300,
-            max_records=50000,
-        ))
+        configs.append(
+            _make_source(
+                name=f"gbif_{label}",
+                source_type="gbif",
+                params=params,
+                rate_limit=0.1,
+                output_dir="gbif/massive",
+                batch_size=300,
+                max_records=50000,
+            )
+        )
     return configs
 
 
@@ -1145,32 +2143,33 @@ def gen_gbif_configs() -> list[dict[str, Any]]:
 # TOTAL GENERATION: ~1600+ configs
 # ════════════════════════════════════════════
 
+
 def generate_all_configs() -> list[dict[str, Any]]:
     """Generate ALL 1600+ source configurations."""
     all_configs = []
-    all_configs.extend(gen_arxiv_configs())             # ~210
-    all_configs.extend(gen_pubmed_configs())            # ~95
-    all_configs.extend(gen_crossref_configs())          # ~100
+    all_configs.extend(gen_arxiv_configs())  # ~210
+    all_configs.extend(gen_pubmed_configs())  # ~95
+    all_configs.extend(gen_crossref_configs())  # ~100
     all_configs.extend(gen_semantic_scholar_configs())  # ~80
-    all_configs.extend(gen_github_configs())            # ~450
-    all_configs.extend(gen_stackexchange_configs())     # ~50
-    all_configs.extend(gen_openalex_configs())          # ~100
-    all_configs.extend(gen_wikipedia_configs())         # ~100
-    all_configs.extend(gen_doaj_configs())              # ~50
-    all_configs.extend(gen_reddit_configs())            # ~50
-    all_configs.extend(gen_rss_configs())               # ~40
-    all_configs.extend(gen_pypi_configs())              # ~200
-    all_configs.extend(gen_other_configs())             # ~30
-    all_configs.extend(gen_preprint_configs())          # ~20
-    all_configs.extend(gen_worldbank_configs())         # ~50
-    all_configs.extend(gen_clinicaltrials_configs())    # ~50
-    all_configs.extend(gen_fred_configs())              # ~50
-    all_configs.extend(gen_wikidata_configs())          # ~50
-    all_configs.extend(gen_europeana_configs())         # ~30
-    all_configs.extend(gen_musicbrainz_configs())       # ~30
-    all_configs.extend(gen_datagovin_configs())         # ~20
-    all_configs.extend(gen_opencorporates_configs())    # ~30
-    all_configs.extend(gen_gbif_configs())              # ~30
+    all_configs.extend(gen_github_configs())  # ~450
+    all_configs.extend(gen_stackexchange_configs())  # ~50
+    all_configs.extend(gen_openalex_configs())  # ~100
+    all_configs.extend(gen_wikipedia_configs())  # ~100
+    all_configs.extend(gen_doaj_configs())  # ~50
+    all_configs.extend(gen_reddit_configs())  # ~50
+    all_configs.extend(gen_rss_configs())  # ~40
+    all_configs.extend(gen_pypi_configs())  # ~200
+    all_configs.extend(gen_other_configs())  # ~30
+    all_configs.extend(gen_preprint_configs())  # ~20
+    all_configs.extend(gen_worldbank_configs())  # ~50
+    all_configs.extend(gen_clinicaltrials_configs())  # ~50
+    all_configs.extend(gen_fred_configs())  # ~50
+    all_configs.extend(gen_wikidata_configs())  # ~50
+    all_configs.extend(gen_europeana_configs())  # ~30
+    all_configs.extend(gen_musicbrainz_configs())  # ~30
+    all_configs.extend(gen_datagovin_configs())  # ~20
+    all_configs.extend(gen_opencorporates_configs())  # ~30
+    all_configs.extend(gen_gbif_configs())  # ~30
     return all_configs
 
 

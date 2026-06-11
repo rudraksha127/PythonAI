@@ -74,11 +74,11 @@ class TrainingMetrics:
         return {
             "train": {
                 "steps": self.train_steps,
-                "losses": [round(l, 6) for l in self.train_losses],
+                "losses": [round(loss, 6) for loss in self.train_losses],
             },
             "eval": {
                 "steps": self.eval_steps,
-                "losses": [round(l, 6) for l in self.eval_losses],
+                "losses": [round(loss, 6) for loss in self.eval_losses],
             },
             "learning_rate": {
                 "steps": self.lr_steps,
@@ -131,8 +131,10 @@ def smooth_curve(values: list[float], alpha: float = 0.4) -> list[float]:
 def _ensure_matplotlib() -> Any:
     """Import matplotlib with Agg backend (thread-safe, no display)."""
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+
     return plt
 
 
@@ -162,8 +164,9 @@ def plot_loss_curves(
     has_eval = len(metrics.eval_steps) >= 2
 
     if not has_train and not has_eval:
-        ax.text(0.5, 0.5, "Not enough data for loss curves",
-                ha="center", va="center", transform=ax.transAxes, fontsize=14)
+        ax.text(
+            0.5, 0.5, "Not enough data for loss curves", ha="center", va="center", transform=ax.transAxes, fontsize=14
+        )
         ax.set_title("Training Loss Curves")
         _save_and_close(fig, output_path)
         return str(Path(output_path).resolve())
@@ -171,16 +174,25 @@ def plot_loss_curves(
     # Train loss (raw)
     if has_train:
         ax.plot(
-            metrics.train_steps, metrics.train_losses,
-            marker=".", linestyle="-", color="#2196F3", alpha=0.3,
-            linewidth=1, markersize=4, label="Train (raw)",
+            metrics.train_steps,
+            metrics.train_losses,
+            marker=".",
+            linestyle="-",
+            color="#2196F3",
+            alpha=0.3,
+            linewidth=1,
+            markersize=4,
+            label="Train (raw)",
         )
 
         # Train loss (smoothed)
         smoothed = smooth_curve(metrics.train_losses, alpha=smooth_alpha)
         ax.plot(
-            metrics.train_steps, smoothed,
-            linestyle="-", color="#1565C0", linewidth=2.5,
+            metrics.train_steps,
+            smoothed,
+            linestyle="-",
+            color="#1565C0",
+            linewidth=2.5,
             label=f"Train (smoothed, α={smooth_alpha})",
         )
 
@@ -191,8 +203,10 @@ def plot_loss_curves(
         ax.annotate(
             f"Best: {best_loss:.4f} @ step {best_step}",
             xy=(best_step, best_loss),
-            xytext=(10, -20), textcoords="offset points",
-            fontsize=9, color="#1565C0",
+            xytext=(10, -20),
+            textcoords="offset points",
+            fontsize=9,
+            color="#1565C0",
             arrowprops=dict(arrowstyle="->", color="#1565C0", alpha=0.7),
         )
 
@@ -201,9 +215,14 @@ def plot_loss_curves(
         # Compute smoothed eval for cleaner display
         eval_smoothed = smooth_curve(metrics.eval_losses, alpha=smooth_alpha)
         ax.plot(
-            metrics.eval_steps, eval_smoothed,
-            marker="s", linestyle="--", color="#E53935",
-            linewidth=2, markersize=5, label="Eval (smoothed)",
+            metrics.eval_steps,
+            eval_smoothed,
+            marker="s",
+            linestyle="--",
+            color="#E53935",
+            linewidth=2,
+            markersize=5,
+            label="Eval (smoothed)",
         )
 
         # Annotate best eval loss
@@ -213,8 +232,10 @@ def plot_loss_curves(
         ax.annotate(
             f"Best eval: {best_eval_loss:.4f} @ step {best_eval_step}",
             xy=(best_eval_step, best_eval_loss),
-            xytext=(10, 20), textcoords="offset points",
-            fontsize=9, color="#E53935",
+            xytext=(10, 20),
+            textcoords="offset points",
+            fontsize=9,
+            color="#E53935",
             arrowprops=dict(arrowstyle="->", color="#E53935", alpha=0.7),
         )
 
@@ -251,29 +272,37 @@ def plot_lr_schedule(
     fig, ax = plt.subplots(figsize=figsize)
 
     if len(metrics.lr_steps) < 2:
-        ax.text(0.5, 0.5, "Not enough LR data",
-                ha="center", va="center", transform=ax.transAxes, fontsize=14)
+        ax.text(0.5, 0.5, "Not enough LR data", ha="center", va="center", transform=ax.transAxes, fontsize=14)
         ax.set_title("Learning Rate Schedule")
         _save_and_close(fig, output_path)
         return str(Path(output_path).resolve())
 
     ax.plot(
-        metrics.lr_steps, metrics.learning_rates,
-        marker=".", linestyle="-", color="#7B1FA2",
-        linewidth=2, markersize=4,
+        metrics.lr_steps,
+        metrics.learning_rates,
+        marker=".",
+        linestyle="-",
+        color="#7B1FA2",
+        linewidth=2,
+        markersize=4,
     )
 
     # Fill area under curve
     ax.fill_between(
-        metrics.lr_steps, metrics.learning_rates,
-        alpha=0.15, color="#7B1FA2",
+        metrics.lr_steps,
+        metrics.learning_rates,
+        alpha=0.15,
+        color="#7B1FA2",
     )
 
     # Annotate scheduler type
     scheduler_label = metrics.lr_scheduler_type or "linear"
     ax.text(
-        0.02, 0.95, f"Scheduler: {scheduler_label}",
-        transform=ax.transAxes, fontsize=10,
+        0.02,
+        0.95,
+        f"Scheduler: {scheduler_label}",
+        transform=ax.transAxes,
+        fontsize=10,
         verticalalignment="top",
         bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
     )
@@ -309,22 +338,28 @@ def plot_throughput(
     fig, ax = plt.subplots(figsize=figsize)
 
     if len(metrics.throughput_steps) < 2:
-        ax.text(0.5, 0.5, "Not enough throughput data",
-                ha="center", va="center", transform=ax.transAxes, fontsize=14)
+        ax.text(0.5, 0.5, "Not enough throughput data", ha="center", va="center", transform=ax.transAxes, fontsize=14)
         ax.set_title("Token Throughput")
         _save_and_close(fig, output_path)
         return str(Path(output_path).resolve())
 
     ax.bar(
-        metrics.throughput_steps, metrics.tokens_per_second,
+        metrics.throughput_steps,
+        metrics.tokens_per_second,
         width=max(1, metrics.throughput_steps[-1] // 20),
-        color="#43A047", alpha=0.7, edgecolor="#2E7D32", linewidth=0.5,
+        color="#43A047",
+        alpha=0.7,
+        edgecolor="#2E7D32",
+        linewidth=0.5,
     )
 
     # Average line
     avg_tps = sum(metrics.tokens_per_second) / len(metrics.tokens_per_second)
     ax.axhline(
-        y=avg_tps, linestyle="--", color="#E65100", linewidth=1.5,
+        y=avg_tps,
+        linestyle="--",
+        color="#E65100",
+        linewidth=1.5,
         label=f"Avg: {avg_tps:.0f} tok/s",
     )
     ax.legend(fontsize=10)
@@ -383,7 +418,9 @@ def plot_dashboard(
 
     fig.suptitle(
         "PythonAI Training Dashboard",
-        fontsize=16, fontweight="bold", y=0.98,
+        fontsize=16,
+        fontweight="bold",
+        y=0.98,
     )
 
     fig.savefig(str(output_path), dpi=150, bbox_inches="tight")
@@ -441,7 +478,13 @@ def _plot_throughput_on_ax(ax: Any, metrics: TrainingMetrics) -> None:
         ax.set_title("Throughput")
         return
 
-    ax.bar(metrics.throughput_steps, metrics.tokens_per_second, color="#43A047", alpha=0.7, width=max(1, metrics.throughput_steps[-1] // 20))
+    ax.bar(
+        metrics.throughput_steps,
+        metrics.tokens_per_second,
+        color="#43A047",
+        alpha=0.7,
+        width=max(1, metrics.throughput_steps[-1] // 20),
+    )
     if metrics.tokens_per_second:
         avg = sum(metrics.tokens_per_second) / len(metrics.tokens_per_second)
         ax.axhline(y=avg, linestyle="--", color="#E65100", linewidth=1, label=f"Avg: {avg:.0f}")
@@ -582,11 +625,7 @@ def export_html_dashboard(
     best_train = min(data["train"]["losses"]) if data["train"]["losses"] else "—"
     best_eval = min(data["eval"]["losses"]) if data["eval"]["losses"] else "—"
     tput_values = data["throughput"]["tokens_per_second"]
-    avg_tps = (
-        sum(tput_values) / len(tput_values)
-        if tput_values
-        else "—"
-    )
+    avg_tps = sum(tput_values) / len(tput_values) if tput_values else "—"
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -627,12 +666,12 @@ def export_html_dashboard(
   <div class="card">
     <h3>Best Train Loss</h3>
     <div class="value">{best_train}</div>
-    <div class="sub">over {len(data['train']['steps'])} logged steps</div>
+    <div class="sub">over {len(data["train"]["steps"])} logged steps</div>
   </div>
   <div class="card">
     <h3>Best Eval Loss</h3>
     <div class="value">{best_eval}</div>
-    <div class="sub">over {len(data['eval']['steps'])} logged steps</div>
+    <div class="sub">over {len(data["eval"]["steps"])} logged steps</div>
   </div>
   <div class="card">
     <h3>Avg Throughput</h3>
@@ -641,7 +680,7 @@ def export_html_dashboard(
   </div>
   <div class="card">
     <h3>Total Steps</h3>
-    <div class="value">{len(data['train']['steps'])}</div>
+    <div class="value">{len(data["train"]["steps"])}</div>
     <div class="sub">training steps completed</div>
   </div>
 </div>
@@ -650,14 +689,14 @@ def export_html_dashboard(
 <div class="section">
   <h2>Configuration</h2>
   <div class="meta-grid">
-    <div class="meta-item"><div class="label">Base Model</div><div class="val">{meta['base_model'] or '—'}</div></div>
-    <div class="meta-item"><div class="label">Train Examples</div><div class="val">{meta['total_train_examples']}</div></div>
-    <div class="meta-item"><div class="label">Eval Examples</div><div class="val">{meta['total_eval_examples']}</div></div>
-    <div class="meta-item"><div class="label">Max Length</div><div class="val">{meta['max_length']}</div></div>
-    <div class="meta-item"><div class="label">Batch Size</div><div class="val">{meta['batch_size']} × {meta['grad_accum']} accum</div></div>
-    <div class="meta-item"><div class="label">LR Scheduler</div><div class="val">{meta['lr_scheduler_type'] or 'linear'}</div></div>
-    <div class="meta-item"><div class="label">Dataset Version</div><div class="val">{meta['dataset_version'] or '—'}</div></div>
-    <div class="meta-item"><div class="label">Early Stopping</div><div class="val">{'Patience: ' + str(meta['early_stopping_patience']) if meta['early_stopping_patience'] else 'Disabled'}</div></div>
+    <div class="meta-item"><div class="label">Base Model</div><div class="val">{meta["base_model"] or "—"}</div></div>
+    <div class="meta-item"><div class="label">Train Examples</div><div class="val">{meta["total_train_examples"]}</div></div>
+    <div class="meta-item"><div class="label">Eval Examples</div><div class="val">{meta["total_eval_examples"]}</div></div>
+    <div class="meta-item"><div class="label">Max Length</div><div class="val">{meta["max_length"]}</div></div>
+    <div class="meta-item"><div class="label">Batch Size</div><div class="val">{meta["batch_size"]} × {meta["grad_accum"]} accum</div></div>
+    <div class="meta-item"><div class="label">LR Scheduler</div><div class="val">{meta["lr_scheduler_type"] or "linear"}</div></div>
+    <div class="meta-item"><div class="label">Dataset Version</div><div class="val">{meta["dataset_version"] or "—"}</div></div>
+    <div class="meta-item"><div class="label">Early Stopping</div><div class="val">{"Patience: " + str(meta["early_stopping_patience"]) if meta["early_stopping_patience"] else "Disabled"}</div></div>
   </div>
 </div>
 
@@ -706,7 +745,7 @@ def export_html_dashboard(
 </div>
 
 <footer>
-  Generated by PythonAI Training Visualization — {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+  Generated by PythonAI Training Visualization — {__import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 </footer>
 
 </body>
@@ -848,4 +887,5 @@ def _cmd_render(args: argparse.Namespace) -> None:  # noqa: C901
 if __name__ == "__main__":
     # Minimal import for CLI mode
     import argparse  # noqa: F811
+
     parse_args()

@@ -39,6 +39,7 @@ def orch(registry):
 
 # ── TestCallPlanningLLM ─────────────────────────────────────────────────────────
 
+
 class TestCallPlanningLLM:
     """Tests for _call_planning_llm wrapper."""
 
@@ -110,6 +111,7 @@ class TestCallPlanningLLM:
 
 # ── TestPlanTaskLLMBased ────────────────────────────────────────────────────────
 
+
 class TestPlanTaskLLMBased:
     """Tests for LLM-powered plan_task."""
 
@@ -117,7 +119,8 @@ class TestPlanTaskLLMBased:
         o, _ = orch
 
         def mock_llm(messages, tools):
-            return {"content": """```json
+            return {
+                "content": """```json
 [
   {
     "id": "step_0",
@@ -127,7 +130,8 @@ class TestPlanTaskLLMBased:
     "priority": 1
   }
 ]
-```"""}
+```"""
+            }
 
         o.call_llm_fn = mock_llm
 
@@ -143,20 +147,14 @@ class TestPlanTaskLLMBased:
         o, _ = orch
 
         def mock_llm(messages, tools):
-            return {"content": json.dumps([
-                {
-                    "id": "step_0",
-                    "agent_name": "researcher",
-                    "task": "Research",
-                    "depends_on": []
-                },
-                {
-                    "id": "step_1",
-                    "agent_name": "coder",
-                    "task": "Implement",
-                    "depends_on": ["step_0"]
-                }
-            ])}
+            return {
+                "content": json.dumps(
+                    [
+                        {"id": "step_0", "agent_name": "researcher", "task": "Research", "depends_on": []},
+                        {"id": "step_1", "agent_name": "coder", "task": "Implement", "depends_on": ["step_0"]},
+                    ]
+                )
+            }
 
         o.call_llm_fn = mock_llm
 
@@ -169,13 +167,17 @@ class TestPlanTaskLLMBased:
         o, _ = orch
 
         def mock_llm(messages, tools):
-            return {"content": json.dumps([
-                {
-                    "id": "step_0",
-                    "agent_name": "imaginary-agent",
-                    "task": "Task",
-                }
-            ])}
+            return {
+                "content": json.dumps(
+                    [
+                        {
+                            "id": "step_0",
+                            "agent_name": "imaginary-agent",
+                            "task": "Task",
+                        }
+                    ]
+                )
+            }
 
         o.call_llm_fn = mock_llm
 
@@ -213,13 +215,17 @@ class TestPlanTaskLLMBased:
         o, log = orch
 
         def mock_llm(messages, tools):
-            return {"content": json.dumps([
-                {
-                    "id": "step_0",
-                    "agent_name": "coder",
-                    "task": "Task",
-                }
-            ])}
+            return {
+                "content": json.dumps(
+                    [
+                        {
+                            "id": "step_0",
+                            "agent_name": "coder",
+                            "task": "Task",
+                        }
+                    ]
+                )
+            }
 
         o.call_llm_fn = mock_llm
         o.plan_task("task")
@@ -230,13 +236,17 @@ class TestPlanTaskLLMBased:
         o, _ = orch
 
         def mock_llm(messages, tools):
-            return {"content": json.dumps([
-                {
-                    "id": "step_0",
-                    "agent_name": "coder",
-                    "task": "Task",
-                }
-            ])}
+            return {
+                "content": json.dumps(
+                    [
+                        {
+                            "id": "step_0",
+                            "agent_name": "coder",
+                            "task": "Task",
+                        }
+                    ]
+                )
+            }
 
         o.call_llm_fn = mock_llm
 
@@ -249,6 +259,7 @@ class TestPlanTaskLLMBased:
 
 
 # ── TestPlanTaskKeywordFallback ──────────────────────────────────────────────────
+
 
 class TestPlanTaskKeywordFallback:
     """Tests for the keyword fallback in plan_task."""
@@ -282,6 +293,7 @@ class TestPlanTaskKeywordFallback:
 
 
 # ── TestSynthesizeLLMBased ──────────────────────────────────────────────────────
+
 
 class TestSynthesizeLLMBased:
     """Tests for LLM-powered _synthesize."""
@@ -350,6 +362,7 @@ class TestSynthesizeLLMBased:
         o, _ = orch
 
         prompt_seen = ""
+
         def mock_llm(messages, tools):
             nonlocal prompt_seen
             for msg in messages:

@@ -92,6 +92,7 @@ Output structure:
 # LIGHTWEIGHT BM25 IMPLEMENTATION
 # ═══════════════════════════════
 
+
 class SimpleBM25:
     """Lightweight BM25Okapi scorer — no external dependency needed."""
 
@@ -145,6 +146,7 @@ class SimpleBM25:
 # ═══════════════════════════════
 # MMR (MAXIMUM MARGINAL RELEVANCE)
 # ═══════════════════════════════
+
 
 def mmr_rerank(
     docs: list[dict[str, Any]],
@@ -220,6 +222,7 @@ def _cosine_sim(a: list[float], b: list[float]) -> float:
 # QUERY EXPANSION
 # ═══════════════════════════════
 
+
 def expand_query(question: str, model: str = DEFAULT_MODEL) -> list[str]:
     """Generate related queries using Ollama for broader retrieval."""
     expansion_prompt = (
@@ -244,11 +247,10 @@ def expand_query(question: str, model: str = DEFAULT_MODEL) -> list[str]:
         return [question]
 
 
-
-
 # ═══════════════════════════════
 # HYBRID SEARCH (DENSE + BM25)
 # ═══════════════════════════════
+
 
 @dataclass
 class SearchResult:
@@ -310,7 +312,9 @@ def hybrid_search(
                 "category": category,
                 "text": results["documents"][0][i],
                 "score": score,
-                "embedding": _to_plain_list(results.get("embeddings", [[], []])[0][i]) if results.get("embeddings") else [],
+                "embedding": _to_plain_list(results.get("embeddings", [[], []])[0][i])
+                if results.get("embeddings")
+                else [],
             }
 
     # 2. BM25 search (if available)
@@ -318,9 +322,7 @@ def hybrid_search(
     if bm25 is not None and corpus_texts is not None:
         bm25_scores = bm25.get_scores(question)
         # Get top BM25 results and match to corpus
-        scored_indices = sorted(
-            enumerate(bm25_scores), key=lambda x: x[1], reverse=True
-        )[:top_k]
+        scored_indices = sorted(enumerate(bm25_scores), key=lambda x: x[1], reverse=True)[:top_k]
 
         for idx, bm25_score in scored_indices:
             if bm25_score <= 0:
@@ -393,7 +395,11 @@ def hybrid_search(
                 }
 
     # 3. Reciprocal Rank Fusion (RRF)
-    all_titles = list(dense_docs.keys()) + [t for t in bm25_docs if t not in dense_docs] + [t for t in kg_docs if t not in dense_docs and t not in bm25_docs]
+    all_titles = (
+        list(dense_docs.keys())
+        + [t for t in bm25_docs if t not in dense_docs]
+        + [t for t in kg_docs if t not in dense_docs and t not in bm25_docs]
+    )
     rrf_scores: dict[str, float] = {}
 
     for rank, title in enumerate(dense_docs.keys()):
@@ -433,6 +439,7 @@ def hybrid_search(
 # SMART ANSWER GENERATOR
 # ═══════════════════════════════
 
+
 def format_sources(docs: list[dict[str, Any]]) -> str:
     """Format source documents with citation numbers."""
     if not docs:
@@ -471,9 +478,16 @@ def get_answer(
 
     for q in queries[:3]:
         docs = hybrid_search(
-            q, collection, embedder, bm25, corpus_texts, kg=kg,
-            use_mmr=use_mmr, mmr_lambda=mmr_lambda,
-            version_filter=version_filter, category_filter=category_filter,
+            q,
+            collection,
+            embedder,
+            bm25,
+            corpus_texts,
+            kg=kg,
+            use_mmr=use_mmr,
+            mmr_lambda=mmr_lambda,
+            version_filter=version_filter,
+            category_filter=category_filter,
         )
         for doc in docs:
             title = doc["title"]
@@ -511,17 +525,21 @@ def get_answer(
         plan_text = reasoning_engine.generate_plan(question, context)
         print(f"  -> Plan: {plan_text.replace(chr(10), ' | ')[:150]}...")
 
-        prompt_with_plan = f"{USER_PROMPT_TEMPLATE.format(context=context, question=question)}\n\nREASONING PLAN:\n{plan_text}"
+        prompt_with_plan = (
+            f"{USER_PROMPT_TEMPLATE.format(context=context, question=question)}\n\nREASONING PLAN:\n{plan_text}"
+        )
         messages.append({"role": "user", "content": prompt_with_plan})
     else:
-        messages.append({
-            "role": "user",
-            "content": USER_PROMPT_TEMPLATE.format(context=context, question=question),
-        })
+        messages.append(
+            {
+                "role": "user",
+                "content": USER_PROMPT_TEMPLATE.format(context=context, question=question),
+            }
+        )
 
-    print(f"\n{'='*55}")
+    print(f"\n{'=' * 55}")
     print(f"[AI] PYTHON MASTER (model: {model}):")
-    print(f"{'─'*55}")
+    print(f"{'─' * 55}")
 
     response = ollama.chat(
         model=model,
@@ -541,7 +559,7 @@ def get_answer(
         print(text, end="", flush=True)
         full += text
 
-    print(f"\n{'─'*55}")
+    print(f"\n{'─' * 55}")
 
     # ── Phase 2: Reflection & Verification ──
     verifier = AnswerVerifier(model=model)
@@ -580,6 +598,7 @@ def get_answer(
         # ── Phase 4: Constitutional Core ──
         try:
             from src.rag.constitution import ConstitutionalCheck
+
             constitution = ConstitutionalCheck()
             violations = constitution.validate_all(full, code_ver, fact_ver)
             if violations:
@@ -594,13 +613,14 @@ def get_answer(
     if docs:
         print(format_sources(docs))
 
-    print(f"{'='*55}\n")
+    print(f"{'=' * 55}\n")
     return full, docs
 
 
 # ═══════════════════════════════
 # DATABASE BUILD
 # ═══════════════════════════════
+
 
 def _code_chunks_to_rag_format(chunks: list[CodeChunk]) -> list[dict[str, Any]]:
     """Convert cAST CodeChunk objects to RAG build_db dict format."""
@@ -617,14 +637,16 @@ def _code_chunks_to_rag_format(chunks: list[CodeChunk]) -> list[dict[str, Any]]:
         # Unique ID based on file path + location
         chunk_id = f"cast_{abs(hash(f'{c.filepath}:{c.name}:{c.start_line}:{c.end_line}'))}"
 
-        result.append({
-            "id": chunk_id,
-            "text": c.to_embedding_text(),
-            "type": c.chunk_type,
-            "title": full_title,
-            "version": "",
-            "category": "code",
-        })
+        result.append(
+            {
+                "id": chunk_id,
+                "text": c.to_embedding_text(),
+                "type": c.chunk_type,
+                "title": full_title,
+                "version": "",
+                "category": "code",
+            }
+        )
     return result
 
 
@@ -637,10 +659,7 @@ def build_db(chunks_file: Path) -> tuple[Any, SentenceTransformer, SimpleBM25 | 
         chunks = json.load(f)
 
     skip = {"font", "image_png", "image_jpg", "image_gif", "static", "css"}
-    valid = [
-        c for c in chunks
-        if len(c.get("text", "")) > 80 and c.get("type", "") not in skip
-    ]
+    valid = [c for c in chunks if len(c.get("text", "")) > 80 and c.get("type", "") not in skip]
 
     print(f"[OK] Valid chunks: {len(valid):,}")
 
@@ -657,10 +676,7 @@ def build_db(chunks_file: Path) -> tuple[Any, SentenceTransformer, SimpleBM25 | 
                 print(f"  [cAST] {code_dir}: {len(rag_chunks)} chunks")
             except Exception as e:
                 print(f"  [cAST] Error chunking {code_dir}: {e}")
-    code_valid = [
-        c for c in all_code_chunks
-        if len(c.get("text", "")) > 80
-    ]
+    code_valid = [c for c in all_code_chunks if len(c.get("text", "")) > 80]
     print(f"[cAST] Code chunks after filtering: {len(code_valid):,}")
     valid.extend(code_valid)
     print("\n[Build] Building GOD MODE database...")
@@ -673,9 +689,7 @@ def build_db(chunks_file: Path) -> tuple[Any, SentenceTransformer, SimpleBM25 | 
     except Exception:
         pass
 
-    collection = client.create_collection(
-        name="python_godmode", metadata={"hnsw:space": "cosine"}
-    )
+    collection = client.create_collection(name="python_godmode", metadata={"hnsw:space": "cosine"})
 
     batch_size = 1024  # Increased for 100x speed
     corpus_texts: list[str] = []
@@ -683,17 +697,14 @@ def build_db(chunks_file: Path) -> tuple[Any, SentenceTransformer, SimpleBM25 | 
     for i in tqdm(range(0, len(valid), batch_size), desc="Embedding"):
         batch = valid[i : i + batch_size]
         texts = [
-            f"Title: {c.get('title','')}\n"
-            f"Version: Python {c.get('version','')}\n"
-            f"Category: {c.get('category','')}\n"
-            f"Type: {c.get('type','')}\n\n"
-            f"{c.get('text','')[:2000]}"
+            f"Title: {c.get('title', '')}\n"
+            f"Version: Python {c.get('version', '')}\n"
+            f"Category: {c.get('category', '')}\n"
+            f"Type: {c.get('type', '')}\n\n"
+            f"{c.get('text', '')[:2000]}"
             for c in batch
         ]
-        ids = [
-            str(abs(hash(c.get("id", f"{i}_{j}"))))[:20]
-            for j, c in enumerate(batch)
-        ]
+        ids = [str(abs(hash(c.get("id", f"{i}_{j}"))))[:20] for j, c in enumerate(batch)]
         # Larger batch encoding
         embs = embedder.encode(texts, batch_size=256, show_progress_bar=False).tolist()
         collection.add(
@@ -773,11 +784,12 @@ def load_db(chunks_file: Path) -> tuple[Any, SentenceTransformer, SimpleBM25 | N
 # STATS
 # ═══════════════════════════════
 
+
 def print_stats(collection: Any, chunks_file: Path) -> None:
     """Print database statistics."""
     count = collection.count()
     print("\n[Stats] RAG Database Statistics")
-    print(f"{'='*55}")
+    print(f"{'=' * 55}")
     print(f"  Chunks in DB : {count:,}")
     print(f"  Source file  : {chunks_file.name}")
 
@@ -798,17 +810,21 @@ def print_stats(collection: Any, chunks_file: Path) -> None:
         print("\n  Types (top 10):")
         for t, cnt in types.most_common(10):
             print(f"    {t}: {cnt:,}")
-    print(f"{'='*55}\n")
+    print(f"{'=' * 55}\n")
 
 
 # ═══════════════════════════════
 # MAIN
 # ═══════════════════════════════
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Offline Python RAG assistant backed by Ollama.")
-    parser.add_argument("--model", default=DEFAULT_MODEL,
-                        help=f"Ollama model to use (default: {DEFAULT_MODEL}). Use 'list' to see available models.")
+    parser.add_argument(
+        "--model",
+        default=DEFAULT_MODEL,
+        help=f"Ollama model to use (default: {DEFAULT_MODEL}). Use 'list' to see available models.",
+    )
     parser.add_argument("--question", default="", help="Ask one question and exit.")
     parser.add_argument("--rebuild", action="store_true", help="Force rebuild database on startup.")
     parser.add_argument("--stats", action="store_true", help="Show database statistics and exit.")
@@ -819,14 +835,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mmr-lambda", type=float, default=0.7, help="MMR lambda (higher = more relevance-focused).")
     parser.add_argument("--version", default="", help="Filter results by Python version (e.g., 3.10).")
     parser.add_argument("--category", default="", help="Filter results by category (e.g., library, howto).")
-    parser.add_argument("--list-models", action="store_true",
-                        help="List available Ollama models and exit.")
+    parser.add_argument("--list-models", action="store_true", help="List available Ollama models and exit.")
     return parser.parse_args()
 
 
 # ═══════════════════════════════
 # CODE EXECUTION & EXTRACTION
 # ═══════════════════════════════
+
 
 def execute_code(code: str, timeout: int = 5) -> tuple[str | None, str | None]:
     """Execute Python code safely with a timeout and return (stdout, stderr).
@@ -872,7 +888,9 @@ def extract_code_blocks(text: str) -> list[str]:
     return [block.strip() for block in matches]
 
 
-def load_or_build_db(force_rebuild: bool = False) -> tuple[Any, SentenceTransformer, SimpleBM25 | None, list[str], KnowledgeGraph, Path]:
+def load_or_build_db(
+    force_rebuild: bool = False,
+) -> tuple[Any, SentenceTransformer, SimpleBM25 | None, list[str], KnowledgeGraph, Path]:
 
     chunks_file = (
         ROOT / "data" / "raw" / "raw_chunks_godmode.json"
@@ -1014,7 +1032,9 @@ def list_conversations() -> list[dict[str, Any]]:
         try:
             data = json.loads(f.read_text(encoding="utf-8"))
             num_messages = len(data) if isinstance(data, list) else 0
-            user_msgs = sum(1 for m in (data if isinstance(data, list) else []) if isinstance(m, dict) and m.get("role") == "user")
+            user_msgs = sum(
+                1 for m in (data if isinstance(data, list) else []) if isinstance(m, dict) and m.get("role") == "user"
+            )
             timestamp = f.stem.replace("conversation_", "")
             # First user message as summary
             first_user = ""
@@ -1023,15 +1043,17 @@ def list_conversations() -> list[dict[str, Any]]:
                     if isinstance(m, dict) and m.get("role") == "user":
                         first_user = m.get("content", "")[:100]
                         break
-            results.append({
-                "file": f.name,
-                "path": str(f),
-                "timestamp": timestamp,
-                "messages": num_messages,
-                "questions": user_msgs,
-                "summary": first_user,
-                "size_kb": round(f.stat().st_size / 1024, 1),
-            })
+            results.append(
+                {
+                    "file": f.name,
+                    "path": str(f),
+                    "timestamp": timestamp,
+                    "messages": num_messages,
+                    "questions": user_msgs,
+                    "summary": first_user,
+                    "size_kb": round(f.stat().st_size / 1024, 1),
+                }
+            )
         except Exception:
             continue
 
@@ -1080,13 +1102,15 @@ def search_conversations(query: str, max_results: int = 10) -> list[dict[str, An
                     if isinstance(msg, dict) and msg.get("role") == "user":
                         first_user = msg.get("content", "")[:80]
                         break
-                results.append({
-                    "file": f.name,
-                    "timestamp": f.stem.replace("conversation_", ""),
-                    "summary": first_user,
-                    "matches": match_count,
-                    "snippets": snippets[:3],
-                })
+                results.append(
+                    {
+                        "file": f.name,
+                        "timestamp": f.stem.replace("conversation_", ""),
+                        "summary": first_user,
+                        "matches": match_count,
+                        "snippets": snippets[:3],
+                    }
+                )
 
         except Exception:
             continue
@@ -1125,7 +1149,7 @@ def main() -> None:
     # List models mode
     if args.list_models:
         print("\n[Models] Available Ollama models:")
-        configured = list_configured_models()
+        list_configured_models()
         if available_ollama:
             print("\n  Locally available:")
             for m in available_ollama:
@@ -1157,17 +1181,25 @@ def main() -> None:
         filter_parts.append(f"version={args.version}")
     if args.category:
         filter_parts.append(f"category={args.category}")
-    filters_str = f" [{', '.join(filter_parts)}]" if filter_parts else ""
+    f" [{', '.join(filter_parts)}]" if filter_parts else ""
 
     # Single question mode
     if args.question.strip():
         get_answer(
-            args.question.strip(), collection, embedder, [],
-            bm25=bm25, corpus_texts=corpus_texts, kg=kg,
+            args.question.strip(),
+            collection,
+            embedder,
+            [],
+            bm25=bm25,
+            corpus_texts=corpus_texts,
+            kg=kg,
             use_query_expansion=args.query_expansion,
-            use_mmr=args.mmr, mmr_lambda=args.mmr_lambda,
-            no_exec=args.no_exec, exec_timeout=args.exec_timeout,
-            version_filter=args.version, category_filter=args.category,
+            use_mmr=args.mmr,
+            mmr_lambda=args.mmr_lambda,
+            no_exec=args.no_exec,
+            exec_timeout=args.exec_timeout,
+            version_filter=args.version,
+            category_filter=args.category,
             model=selected_model,
         )
         return
@@ -1191,7 +1223,6 @@ Commands:
 
     history: list[dict[str, str]] = []
     last_answer: str = ""
-    last_docs: list[dict[str, Any]] = []
     search_count: int = 6
 
     while True:
@@ -1211,16 +1242,13 @@ Commands:
         elif q == "clear":
             history = []
             last_answer = ""
-            last_docs = []
             print("[Reset] Conversation cleared!\n")
         elif q == "rebuild":
             collection, embedder, bm25, corpus_texts, kg = build_db(chunks_file)
         elif q == "expand":
             print("[Download] Running data collector...")
             os.system(f'"{sys.executable}" -m src.data.collector')
-            collection, embedder, bm25, corpus_texts, kg = build_db(
-                ROOT / "data" / "raw" / "raw_chunks_godmode.json"
-            )
+            collection, embedder, bm25, corpus_texts, kg = build_db(ROOT / "data" / "raw" / "raw_chunks_godmode.json")
 
         # --- Slash commands ---
         elif q == "/help":
@@ -1242,14 +1270,14 @@ Commands:
         elif q == "/save":
             save_conversation(history, export_md=False)
         elif q == "/export":
-            path = save_conversation(history, export_md=True)
+            save_conversation(history, export_md=True)
         elif q == "/list":
             convs = list_conversations()
             if not convs:
                 print("[Empty] No saved conversations found.\n")
             else:
                 print(f"\n[Conversations] ({len(convs)} saved)")
-                print(f"{'='*60}")
+                print(f"{'=' * 60}")
                 for i, c in enumerate(convs, 1):
                     print(f"  {i:2d}. {c['file']}")
                     print(f"      Summary: {c['summary'][:60] or '(empty)'}")
@@ -1262,14 +1290,14 @@ Commands:
             else:
                 convs = search_conversations(query, max_results=8)
                 if not convs:
-                    print(f"[No results] No conversations matched \"{query}\"\n")
+                    print(f'[No results] No conversations matched "{query}"\n')
                 else:
-                    print(f"\n[Search] \"{query}\" — {len(convs)} conversation(s) matched")
-                    print(f"{'='*60}")
+                    print(f'\n[Search] "{query}" — {len(convs)} conversation(s) matched')
+                    print(f"{'=' * 60}")
                     for c in convs:
                         print(f"  [{c['timestamp']}] {c['file']}")
                         print(f"      Matches: {c['matches']} | Summary: {c['summary'][:60] or '(empty)'}")
-                        for s in c['snippets'][:2]:
+                        for s in c["snippets"][:2]:
                             print(f"      -> {s[:120]}")
                     print()
         elif q == "/explain":
@@ -1281,10 +1309,16 @@ Commands:
                     f"covering the underlying concepts and rationale:\n\n{last_answer[-2000:]}"
                 )
                 get_answer(
-                    explain_prompt, collection, embedder, history[-4:],
-                    bm25=bm25, corpus_texts=corpus_texts, kg=kg,
+                    explain_prompt,
+                    collection,
+                    embedder,
+                    history[-4:],
+                    bm25=bm25,
+                    corpus_texts=corpus_texts,
+                    kg=kg,
                     no_exec=True,
-                    version_filter=args.version, category_filter=args.category,
+                    version_filter=args.version,
+                    category_filter=args.category,
                     model=selected_model,
                 )
         elif q == "/model":
@@ -1309,16 +1343,23 @@ Commands:
                 print("  (Previous answer was short — context may be limited)\n")
 
             answer, docs = get_answer(
-                q, collection, embedder, history,
-                bm25=bm25, corpus_texts=corpus_texts, kg=kg,
+                q,
+                collection,
+                embedder,
+                history,
+                bm25=bm25,
+                corpus_texts=corpus_texts,
+                kg=kg,
                 use_query_expansion=args.query_expansion,
-                use_mmr=args.mmr, mmr_lambda=args.mmr_lambda,
-                no_exec=args.no_exec, exec_timeout=args.exec_timeout,
-                version_filter=args.version, category_filter=args.category,
+                use_mmr=args.mmr,
+                mmr_lambda=args.mmr_lambda,
+                no_exec=args.no_exec,
+                exec_timeout=args.exec_timeout,
+                version_filter=args.version,
+                category_filter=args.category,
                 model=selected_model,
             )
             last_answer = answer
-            last_docs = docs
             history.append({"role": "user", "content": q})
             history.append({"role": "assistant", "content": answer})
             if len(history) > 20:

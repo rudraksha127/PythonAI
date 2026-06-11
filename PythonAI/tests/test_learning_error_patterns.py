@@ -19,7 +19,9 @@ def test_error_pattern_db_basic(tmp_path):
     db = ErrorPatternDB(db_path=db_path)
 
     # Log new error
-    res1 = db.log("TypeError: unsupported operand type(s) for +: 'int' and 'str'", "Convert the int to a str using str()")
+    res1 = db.log(
+        "TypeError: unsupported operand type(s) for +: 'int' and 'str'", "Convert the int to a str using str()"
+    )
     assert res1["is_new"] is True
     assert res1["times_seen"] == 1
 

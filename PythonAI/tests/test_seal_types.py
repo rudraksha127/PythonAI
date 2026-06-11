@@ -55,7 +55,7 @@ class TestSelfEditAction:
         assert parsed.count == 30
 
     def test_from_json_code_block(self):
-        json_str = '''```json\n{"action": "reduce_hallucination", "domain": "reasoning", "count": 25}\n```'''
+        json_str = """```json\n{"action": "reduce_hallucination", "domain": "reasoning", "count": 25}\n```"""
         action = SelfEditAction.from_json(json_str)
         assert action is not None
         assert action.action_type == SealActionType.REDUCE_HALLUCINATION
@@ -252,13 +252,15 @@ class TestSealConfig:
         assert config.state_dir == ".forgeai/seal"
 
     def test_from_dict(self):
-        config = SealConfig.from_dict({
-            "inner_lora_rank": 32,
-            "inner_max_steps": 200,
-            "meta_enabled": False,
-            "exploration_rate": 0.5,
-            "state_dir": "/tmp/seal_test",
-        })
+        config = SealConfig.from_dict(
+            {
+                "inner_lora_rank": 32,
+                "inner_max_steps": 200,
+                "meta_enabled": False,
+                "exploration_rate": 0.5,
+                "state_dir": "/tmp/seal_test",
+            }
+        )
         assert config.inner_lora_rank == 32
         assert config.inner_max_steps == 200
         assert config.meta_enabled is False

@@ -36,6 +36,7 @@ DEFAULT_PROMPTS = [
 @dataclass
 class AdapterResult:
     """Results from evaluating a single adapter on a prompt."""
+
     adapter_name: str
     prompt: str
     output: str
@@ -50,6 +51,7 @@ class AdapterResult:
 @dataclass
 class ComparisonReport:
     """Complete comparison report for multiple adapters."""
+
     adapters: list[str] = field(default_factory=list)
     prompts: list[str] = field(default_factory=list)
     results: list[AdapterResult] = field(default_factory=list)
@@ -109,9 +111,7 @@ def evaluate_adapter(
     print(f"  Loading adapter: {adapter_path.name}")
     print(f"    Base model: {base_model}")
 
-    tokenizer = AutoTokenizer.from_pretrained(
-        adapter_path, trust_remote_code=True
-    )
+    tokenizer = AutoTokenizer.from_pretrained(adapter_path, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
@@ -128,9 +128,7 @@ def evaluate_adapter(
     for prompt in prompts:
         try:
             formatted = f"### Instruction:\n{prompt}\n\n### Response:\n"
-            inputs = tokenizer(
-                formatted, return_tensors="pt", truncation=True, max_length=512
-            )
+            inputs = tokenizer(formatted, return_tensors="pt", truncation=True, max_length=512)
 
             start = time.time()
             with torch.no_grad():
@@ -144,32 +142,36 @@ def evaluate_adapter(
             elapsed = time.time() - start
 
             text = tokenizer.decode(generated[0], skip_special_tokens=True)
-            output = text[len(formatted):].strip()
+            output = text[len(formatted) :].strip()
 
             # Count tokens in output
             output_tokens = tokenizer(output, add_special_tokens=False)["input_ids"]
 
-            results.append(AdapterResult(
-                adapter_name=adapter_path.name,
-                prompt=prompt[:80],
-                output=output,
-                generation_time_s=round(elapsed, 2),
-                output_length_chars=len(output),
-                output_length_tokens=len(output_tokens),
-                has_code="```" in output,
-            ))
+            results.append(
+                AdapterResult(
+                    adapter_name=adapter_path.name,
+                    prompt=prompt[:80],
+                    output=output,
+                    generation_time_s=round(elapsed, 2),
+                    output_length_chars=len(output),
+                    output_length_tokens=len(output_tokens),
+                    has_code="```" in output,
+                )
+            )
             print(f"    [{adapter_path.name}] Prompt completed in {elapsed:.1f}s ({len(output_tokens)} tokens)")
         except Exception as e:
-            results.append(AdapterResult(
-                adapter_name=adapter_path.name,
-                prompt=prompt[:80],
-                output="",
-                generation_time_s=0,
-                output_length_chars=0,
-                output_length_tokens=0,
-                has_code=False,
-                error=str(e),
-            ))
+            results.append(
+                AdapterResult(
+                    adapter_name=adapter_path.name,
+                    prompt=prompt[:80],
+                    output="",
+                    generation_time_s=0,
+                    output_length_chars=0,
+                    output_length_tokens=0,
+                    has_code=False,
+                    error=str(e),
+                )
+            )
             print(f"    [{adapter_path.name}] Error: {e}")
 
     return results
@@ -206,9 +208,11 @@ def generate_html_report(report: ComparisonReport, output_path: Path) -> str:
         cells = ""
         for ri, r in enumerate(prompt_results):
             output_snippet = r.output[:300].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            output_snippet = output_snippet.replace("\\n", "<br>").replace("\\n```", "<pre><code>").replace("```", "</code></pre>")
-            code_badge = '<span class="badge code">Has Code</span>' if r.has_code else ''
-            error_badge = '<span class="badge error">Error</span>' if r.error else ''
+            output_snippet = (
+                output_snippet.replace("\\n", "<br>").replace("\\n```", "<pre><code>").replace("```", "</code></pre>")
+            )
+            code_badge = '<span class="badge code">Has Code</span>' if r.has_code else ""
+            error_badge = '<span class="badge error">Error</span>' if r.error else ""
             cells += f"""
             <td>
                 <small class="meta">Time: {r.generation_time_s}s | Tokens: {r.output_length_tokens}</small>
@@ -232,8 +236,8 @@ def generate_html_report(report: ComparisonReport, output_path: Path) -> str:
         header_cells += f"""
         <th>
             <div class="adapter-name">{name}</div>
-            <small>[Time] {stats.get('avg_time', 'N/A')} | [Tok] {stats.get('avg_tokens', 'N/A')} tok</small>
-            <br><small>[Code] {stats.get('code_count', 0)} | [Err] {stats.get('error_count', 0)}</small>
+            <small>[Time] {stats.get("avg_time", "N/A")} | [Tok] {stats.get("avg_tokens", "N/A")} tok</small>
+            <br><small>[Code] {stats.get("code_count", 0)} | [Err] {stats.get("error_count", 0)}</small>
         </th>"""
 
     # Summary table
@@ -242,11 +246,11 @@ def generate_html_report(report: ComparisonReport, output_path: Path) -> str:
         summary_rows += f"""
         <tr>
             <td><strong>{name}</strong></td>
-            <td>{stats['avg_time']}</td>
-            <td>{stats['avg_tokens']}</td>
-            <td>{stats['total_chars']:,}</td>
-            <td>{stats['code_count']}</td>
-            <td>{stats['error_count']}</td>
+            <td>{stats["avg_time"]}</td>
+            <td>{stats["avg_tokens"]}</td>
+            <td>{stats["total_chars"]:,}</td>
+            <td>{stats["code_count"]}</td>
+            <td>{stats["error_count"]}</td>
         </tr>"""
 
     html = f"""<!DOCTYPE html>
@@ -355,9 +359,9 @@ def run_comparison(
     )
 
     for adapter_path in adapter_paths:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Evaluating: {adapter_path.name}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         results = evaluate_adapter(adapter_path, prompts, max_new_tokens)
         report.results.extend(results)
 
@@ -378,9 +382,9 @@ def run_comparison(
     print(f"[OK] HTML dashboard: {html_path}")
 
     # Print quick summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Quick Summary")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     for name in report.adapters:
         adapter_results = [r for r in report.results if r.adapter_name == name]
         avg_time = sum(r.generation_time_s for r in adapter_results) / len(adapter_results) if adapter_results else 0
@@ -393,16 +397,15 @@ def run_comparison(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Compare multiple PEFT adapters side-by-side")
-    parser.add_argument("--adapters", nargs="+", default=None,
-                        help="Paths to adapter directories (default: auto-discover all)")
-    parser.add_argument("--prompts", default=None,
-                        help="JSON file with list of prompt strings")
-    parser.add_argument("--max-new-tokens", type=int, default=96,
-                        help="Max new tokens per generation")
-    parser.add_argument("--output-dir", default="checkpoints/comparison",
-                        help="Output directory for reports")
-    parser.add_argument("--compare-all", action="store_true",
-                        help="Auto-discover and compare all adapters in checkpoints/")
+    parser.add_argument(
+        "--adapters", nargs="+", default=None, help="Paths to adapter directories (default: auto-discover all)"
+    )
+    parser.add_argument("--prompts", default=None, help="JSON file with list of prompt strings")
+    parser.add_argument("--max-new-tokens", type=int, default=96, help="Max new tokens per generation")
+    parser.add_argument("--output-dir", default="checkpoints/comparison", help="Output directory for reports")
+    parser.add_argument(
+        "--compare-all", action="store_true", help="Auto-discover and compare all adapters in checkpoints/"
+    )
     return parser.parse_args()
 
 

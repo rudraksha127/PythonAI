@@ -152,6 +152,7 @@ def feature_required(feature: str):
         ):
             ...
     """
+
     async def _check(user: CloudUser = Depends(require_cloud_user)) -> CloudUser:
         return await require_feature(user, feature=feature)
 

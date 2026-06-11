@@ -36,7 +36,7 @@ logger = logging.getLogger("pythonai.mcp.config")
 #  Environment Variable Expansion
 # ═══════════════════════════════════════
 
-ENV_VAR_PATTERN = re.compile(r'\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)')
+ENV_VAR_PATTERN = re.compile(r"\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
 
 
 def expand_env_vars(value: str) -> tuple[str, list[str]]:
@@ -118,6 +118,7 @@ def _expand_headers(
 # ═══════════════════════════════════════
 #  MCP JSON Config Parser
 # ═══════════════════════════════════════
+
 
 def parse_mcp_json(data: dict[str, Any]) -> dict[str, ServerConfig]:
     """Parse an .mcp.json style configuration.
@@ -243,9 +244,7 @@ class MCPConfigManager:
             for name, config in servers.items():
                 expanded, missing = expand_config_env(config)
                 if missing:
-                    logger.warning(
-                        f"MCP server '{name}' has unset env vars: {missing}"
-                    )
+                    logger.warning(f"MCP server '{name}' has unset env vars: {missing}")
                 # Higher precedence scopes overwrite lower ones
                 self._servers[name] = (expanded, scope)
 
@@ -266,11 +265,7 @@ class MCPConfigManager:
 
     def get_by_scope(self, scope: MCPScope) -> dict[str, ServerConfig]:
         """Get servers from a specific scope."""
-        return {
-            name: cfg
-            for name, (cfg, s) in self._servers.items()
-            if s == scope
-        }
+        return {name: cfg for name, (cfg, s) in self._servers.items() if s == scope}
 
     def get(self, name: str) -> ServerConfig | None:
         """Get a specific server config by name."""
@@ -423,6 +418,7 @@ class MCPConfigManager:
 # ═══════════════════════════════════════
 #  Convenience Functions
 # ═══════════════════════════════════════
+
 
 def find_mcp_configs(project_dir: str | None = None) -> dict[str, ServerConfig]:
     """Quick-find all MCP server configs for a project."""

@@ -45,8 +45,8 @@ from pathlib import Path
 from typing import Any
 
 # Fix Windows console encoding for Unicode characters
-if hasattr(sys.stdout, 'buffer'):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 from rich.console import Console
 from rich.progress import (
@@ -64,10 +64,10 @@ RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
 TEMP_EXTRACT_DIR = RAW_DATA_DIR / "temp_extracted_docs"
 OUTPUT_FILE = RAW_DATA_DIR / "zip_docs_chunks.jsonl"
 
-CHUNK_SIZE = 1000      # Target chars per chunk
-CHUNK_OVERLAP = 150    # Overlap between consecutive chunks
+CHUNK_SIZE = 1000  # Target chars per chunk
+CHUNK_OVERLAP = 150  # Overlap between consecutive chunks
 MAX_FILE_SIZE = 500_000  # Skip files larger than this (single doc)
-MIN_CHUNK_LEN = 80      # Drop chunks shorter than this
+MIN_CHUNK_LEN = 80  # Drop chunks shorter than this
 
 console = Console()
 
@@ -75,9 +75,24 @@ console = Console()
 
 # Python versions we expect, in semver order
 SUPPORTED_VERSIONS = [
-    "2.7", "3.0", "3.1", "3.2", "3.3", "3.4",
-    "3.5", "3.6", "3.7", "3.8", "3.9",
-    "3.10", "3.11", "3.12", "3.13", "3.14", "3.15", "3.16",
+    "2.7",
+    "3.0",
+    "3.1",
+    "3.2",
+    "3.3",
+    "3.4",
+    "3.5",
+    "3.6",
+    "3.7",
+    "3.8",
+    "3.9",
+    "3.10",
+    "3.11",
+    "3.12",
+    "3.13",
+    "3.14",
+    "3.15",
+    "3.16",
 ]
 
 
@@ -166,9 +181,9 @@ def clean_html(html_content: str) -> str:
 # ── Chunking ──────────────────────────────────────────────────────
 
 
-def smart_chunk_text(text: str, title_prefix: str = "",
-                     chunk_size: int = CHUNK_SIZE,
-                     overlap: int = CHUNK_OVERLAP) -> list[str]:
+def smart_chunk_text(
+    text: str, title_prefix: str = "", chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP
+) -> list[str]:
     """
     Split text into overlapping chunks at natural boundaries
     (paragraphs, then sentences) aiming for ~chunk_size chars each.
@@ -266,8 +281,7 @@ def _extract_section(file_rel_path: str) -> str:
 # ── Processing individual files ───────────────────────────────────
 
 
-def process_file_content(content: str, file_rel_path: str,
-                         version: str, file_stem: str) -> list[dict[str, Any]]:
+def process_file_content(content: str, file_rel_path: str, version: str, file_stem: str) -> list[dict[str, Any]]:
     """Parse file content (HTML or text) into chunks."""
     # Detect if it's HTML or plain text
     is_html = bool(re.search(r"<html|<body|<div|<h[1-6]", content[:500]))
@@ -297,19 +311,21 @@ def process_file_content(content: str, file_rel_path: str,
         if len(chunk_text.strip()) < MIN_CHUNK_LEN:
             continue
 
-        results.append({
-            "id": _make_chunk_id(version, section, i),
-            "title": f"{title} (Part {i + 1})",
-            "version": version,
-            "category": "official_docs",
-            "type": doc_type,
-            "text": chunk_text.strip(),
-            "source": "zip_docs",
-            "section": section,
-            "chunk_idx": i,
-            "total_chunks": total,
-            "file": file_rel_path,
-        })
+        results.append(
+            {
+                "id": _make_chunk_id(version, section, i),
+                "title": f"{title} (Part {i + 1})",
+                "version": version,
+                "category": "official_docs",
+                "type": doc_type,
+                "text": chunk_text.strip(),
+                "source": "zip_docs",
+                "section": section,
+                "chunk_idx": i,
+                "total_chunks": total,
+                "file": file_rel_path,
+            }
+        )
 
     return results
 
@@ -351,10 +367,16 @@ def process_zip(zip_path: Path, test_mode: bool = False) -> int:
     # Skip non-doc files (e.g. genindex, search, _sources)
     def is_doc_file(path: Path) -> bool:
         name = path.name.lower()
-        return not any(skip in name for skip in [
-            "genindex", "search", "_sources", "py-modindex",
-            "objects.inv",
-        ])
+        return not any(
+            skip in name
+            for skip in [
+                "genindex",
+                "search",
+                "_sources",
+                "py-modindex",
+                "objects.inv",
+            ]
+        )
 
     html_files = [f for f in html_files if is_doc_file(f)]
     txt_files = [f for f in txt_files if is_doc_file(f)]
@@ -376,9 +398,7 @@ def process_zip(zip_path: Path, test_mode: bool = False) -> int:
             rel_path = str(file_path.relative_to(extract_dir))
             content = file_path.read_text(encoding="utf-8", errors="replace")
 
-            chunks = process_file_content(
-                content, rel_path, version, file_path.stem
-            )
+            chunks = process_file_content(content, rel_path, version, file_path.stem)
             all_chunks.extend(chunks)
         except Exception as e:
             continue  # Skip problematic files silently
@@ -425,7 +445,7 @@ def show_zip_stats() -> None:
         total_size += zf.stat().st_size
 
     console.print(f"{'─' * 70}")
-    console.print(f"  Total: {len(zip_files)} files, {total_size / (1024*1024):.2f} MB")
+    console.print(f"  Total: {len(zip_files)} files, {total_size / (1024 * 1024):.2f} MB")
 
     # Also show current output
     if OUTPUT_FILE.exists():
@@ -493,24 +513,19 @@ def main(
     console.print(f"  Versions processed: {', '.join(processed_versions)}")
     console.print(f"  Total chunks:       {total_chunks:,}")
     console.print(f"  Output file:        {OUTPUT_FILE}")
-    console.print(f"  Output size:        {OUTPUT_FILE.stat().st_size / (1024*1024):.2f} MB")
+    console.print(f"  Output size:        {OUTPUT_FILE.stat().st_size / (1024 * 1024):.2f} MB")
 
     return total_chunks
 
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(
-        description="Extract & chunk Python docs from ZIP archives (v2.7–v3.16)"
-    )
-    parser.add_argument("--zip-dir", default=str(ZIP_DIR_DEFAULT),
-                        help="Directory containing Python docs ZIP files")
-    parser.add_argument("--test", action="store_true",
-                        help="Test mode: process only 1 ZIP with 25 files")
-    parser.add_argument("--stats", action="store_true",
-                        help="Show ZIP file stats and exit")
-    parser.add_argument("--workers", type=int, default=4,
-                        help="Number of parallel workers (default: 4)")
+
+    parser = argparse.ArgumentParser(description="Extract & chunk Python docs from ZIP archives (v2.7–v3.16)")
+    parser.add_argument("--zip-dir", default=str(ZIP_DIR_DEFAULT), help="Directory containing Python docs ZIP files")
+    parser.add_argument("--test", action="store_true", help="Test mode: process only 1 ZIP with 25 files")
+    parser.add_argument("--stats", action="store_true", help="Show ZIP file stats and exit")
+    parser.add_argument("--workers", type=int, default=4, help="Number of parallel workers (default: 4)")
     args = parser.parse_args()
 
     if args.stats:

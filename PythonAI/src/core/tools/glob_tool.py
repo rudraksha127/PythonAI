@@ -21,47 +21,51 @@ from ..tool import (
 )
 
 GlobTool = build_tool(
-    type("GlobToolDef", (), {
-        "name": "glob",
-        "description": "Search for files and directories matching a glob pattern.",
-        "search_hint": "find files, search paths, file search",
-        "input_schema": InputSchema(
-            pattern=Parameter(
-                type="string",
-                description="Glob pattern to match (e.g., '**/*.py', 'src/**/*.ts')",
-                required=True,
+    type(
+        "GlobToolDef",
+        (),
+        {
+            "name": "glob",
+            "description": "Search for files and directories matching a glob pattern.",
+            "search_hint": "find files, search paths, file search",
+            "input_schema": InputSchema(
+                pattern=Parameter(
+                    type="string",
+                    description="Glob pattern to match (e.g., '**/*.py', 'src/**/*.ts')",
+                    required=True,
+                ),
+                cwd=Parameter(
+                    type="string",
+                    description="Working directory to search from (default: project root)",
+                ),
+                max_results=Parameter(
+                    type="integer",
+                    description="Maximum number of results to return (default: 100)",
+                    default=100,
+                ),
             ),
-            cwd=Parameter(
-                type="string",
-                description="Working directory to search from (default: project root)",
+            "is_readonly": True,
+            "is_concurrency_safe": True,
+            "max_result_size_chars": 10000,
+            "call": lambda input_data, context: _glob_call(input_data, context),
+            "validate_input": lambda input_data, context: _glob_validate(input_data, context),
+            "get_tool_use_summary": lambda input_data: input_data.get("pattern", "") if input_data else None,
+            "get_activity_description": lambda input_data: (
+                f"Searching {input_data.get('pattern', '')}" if input_data else None
             ),
-            max_results=Parameter(
-                type="integer",
-                description="Maximum number of results to return (default: 100)",
-                default=100,
-            ),
-        ),
-        "is_readonly": True,
-        "is_concurrency_safe": True,
-        "max_result_size_chars": 10000,
-        "call": lambda input_data, context: _glob_call(input_data, context),
-        "validate_input": lambda input_data, context: _glob_validate(input_data, context),
-        "get_tool_use_summary": lambda input_data: input_data.get("pattern", "") if input_data else None,
-        "get_activity_description": lambda input_data: f"Searching {input_data.get('pattern', '')}" if input_data else None,
-    })
+        },
+    )
 )
 
 
-def _glob_validate(input_data: dict[str, Any],
-                   context: ToolUseContext) -> ValidationResult:
+def _glob_validate(input_data: dict[str, Any], context: ToolUseContext) -> ValidationResult:
     pattern = input_data.get("pattern", "")
     if not pattern:
         return ValidationResult(success=False, message="pattern is required", error_code=1)
     return ValidationResult(success=True)
 
 
-def _glob_call(input_data: dict[str, Any],
-               context: ToolUseContext) -> ToolResult:
+def _glob_call(input_data: dict[str, Any], context: ToolUseContext) -> ToolResult:
     pattern = input_data.get("pattern", "")
     cwd = input_data.get("cwd") or context.cwd or os.getcwd()
     max_results = min(input_data.get("max_results", 100), 500)
@@ -105,16 +109,17 @@ def _glob_call(input_data: dict[str, Any],
                 size = os.path.getsize(r) if os.path.exists(r) else 0
                 files.append({"path": r, "size": size})
 
-        return ToolResult(data={
-            "pattern": pattern,
-            "total_matches": total,
-            "returned": len(results),
-            "files": files,
-            "directories": dirs,
-            "cwd": cwd,
-            "message": f"Found {total} matches, showing {len(results)}",
-        })
+        return ToolResult(
+            data={
+                "pattern": pattern,
+                "total_matches": total,
+                "returned": len(results),
+                "files": files,
+                "directories": dirs,
+                "cwd": cwd,
+                "message": f"Found {total} matches, showing {len(results)}",
+            }
+        )
 
     except Exception as e:
-        return ToolResult(data={"error": f"Glob failed: {e}", "pattern": pattern},
-                          error=f"Glob failed: {e}")
+        return ToolResult(data={"error": f"Glob failed: {e}", "pattern": pattern}, error=f"Glob failed: {e}")

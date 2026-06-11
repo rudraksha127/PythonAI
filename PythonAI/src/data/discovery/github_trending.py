@@ -26,17 +26,40 @@ DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / ".github_cache.json"
 
 # GitHub topics that signal high-value datasets
 DATASET_TOPICS = [
-    "dataset", "training-data", "nlp", "computer-vision",
-    "machine-learning", "deep-learning", "llm", "large-language-model",
-    "fine-tuning", "sft", "instruction-tuning", "rlhf",
-    "text-classification", "sentiment-analysis", "translation",
-    "speech-recognition", "image-classification", "object-detection",
+    "dataset",
+    "training-data",
+    "nlp",
+    "computer-vision",
+    "machine-learning",
+    "deep-learning",
+    "llm",
+    "large-language-model",
+    "fine-tuning",
+    "sft",
+    "instruction-tuning",
+    "rlhf",
+    "text-classification",
+    "sentiment-analysis",
+    "translation",
+    "speech-recognition",
+    "image-classification",
+    "object-detection",
 ]
 
 # Languages we prioritize for code training data
 PRIORITY_LANGUAGES = [
-    "python", "javascript", "typescript", "rust", "go",
-    "java", "c++", "c", "julia", "r", "swift", "kotlin",
+    "python",
+    "javascript",
+    "typescript",
+    "rust",
+    "go",
+    "java",
+    "c++",
+    "c",
+    "julia",
+    "r",
+    "swift",
+    "kotlin",
 ]
 
 TOPIC_DOMAIN_MAP: dict[str, DataDomain] = {
@@ -60,6 +83,7 @@ TOPIC_DOMAIN_MAP: dict[str, DataDomain] = {
 @dataclass
 class GitHubRepo:
     """A GitHub repository discovered as potentially useful."""
+
     full_name: str
     description: str = ""
     url: str = ""
@@ -167,10 +191,13 @@ class GitHubTrending:
             query = urllib.parse.quote(f"topic:{topic} stars:>={min_stars}")
             url = f"{self.api_base}/search/repositories?q={query}&sort=stars&order=desc&per_page={min(30, max_results)}"
 
-            req = urllib.request.Request(url, headers={
-                "User-Agent": "PythonAI/2.0 (data-discovery)",
-                "Accept": "application/vnd.github.v3+json",
-            })
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "PythonAI/2.0 (data-discovery)",
+                    "Accept": "application/vnd.github.v3+json",
+                },
+            )
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 
@@ -192,10 +219,13 @@ class GitHubTrending:
 
             url = "https://api.github.com/search/repositories?q=created:>2026-01-01+pushed:>2026-04-01&sort=stars&order=desc&per_page=25"
 
-            req = urllib.request.Request(url, headers={
-                "User-Agent": "PythonAI/2.0 (data-discovery)",
-                "Accept": "application/vnd.github.v3+json",
-            })
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "PythonAI/2.0 (data-discovery)",
+                    "Accept": "application/vnd.github.v3+json",
+                },
+            )
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 
@@ -207,9 +237,7 @@ class GitHubTrending:
                 has_dataset_keywords = any(
                     kw in desc for kw in ["dataset", "data", "corpus", "benchmark", "collection"]
                 )
-                if has_dataset_keywords or any(
-                    t in DATASET_TOPICS for t in repo.topics
-                ):
+                if has_dataset_keywords or any(t in DATASET_TOPICS for t in repo.topics):
                     repo.relevance_score = self._compute_relevance(repo, "trending")
                     repos.append(repo)
             return repos
@@ -247,7 +275,7 @@ class GitHubTrending:
 
         # Stars factor (log scale)
         if repo.stars > 0:
-            score += min(0.3, 0.05 * (repo.stars ** 0.3))
+            score += min(0.3, 0.05 * (repo.stars**0.3))
 
         # Language bonus for priority languages
         if repo.language.lower() in PRIORITY_LANGUAGES:
@@ -289,21 +317,23 @@ class GitHubTrending:
 
             priority = "high" if repo.relevance_score >= 0.7 else "medium" if repo.relevance_score >= 0.4 else "low"
 
-            records.append(DatasetRecord(
-                id=f"github_{repo.full_name.replace('/', '_')}",
-                name=repo.full_name.split("/")[-1],
-                source="github",
-                url=repo.url,
-                size_bytes=repo.size_kb * 1024,
-                estimated_records=0,
-                languages=["en"] if repo.language else [],
-                domains=[domain],
-                modalities=["code"],
-                license=repo.license or "Various",
-                priority=priority,
-                quality_score=round(repo.relevance_score, 2),
-                description=repo.description[:200] or repo.full_name,
-            ))
+            records.append(
+                DatasetRecord(
+                    id=f"github_{repo.full_name.replace('/', '_')}",
+                    name=repo.full_name.split("/")[-1],
+                    source="github",
+                    url=repo.url,
+                    size_bytes=repo.size_kb * 1024,
+                    estimated_records=0,
+                    languages=["en"] if repo.language else [],
+                    domains=[domain],
+                    modalities=["code"],
+                    license=repo.license or "Various",
+                    priority=priority,
+                    quality_score=round(repo.relevance_score, 2),
+                    description=repo.description[:200] or repo.full_name,
+                )
+            )
 
         return records
 

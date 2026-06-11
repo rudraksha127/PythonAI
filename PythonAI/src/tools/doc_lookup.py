@@ -8,6 +8,7 @@ from src.utils.swarm import MCPTool
 # Global lazy-loaded KG
 _kg: KnowledgeGraph | None = None
 
+
 def handle_doc_lookup(query: str, version: str = "") -> dict[str, Any]:
     """Look up documentation or function signatures from the Knowledge Graph."""
     global _kg
@@ -24,12 +25,20 @@ def handle_doc_lookup(query: str, version: str = "") -> dict[str, Any]:
 
     return {"success": True, "results": results}
 
+
 doc_lookup_tool = MCPTool(
     name="doc_lookup",
     description="Look up Python function signatures, module details, and version changes from the offline knowledge graph.",
     handler=handle_doc_lookup,
     parameters={
-        "query": {"type": "string", "description": "The function, class, or module to look up (e.g., 'itertools.chain')"},
-        "version": {"type": "string", "description": "Optional Python version to filter by (e.g., '3.10')", "default": ""}
-    }
+        "query": {
+            "type": "string",
+            "description": "The function, class, or module to look up (e.g., 'itertools.chain')",
+        },
+        "version": {
+            "type": "string",
+            "description": "Optional Python version to filter by (e.g., '3.10')",
+            "default": "",
+        },
+    },
 )

@@ -27,6 +27,7 @@ from typing import Any
 @dataclass
 class _LatencyBuckets:
     """Track latency distribution with fixed buckets."""
+
     count: int = 0
     total_ms: float = 0.0
     min_ms: float = float("inf")
@@ -69,7 +70,9 @@ class MetricsCollector:
         self._api_status_codes: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
         self._rag_queries: _LatencyBuckets = _LatencyBuckets()
         self._rag_search_latency: _LatencyBuckets = _LatencyBuckets()
-        self._provider_calls: dict[str, dict[str, float | int]] = defaultdict(lambda: {"success": 0, "error": 0, "total_ms": 0.0})
+        self._provider_calls: dict[str, dict[str, float | int]] = defaultdict(
+            lambda: {"success": 0, "error": 0, "total_ms": 0.0}
+        )
         self._tool_calls: dict[str, _LatencyBuckets] = defaultdict(_LatencyBuckets)
         self._start_time = time.time()
 

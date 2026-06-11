@@ -34,10 +34,18 @@ class TestCurriculumGenerator:
         assert isinstance(action, SelfEditAction)
         assert action.action_type in list(SealActionType)
         assert action.domain in [
-            "general", "error_handling", "async_programming",
-            "type_safety", "performance", "security",
-            "testing", "api_design", "data_structures",
-            "concurrency", "debugging", "refactoring",
+            "general",
+            "error_handling",
+            "async_programming",
+            "type_safety",
+            "performance",
+            "security",
+            "testing",
+            "api_design",
+            "data_structures",
+            "concurrency",
+            "debugging",
+            "refactoring",
         ]
         assert action.difficulty in ["easy", "medium", "hard"]
         assert action.count >= 10
@@ -71,6 +79,7 @@ class TestCurriculumGenerator:
             reward_delta = 0.15
             acceptance_rate_after = 0.65
             timestamp = 1000.0
+
             def to_dict(self):
                 return {}
 
@@ -89,6 +98,7 @@ class TestCurriculumGenerator:
             reward_delta = -0.05
             acceptance_rate_after = 0.3
             timestamp = 1000.0
+
             def to_dict(self):
                 return {}
 
@@ -103,7 +113,7 @@ class TestCurriculumGenerator:
         gen.state.total_actions_taken = 10
 
         # Save to temp dir
-        saved_path = gen.save_state(str(tmp_path))
+        gen.save_state(str(tmp_path))
 
         # Create new generator and load
         gen2 = CurriculumGenerator()
@@ -119,12 +129,14 @@ class TestCurriculumGenerator:
 
     def test_build_state_summary_first_cycle(self):
         from src.training.seal_curriculum import _build_state_summary
+
         state = CurriculumState()
         summary = _build_state_summary(state)
         assert "FIRST cycle" in summary
 
     def test_build_state_summary_with_history(self):
         from src.training.seal_curriculum import _build_state_summary
+
         state = CurriculumState()
         state.cycle_number = 3
         state.total_actions_taken = 5

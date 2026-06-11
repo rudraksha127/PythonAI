@@ -25,17 +25,16 @@ def handle_pypi_analyzer(package_name: str) -> dict[str, Any]:
                     "home_page": info.get("home_page"),
                     "project_urls": info.get("project_urls"),
                     "requires_python": info.get("requires_python"),
-                    "requires_dist": info.get("requires_dist")
+                    "requires_dist": info.get("requires_dist"),
                 }
             return {"success": False, "error": f"Failed to fetch PyPI data for {package_name}"}
     except Exception as e:
         return {"success": False, "error": f"PyPI API Error: {e}"}
 
+
 pypi_analyzer_tool = MCPTool(
     name="pypi_analyzer",
     description="Query the PyPI JSON API for Python package metadata, dependencies, and versions.",
     handler=handle_pypi_analyzer,
-    parameters={
-        "package_name": {"type": "string", "description": "The name of the PyPI package to analyze"}
-    }
+    parameters={"package_name": {"type": "string", "description": "The name of the PyPI package to analyze"}},
 )

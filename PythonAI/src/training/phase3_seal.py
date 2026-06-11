@@ -89,9 +89,9 @@ class SealOrchestrator:
         cycle = self.current_cycle
         self.curriculum.state.cycle_number = cycle
 
-        logger.info(f"\n{'='*60}")
+        logger.info(f"\n{'=' * 60}")
         logger.info(f"  SEAL CYCLE {cycle} START")
-        logger.info(f"{'='*60}")
+        logger.info(f"{'=' * 60}")
 
         cycle_start = time.time()
         result: dict[str, Any] = {
@@ -163,13 +163,13 @@ class SealOrchestrator:
         result["status"] = "completed"
         result["elapsed_seconds"] = round(time.time() - cycle_start, 2)
 
-        logger.info(f"{'='*60}")
+        logger.info(f"{'=' * 60}")
         logger.info(f"  SEAL CYCLE {cycle} COMPLETE")
         logger.info(f"  Action: {action.action_type.value} ({action.domain})")
         logger.info(f"  Examples: {result.get('examples_trained', 0)}")
         logger.info(f"  Reward Δ: {result.get('reward', {}).get('reward_delta', 'N/A')}")
         logger.info(f"  Elapsed: {result['elapsed_seconds']}s")
-        logger.info(f"{'='*60}\n")
+        logger.info(f"{'=' * 60}\n")
 
         return result
 
@@ -201,16 +201,15 @@ class SealOrchestrator:
         # Summary
         completed = [r for r in results if r.get("status") == "completed"]
         if completed:
-            avg_reward = sum(
-                r.get("reward", {}).get("reward_delta", 0)
-                for r in completed
-            ) / len(completed)
-            logger.info(f"\n{'='*60}")
+            avg_reward = sum(r.get("reward", {}).get("reward_delta", 0) for r in completed) / len(completed)
+            logger.info(f"\n{'=' * 60}")
             logger.info(f"  SEAL SUMMARY: {len(completed)}/{num_cycles} cycles completed")
             logger.info(f"  Avg reward Δ: {avg_reward:+.4f}")
-            logger.info(f"  Curriculum state: cycle={self.curriculum.state.cycle_number}, "
-                        f"actions={self.curriculum.state.total_actions_taken}")
-            logger.info(f"{'='*60}\n")
+            logger.info(
+                f"  Curriculum state: cycle={self.curriculum.state.cycle_number}, "
+                f"actions={self.curriculum.state.total_actions_taken}"
+            )
+            logger.info(f"{'=' * 60}\n")
 
         return results
 
@@ -271,8 +270,10 @@ class SealOrchestrator:
             inner_eval_loss=eval_loss,
         )
 
-        logger.info(f"[SEAL] Simulated reward: Δ={record.reward_delta:+.4f} "
-                    f"({prev_rate*100:.1f}% → {simulated_rate*100:.1f}%)")
+        logger.info(
+            f"[SEAL] Simulated reward: Δ={record.reward_delta:+.4f} "
+            f"({prev_rate * 100:.1f}% → {simulated_rate * 100:.1f}%)"
+        )
         return record
 
     # ═══════════════════════════════════════════════════════════
@@ -324,9 +325,9 @@ class SealOrchestrator:
                         if line.strip():
                             data = json.loads(line)
                             # Convert back to RewardRecord (partial, for history)
-                            action = SelfEditAction.from_json(
-                                json.dumps(data.get("action", {}))
-                            ) or SelfEditAction(action_type=SealActionType.GENERATE_EXAMPLES)
+                            action = SelfEditAction.from_json(json.dumps(data.get("action", {}))) or SelfEditAction(
+                                action_type=SealActionType.GENERATE_EXAMPLES
+                            )
                             record = RewardRecord(
                                 cycle=data.get("cycle", 0),
                                 action=action,
@@ -340,8 +341,7 @@ class SealOrchestrator:
             except Exception as e:
                 logger.warning(f"[SEAL] Error loading reward history: {e}")
 
-        logger.info(f"[SEAL] State loaded: cycle={self.current_cycle}, "
-                    f"rewards={len(self.meta_learner.reward_history)}")
+        logger.info(f"[SEAL] State loaded: cycle={self.current_cycle}, rewards={len(self.meta_learner.reward_history)}")
         return curriculum_loaded
 
     def status(self) -> dict[str, Any]:
@@ -370,6 +370,7 @@ class SealOrchestrator:
 # CLI
 # ═══════════════════════════════════════════════════════════════
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="SEAL Phase 3 — Autonomous Self-Improving Training Loop",
@@ -394,50 +395,37 @@ Examples:
     )
 
     # Main options
-    parser.add_argument("--cycles", type=int, default=1,
-                        help="Number of SEAL cycles to run (default: 1)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Generate curriculum only, skip training")
-    parser.add_argument("--cycle-delay", type=float, default=0.0,
-                        help="Seconds to wait between cycles")
+    parser.add_argument("--cycles", type=int, default=1, help="Number of SEAL cycles to run (default: 1)")
+    parser.add_argument("--dry-run", action="store_true", help="Generate curriculum only, skip training")
+    parser.add_argument("--cycle-delay", type=float, default=0.0, help="Seconds to wait between cycles")
 
     # Model configuration
-    parser.add_argument("--model", default="",
-                        help="Base model for inner loop training (default: from config)")
-    parser.add_argument("--curriculum-model", default="",
-                        help="Model for curriculum generation (default: from config)")
-    parser.add_argument("--synthetic-model", default="",
-                        help="Model for synthetic data generation (default: from config)")
+    parser.add_argument("--model", default="", help="Base model for inner loop training (default: from config)")
+    parser.add_argument("--curriculum-model", default="", help="Model for curriculum generation (default: from config)")
+    parser.add_argument(
+        "--synthetic-model", default="", help="Model for synthetic data generation (default: from config)"
+    )
 
     # Inner loop
-    parser.add_argument("--lora-rank", type=int, default=0,
-                        help="LoRA rank for inner loop training")
-    parser.add_argument("--inner-steps", type=int, default=0,
-                        help="Max training steps per inner loop cycle")
-    parser.add_argument("--examples-per-action", type=int, default=0,
-                        help="Number of synthetic examples per action")
+    parser.add_argument("--lora-rank", type=int, default=0, help="LoRA rank for inner loop training")
+    parser.add_argument("--inner-steps", type=int, default=0, help="Max training steps per inner loop cycle")
+    parser.add_argument("--examples-per-action", type=int, default=0, help="Number of synthetic examples per action")
 
     # Meta-learning
-    parser.add_argument("--meta", action="store_true", default=None,
-                        help="Enable meta-learning for curriculum generator")
-    parser.add_argument("--no-meta", action="store_true", default=None,
-                        help="Disable meta-learning")
-    parser.add_argument("--meta-lora-rank", type=int, default=0,
-                        help="LoRA rank for meta-learning")
+    parser.add_argument(
+        "--meta", action="store_true", default=None, help="Enable meta-learning for curriculum generator"
+    )
+    parser.add_argument("--no-meta", action="store_true", default=None, help="Disable meta-learning")
+    parser.add_argument("--meta-lora-rank", type=int, default=0, help="LoRA rank for meta-learning")
 
     # Integration
-    parser.add_argument("--capture", action="store_true",
-                        help="Integrate with capture engine for real signals")
-    parser.add_argument("--server", action="store_true",
-                        help="Start SEAL server that responds to API calls")
+    parser.add_argument("--capture", action="store_true", help="Integrate with capture engine for real signals")
+    parser.add_argument("--server", action="store_true", help="Start SEAL server that responds to API calls")
 
     # State management
-    parser.add_argument("--status", action="store_true",
-                        help="Show current SEAL status and exit")
-    parser.add_argument("--reset", action="store_true",
-                        help="Reset all SEAL state and start fresh")
-    parser.add_argument("--state-dir", default="",
-                        help="Directory for SEAL state files")
+    parser.add_argument("--status", action="store_true", help="Show current SEAL status and exit")
+    parser.add_argument("--reset", action="store_true", help="Reset all SEAL state and start fresh")
+    parser.add_argument("--state-dir", default="", help="Directory for SEAL state files")
 
     return parser.parse_args()
 
@@ -482,6 +470,7 @@ def main() -> None:
     if args.capture:
         try:
             from src.learning.capture_engine import CaptureEngine
+
             capture_engine = CaptureEngine()
             stats = capture_engine.get_statistics()
             total_signals = sum(stats.get("signals_by_type", {}).values())
@@ -498,6 +487,7 @@ def main() -> None:
         state_dir = Path(config.state_dir)
         if state_dir.exists():
             import shutil
+
             shutil.rmtree(state_dir)
         orchestrator.current_cycle = 0
         logger.info("[SEAL] State reset complete")
@@ -518,12 +508,12 @@ def main() -> None:
     )
 
     # Print summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  SEAL PHASE 3 — COMPLETE")
     print(f"  Cycles requested: {args.cycles}")
     print(f"  Cycles completed: {sum(1 for r in results if r.get('status') == 'completed')}")
     print(f"  Curriculum actions: {[r.get('action', {}).get('action', '?') for r in results]}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     # Print cycle results as JSON
     if not args.dry_run:

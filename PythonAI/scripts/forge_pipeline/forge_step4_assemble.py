@@ -15,8 +15,8 @@ import sys
 from pathlib import Path
 
 # Fix Windows console encoding
-if hasattr(sys.stdout, 'buffer'):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 from loguru import logger
 from rich.console import Console
@@ -154,7 +154,7 @@ def run_assemble(cfg: ForgeConfig):
     console.print(f"\nTotal raw examples: {len(all_examples):,}")
     for src, count in sources.items():
         if count:
-            console.print(f"  {src}: {count:,} ({count/len(all_examples)*100:.1f}%)")
+            console.print(f"  {src}: {count:,} ({count / len(all_examples) * 100:.1f}%)")
 
     # 4. Convert to ChatML / INDRA format
     console.print("\nConverting to INDRA training format...")

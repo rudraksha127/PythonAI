@@ -91,7 +91,9 @@ def _build_state_summary(state: CurriculumState) -> str:
             for r in recent:
                 delta = r.get("delta", 0)
                 direction = "↑" if delta >= 0 else "↓"
-                lines.append(f"  Cycle {r.get('cycle', '?')}: {r.get('rate', 0)*100:.1f}% ({direction}{delta*100:+.1f}%)")
+                lines.append(
+                    f"  Cycle {r.get('cycle', '?')}: {r.get('rate', 0) * 100:.1f}% ({direction}{delta * 100:+.1f}%)"
+                )
 
         # Domains explored
         if state.domains_explored:
@@ -114,8 +116,10 @@ def _build_state_summary(state: CurriculumState) -> str:
 
         # Best action
         if state.best_action:
-            lines.append(f"Best action so far: {state.best_action.get('action', '?')} "
-                         f"(reward: {state.best_action.get('reward_delta', 0):+.3f})")
+            lines.append(
+                f"Best action so far: {state.best_action.get('action', '?')} "
+                f"(reward: {state.best_action.get('reward_delta', 0):+.3f})"
+            )
 
         # Weakness scores
         if state.weakness_scores:
@@ -125,8 +129,10 @@ def _build_state_summary(state: CurriculumState) -> str:
                 lines.append(f"  {area}: {score:.2f}")
 
     else:
-        lines.append("This is the FIRST cycle. Start by generating a diverse set of examples "
-                     "across common coding patterns to establish a baseline.")
+        lines.append(
+            "This is the FIRST cycle. Start by generating a diverse set of examples "
+            "across common coding patterns to establish a baseline."
+        )
 
     # Underrepresented domains
     underrepresented = state.get_underrepresented_domains(threshold=2)
@@ -160,6 +166,7 @@ Return ONLY a valid JSON object in a code block."""
 # Curriculum Generator
 # ═══════════════════════════════════════════════════════════════
 
+
 class CurriculumGenerator:
     """Generates self-edit instructions for the SEAL inner loop.
 
@@ -190,8 +197,10 @@ class CurriculumGenerator:
         # Exploration: try something random
         if random.random() < self.config.exploration_rate:
             action = self._generate_random_action()
-            logger.info(f"[SEAL] Exploring random action: {action.action_type.value} "
-                        f"(domain={action.domain}, count={action.count})")
+            logger.info(
+                f"[SEAL] Exploring random action: {action.action_type.value} "
+                f"(domain={action.domain}, count={action.count})"
+            )
             return action
 
         # Exploitation: use LLM-informed decision
@@ -199,12 +208,13 @@ class CurriculumGenerator:
         if action is None:
             # Fallback to random on failure
             action = self._generate_random_action()
-            logger.info(f"[SEAL] LLM generation failed, using random fallback: "
-                        f"{action.action_type.value}")
+            logger.info(f"[SEAL] LLM generation failed, using random fallback: {action.action_type.value}")
 
-        logger.info(f"[SEAL] Curriculum action: {action.action_type.value} "
-                    f"(domain={action.domain}, count={action.count}, "
-                    f"difficulty={action.difficulty})")
+        logger.info(
+            f"[SEAL] Curriculum action: {action.action_type.value} "
+            f"(domain={action.domain}, count={action.count}, "
+            f"difficulty={action.difficulty})"
+        )
         return action
 
     def _generate_llm_action(self) -> SelfEditAction | None:
@@ -240,10 +250,18 @@ class CurriculumGenerator:
         action_types = list(SealActionType)
         difficulties = ["easy", "medium", "hard"]
         domains = [
-            "general", "error_handling", "async_programming",
-            "type_safety", "performance", "security",
-            "testing", "api_design", "data_structures",
-            "concurrency", "debugging", "refactoring",
+            "general",
+            "error_handling",
+            "async_programming",
+            "type_safety",
+            "performance",
+            "security",
+            "testing",
+            "api_design",
+            "data_structures",
+            "concurrency",
+            "debugging",
+            "refactoring",
         ]
 
         # Weight towards underrepresented domains
@@ -258,8 +276,7 @@ class CurriculumGenerator:
             domain = random.choice(domains)
 
         # Effective count based on config
-        count = max(10, self.config.synthetic_examples_per_action +
-                    random.randint(-10, 20))
+        count = max(10, self.config.synthetic_examples_per_action + random.randint(-10, 20))
 
         return SelfEditAction(
             action_type=random.choice(action_types),
@@ -268,8 +285,7 @@ class CurriculumGenerator:
             difficulty=random.choice(difficulties),
             language=random.choice(["python", "typescript", "python"]),
             focus_areas=random.sample(
-                ["type_hints", "edge_cases", "error_handling",
-                 "documentation", "testing", "performance"],
+                ["type_hints", "edge_cases", "error_handling", "documentation", "testing", "performance"],
                 k=random.randint(1, 3),
             ),
             rationale="Random exploration to discover effective training strategies",
@@ -288,12 +304,14 @@ class CurriculumGenerator:
         self.state.record_action(record.action, record.reward_delta)
 
         # Update acceptance rate history
-        self.state.acceptance_rate_history.append({
-            "cycle": record.cycle,
-            "rate": record.acceptance_rate_after,
-            "delta": record.reward_delta,
-            "timestamp": record.timestamp,
-        })
+        self.state.acceptance_rate_history.append(
+            {
+                "cycle": record.cycle,
+                "rate": record.acceptance_rate_after,
+                "delta": record.reward_delta,
+                "timestamp": record.timestamp,
+            }
+        )
 
         # Update weakness scores based on degradation
         if record.reward_delta < -0.02:
@@ -307,9 +325,11 @@ class CurriculumGenerator:
             current = self.state.weakness_scores.get(domain, 0.5)
             self.state.weakness_scores[domain] = max(0.0, current - record.reward_delta)
 
-        logger.info(f"[SEAL] State updated: cycle={self.state.cycle_number}, "
-                    f"actions={self.state.total_actions_taken}, "
-                    f"domains explored={len(self.state.domains_explored)}")
+        logger.info(
+            f"[SEAL] State updated: cycle={self.state.cycle_number}, "
+            f"actions={self.state.total_actions_taken}, "
+            f"domains explored={len(self.state.domains_explored)}"
+        )
 
     def save_state(self, state_dir: str | None = None) -> str:
         """Persist the curriculum state to disk."""

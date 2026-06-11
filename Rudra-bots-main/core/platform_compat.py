@@ -53,9 +53,8 @@ def detached_popen_kwargs() -> dict:
     and is detached from any console.
     """
     if IS_WINDOWS:
-        flags = (
-            getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
-            | getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+        flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200) | getattr(
+            subprocess, "DETACHED_PROCESS", 0x00000008
         )
         return {"creationflags": flags}
     return {"start_new_session": True}
@@ -192,7 +191,6 @@ def git_bash_path(path: str | Path) -> str:
         drive = p_str[0].lower()
         return f"/{drive}{p_str[2:]}"
     return p_str
-
 
 
 def find_bash() -> Optional[str]:

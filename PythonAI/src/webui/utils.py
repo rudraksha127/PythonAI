@@ -14,6 +14,7 @@ import streamlit as st
 #  Registry Helper
 # ═══════════════════════════════════════
 
+
 def load_registry() -> Any | None:
     """Load and return the tool registry (lazy-initialized).
 
@@ -53,6 +54,7 @@ def registry_metrics(registry: Any | None = None) -> dict[str, int]:
 #  Metric Cards
 # ═══════════════════════════════════════
 
+
 def metric_card(
     container: Any,
     label: str,
@@ -75,7 +77,7 @@ def metric_card(
             f"""<div class="metric-box">
             <div class="metric-label">{label}</div>
             <div class="metric-value" style="font-size:{font_size}">{value}</div>
-            {f'<div class="metric-sub">{sub}</div>' if sub else ''}
+            {f'<div class="metric-sub">{sub}</div>' if sub else ""}
         </div>""",
             unsafe_allow_html=True,
         )

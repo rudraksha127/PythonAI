@@ -90,7 +90,8 @@ class TestSafetyCheck:
         mock_llm.return_value = {"content": "All done.", "tool_calls": []}
 
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             max_tool_calls=4,
             registry=registry,
@@ -113,23 +114,25 @@ class TestSafetyCheck:
                 # Return a tool call
                 return {
                     "content": "Using a tool...",
-                    "tool_calls": [{
-                        "id": "call_1",
-                        "type": "function",
-                        "function": {
-                            "name": "bash",
-                            "arguments": '{"command": "echo hello"}',
-                        },
-                    }],
+                    "tool_calls": [
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {
+                                "name": "bash",
+                                "arguments": '{"command": "echo hello"}',
+                            },
+                        }
+                    ],
                 }
             else:
                 # Final synthesis call (tools=[] empty)
-                assert tools == [], \
-                    f"Expected empty tools for final synthesis, got {len(tools)} tools"
+                assert tools == [], f"Expected empty tools for final synthesis, got {len(tools)} tools"
                 return {"content": "Final synthesis complete.", "tool_calls": []}
 
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             max_tool_calls=4,
             registry=registry,
@@ -152,19 +155,22 @@ class TestSafetyCheck:
             if tool_count <= 6:  # Try to keep making tool calls
                 return {
                     "content": "More tools...",
-                    "tool_calls": [{
-                        "id": "call_1",
-                        "type": "function",
-                        "function": {
-                            "name": "bash",
-                            "arguments": '{"command": "echo hello"}',
-                        },
-                    }],
+                    "tool_calls": [
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {
+                                "name": "bash",
+                                "arguments": '{"command": "echo hello"}',
+                            },
+                        }
+                    ],
                 }
             return {"content": "Done.", "tool_calls": []}
 
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             max_tool_calls=3,
             registry=registry,
@@ -176,7 +182,6 @@ class TestSafetyCheck:
         assert result.tool_calls_used == 3  # Should stop at 3, not 6
         assert result.success is True
 
-
     def test_safety_net_final_call_returns_none(self, registry):
         """When safety net's final LLM returns None, should fall through gracefully."""
         call_count = 0
@@ -187,20 +192,23 @@ class TestSafetyCheck:
             if call_count == 1:
                 return {
                     "content": "Using a tool...",
-                    "tool_calls": [{
-                        "id": "call_1",
-                        "type": "function",
-                        "function": {
-                            "name": "bash",
-                            "arguments": '{"command": "echo hello"}',
-                        },
-                    }],
+                    "tool_calls": [
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {
+                                "name": "bash",
+                                "arguments": '{"command": "echo hello"}',
+                            },
+                        }
+                    ],
                 }
             # Safety net call: return None (LLM failure)
             return None
 
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             max_tool_calls=1,
             registry=registry,
@@ -223,20 +231,23 @@ class TestSafetyCheck:
             if call_count == 1:
                 return {
                     "content": "Using a tool...",
-                    "tool_calls": [{
-                        "id": "call_1",
-                        "type": "function",
-                        "function": {
-                            "name": "bash",
-                            "arguments": '{"command": "echo hello"}',
-                        },
-                    }],
+                    "tool_calls": [
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {
+                                "name": "bash",
+                                "arguments": '{"command": "echo hello"}',
+                            },
+                        }
+                    ],
                 }
             # Safety net call: return empty content (no synthesis)
             return {"content": "", "tool_calls": []}
 
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             max_tool_calls=1,
             registry=registry,
@@ -262,7 +273,8 @@ class TestEdgeCases:
         mock_llm.return_value = {"content": "No tools needed.", "tool_calls": []}
 
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             max_tool_calls=0,
             registry=registry,
@@ -282,19 +294,22 @@ class TestEdgeCases:
             if call_count == 1:
                 return {
                     "content": "Using a tool...",
-                    "tool_calls": [{
-                        "id": "call_1",
-                        "type": "function",
-                        "function": {
-                            "name": "bash",
-                            "arguments": '{"command": "echo hello"}',
-                        },
-                    }],
+                    "tool_calls": [
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {
+                                "name": "bash",
+                                "arguments": '{"command": "echo hello"}',
+                            },
+                        }
+                    ],
                 }
             return {"content": "Synthesis.", "tool_calls": []}
 
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             max_tool_calls=1,
             registry=registry,
@@ -315,19 +330,22 @@ class TestEdgeCases:
             if call_count <= 6:
                 return {
                     "content": "Tool call...",
-                    "tool_calls": [{
-                        "id": "call_1",
-                        "type": "function",
-                        "function": {
-                            "name": "bash",
-                            "arguments": '{"command": "echo hello"}',
-                        },
-                    }],
+                    "tool_calls": [
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {
+                                "name": "bash",
+                                "arguments": '{"command": "echo hello"}',
+                            },
+                        }
+                    ],
                 }
             return {"content": "Done.", "tool_calls": []}
 
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             max_tool_calls=10,
             registry=registry,
@@ -348,20 +366,23 @@ class TestEdgeCases:
             if call_count == 1:
                 return {
                     "content": "Tool call...",
-                    "tool_calls": [{
-                        "id": "call_1",
-                        "type": "function",
-                        "function": {
-                            "name": "bash",
-                            "arguments": '{"command": "echo hello"}',
-                        },
-                    }],
+                    "tool_calls": [
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {
+                                "name": "bash",
+                                "arguments": '{"command": "echo hello"}',
+                            },
+                        }
+                    ],
                 }
             # Round 2: no tool calls -> success
             return {"content": "Final result.", "tool_calls": []}
 
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             max_tool_calls=4,
             registry=registry,
@@ -457,7 +478,8 @@ class TestSystemPrompts:
     def test_build_system_prompt_includes_workflow(self, registry):
         """_build_system_prompt should include WORKFLOW section."""
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test prompt",
             registry=registry,
             call_llm_fn=make_mock_call_llm(),
@@ -477,7 +499,8 @@ class TestMaxRetries:
     def test_max_retries_default_is_2(self):
         """Default max_retries should be 2 (from MAX_LLM_RETRIES constant)."""
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             call_llm_fn=MagicMock(),
         )
@@ -486,7 +509,8 @@ class TestMaxRetries:
     def test_custom_max_retries(self):
         """Custom max_retries should override the default."""
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             max_retries=5,
             call_llm_fn=MagicMock(),
@@ -496,7 +520,8 @@ class TestMaxRetries:
     def test_max_retries_zero(self):
         """max_retries=0 should mean no retries (single attempt)."""
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             max_retries=0,
             call_llm_fn=MagicMock(),
@@ -537,19 +562,22 @@ class TestSafetyNetMessage:
             if call_count <= 4:
                 return {
                     "content": "Tool...",
-                    "tool_calls": [{
-                        "id": "call_1",
-                        "type": "function",
-                        "function": {
-                            "name": "bash",
-                            "arguments": '{"command": "echo hello"}',
-                        },
-                    }],
+                    "tool_calls": [
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {
+                                "name": "bash",
+                                "arguments": '{"command": "echo hello"}',
+                            },
+                        }
+                    ],
                 }
             return {"content": "Synthesis.", "tool_calls": []}
 
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             max_tool_calls=4,
             registry=registry,

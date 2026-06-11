@@ -58,22 +58,24 @@ SYSTEM_STATE = {
         "docs": {"status": "active", "last_action": "Parsing papers"},
         "performance": {"status": "active", "last_action": "Optimizing I/O"},
     },
-    "providers": {}
+    "providers": {},
 }
+
 
 async def handle_client(websocket):
     CLIENTS.add(websocket)
     print(f"[WS] Client connected. Total: {len(CLIENTS)}")
     try:
         # Send full initial state
-        await websocket.send(json.dumps({
-            "type": "FULL_STATE",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "data": {
-                "state": SYSTEM_STATE,
-                "history": []
-            }
-        }))
+        await websocket.send(
+            json.dumps(
+                {
+                    "type": "FULL_STATE",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "data": {"state": SYSTEM_STATE, "history": []},
+                }
+            )
+        )
         async for message in websocket:
             # Relay messages from workers to all dashboards
             try:
@@ -86,7 +88,9 @@ async def handle_client(websocket):
                         if phase == "arXiv Papers":
                             SYSTEM_STATE["stats"]["arxiv_papers"] = max(SYSTEM_STATE["stats"]["arxiv_papers"], count)
                         elif phase == "OpenAlex Research":
-                            SYSTEM_STATE["stats"]["openalex_works"] = max(SYSTEM_STATE["stats"]["openalex_works"], count)
+                            SYSTEM_STATE["stats"]["openalex_works"] = max(
+                                SYSTEM_STATE["stats"]["openalex_works"], count
+                            )
 
                     # Relay to all other clients
                     for client in CLIENTS:
@@ -146,19 +150,22 @@ async def heartbeat_loop():
                     "label": PROVIDER_LABELS.get(prov, prov),
                     "tier": PROVIDER_TIERS.get(prov, "standard"),
                     "has_key": True,
-                    "status": "online"
+                    "status": "online",
                 }
         except Exception:
             pass
 
         # Broadcast
-        await broadcast("HEARTBEAT", {
-            "uptime_s": round(time.time() - SYSTEM_STATE["uptime_start"]),
-            "stats": SYSTEM_STATE["stats"],
-            "agents": SYSTEM_STATE["agents"],
-            "providers": SYSTEM_STATE["providers"],
-            "status": SYSTEM_STATE["status"]
-        })
+        await broadcast(
+            "HEARTBEAT",
+            {
+                "uptime_s": round(time.time() - SYSTEM_STATE["uptime_start"]),
+                "stats": SYSTEM_STATE["stats"],
+                "agents": SYSTEM_STATE["agents"],
+                "providers": SYSTEM_STATE["providers"],
+                "status": SYSTEM_STATE["status"],
+            },
+        )
 
 
 async def start_ws_server():
@@ -172,6 +179,7 @@ def run_ws_thread():
 
 # FastAPI for HTTP Serving
 app = FastAPI()
+
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_dashboard():

@@ -18,6 +18,7 @@ class TestCastChunker(unittest.TestCase):
 
     def setUp(self):
         from src.rag.cast_chunker import CastChunker
+
         self.chunker = CastChunker()
 
     def test_chunk_simple_function(self):
@@ -38,11 +39,11 @@ def hello(name: str) -> str:
         code = '''
 class Calculator:
     """A simple calculator."""
-    
+
     def add(self, a: int, b: int) -> int:
         """Add two numbers."""
         return a + b
-    
+
     def subtract(self, a: int, b: int) -> int:
         """Subtract two numbers."""
         return a - b
@@ -54,12 +55,12 @@ class Calculator:
 
     def test_chunk_imports(self):
         """Test chunking import statements."""
-        code = '''
+        code = """
 import os
 import sys
 from pathlib import Path
 from typing import List, Optional
-'''
+"""
         chunks = self.chunker.chunk_source(code, "test.py")
         self.assertEqual(len(chunks), 1)
         self.assertEqual(chunks[0].chunk_type, "import_block")
@@ -68,13 +69,13 @@ from typing import List, Optional
 
     def test_chunk_with_dependencies(self):
         """Test dependency extraction."""
-        code = '''
+        code = """
 def process_data(data):
     result = validate(data)
     if result:
         return transform(result)
     return None
-'''
+"""
         chunks = self.chunker.chunk_source(code, "test.py")
         self.assertEqual(len(chunks), 1)
         self.assertIn("validate", chunks[0].dependencies)
@@ -83,13 +84,15 @@ def process_data(data):
     def test_chunk_large_class_split(self):
         """Test that large classes are split into methods."""
         # Create a class with many methods — ensure it exceeds MAX_CHUNK_TOKENS
-        methods = "\n\n".join([
-            f"    def method_{i}(self):\n"
-            f"        \"\"\"A long docstring to make the method larger.\"\"\"\n"
-            f"        return {i}"
-            for i in range(60)
-        ])
-        code = f"class LargeClass:\n    \"\"\"Big class.\"\"\"\n\n{methods}"
+        methods = "\n\n".join(
+            [
+                f"    def method_{i}(self):\n"
+                f'        """A long docstring to make the method larger."""\n'
+                f"        return {i}"
+                for i in range(60)
+            ]
+        )
+        code = f'class LargeClass:\n    """Big class."""\n\n{methods}'
 
         # Lower threshold to guarantee splitting
         self.chunker.MAX_CHUNK_TOKENS = 500
@@ -99,10 +102,10 @@ def process_data(data):
 
     def test_fallback_for_syntax_error(self):
         """Test fallback to line-based chunking for syntax errors."""
-        code = '''
+        code = """
 def broken(
     # Missing closing paren
-'''
+"""
         chunks = self.chunker.chunk_source(code, "test.py")
         # Should still return chunks via fallback
         self.assertIsInstance(chunks, list)
@@ -138,12 +141,14 @@ class TestCaptureEngine(unittest.TestCase):
 
     def setUp(self):
         from src.learning.capture_engine import CaptureEngine
+
         self.temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.engine = CaptureEngine(db_path=self.temp_db.name)
 
     def tearDown(self):
         # Close any open database connections before deleting
         import sqlite3
+
         try:
             conn = sqlite3.connect(self.temp_db.name)
             conn.close()
@@ -460,7 +465,7 @@ class TestGRPOTrainer(unittest.TestCase):
         """Test GRPO dataset creation."""
         from src.training.grpo_trainer import GRPOPair
 
-        pairs = [
+        [
             GRPOPair(
                 prompt="test prompt",
                 accepted_response="accepted",

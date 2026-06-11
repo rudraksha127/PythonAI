@@ -20,15 +20,24 @@ from src.data.apikeys import resolve_all
 
 API_PROVIDERS: dict[str, dict[str, str]] = {
     "groq": {"url": "https://api.groq.com/openai/v1/chat/completions", "model": "llama-3.3-70b-versatile"},
-    "openrouter": {"url": "https://openrouter.ai/api/v1/chat/completions", "model": "meta-llama/llama-3.3-70b-instruct:free"},
+    "openrouter": {
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "model": "meta-llama/llama-3.3-70b-instruct:free",
+    },
     "openai": {"url": "https://api.openai.com/v1/chat/completions", "model": "gpt-4o-mini"},
     "deepseek": {"url": "https://api.deepseek.com/v1/chat/completions", "model": "deepseek-chat"},
-    "fireworks": {"url": "https://api.fireworks.ai/inference/v1/chat/completions", "model": "accounts/fireworks/models/llama-v3p3-70b-instruct"},
+    "fireworks": {
+        "url": "https://api.fireworks.ai/inference/v1/chat/completions",
+        "model": "accounts/fireworks/models/llama-v3p3-70b-instruct",
+    },
     "nvidia": {"url": "https://integrate.api.nvidia.com/v1/chat/completions", "model": "meta/llama-3.1-70b-instruct"},
     "cerebras": {"url": "https://api.cerebras.ai/v1/chat/completions", "model": "llama-3.3-70b"},
     "sambanova": {"url": "https://api.sambanova.ai/v1/chat/completions", "model": "Meta-Llama-3.3-70B-Instruct"},
     "mistral": {"url": "https://api.mistral.ai/v1/chat/completions", "model": "mistral-large-latest"},
-    "huggingface": {"url": "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct/v1/chat/completions", "model": "Qwen/Qwen2.5-72B-Instruct"},
+    "huggingface": {
+        "url": "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct/v1/chat/completions",
+        "model": "Qwen/Qwen2.5-72B-Instruct",
+    },
 }
 
 
@@ -229,14 +238,16 @@ def _parse_api_response(content: str, chunk: dict[str, Any], provider: str) -> l
         if len(instruction) < 15 or len(output) < 80:
             continue
 
-        rows.append({
-            "instruction": instruction,
-            "output": output,
-            "source": str(chunk.get("filepath", chunk.get("title", "api_qa"))),
-            "category": str(chunk.get("category", "general")),
-            "version": str(chunk.get("version", "")),
-            "generator": f"api_{provider}",
-        })
+        rows.append(
+            {
+                "instruction": instruction,
+                "output": output,
+                "source": str(chunk.get("filepath", chunk.get("title", "api_qa"))),
+                "category": str(chunk.get("category", "general")),
+                "version": str(chunk.get("version", "")),
+                "generator": f"api_{provider}",
+            }
+        )
 
     return rows
 
@@ -332,23 +343,17 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate extra SFT pairs using API providers (keyword extraction + API generation)."
     )
-    parser.add_argument("--model", default="auto",
-                        help="Provider hint (auto, groq, openai, deepseek, etc.)")
+    parser.add_argument("--model", default="auto", help="Provider hint (auto, groq, openai, deepseek, etc.)")
     parser.add_argument("--chunks", default="data/processed/cleaned_chunks.json")
     parser.add_argument("--base-dataset", default="data/training/training_dataset.json")
     parser.add_argument("--output", default="data/training/training_dataset_augmented.json")
     parser.add_argument("--limit", type=int, default=3)
     parser.add_argument("--offset", type=int, default=0)
-    parser.add_argument("--pairs-per-chunk", type=int, default=1,
-                        help="Number of QA pairs to generate per chunk")
-    parser.add_argument("--shuffle", action="store_true",
-                        help="Shuffle chunks before processing")
-    parser.add_argument("--merge", action="store_true",
-                        help="Merge generated rows into base dataset.")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Print first prompt without calling API.")
-    parser.add_argument("--stats", action="store_true",
-                        help="Print quality statistics after generation.")
+    parser.add_argument("--pairs-per-chunk", type=int, default=1, help="Number of QA pairs to generate per chunk")
+    parser.add_argument("--shuffle", action="store_true", help="Shuffle chunks before processing")
+    parser.add_argument("--merge", action="store_true", help="Merge generated rows into base dataset.")
+    parser.add_argument("--dry-run", action="store_true", help="Print first prompt without calling API.")
+    parser.add_argument("--stats", action="store_true", help="Print quality statistics after generation.")
     return parser.parse_args()
 
 

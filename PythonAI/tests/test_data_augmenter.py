@@ -271,13 +271,13 @@ class TestParseJsonRows:
 
     def test_text_surrounding_json_dict(self):
         """Text surrounding a JSON dict should still parse."""
-        text = "Some leading text\\n{\"rows\": [{\"instruction\": \"Q\", \"output\": \"A\"}]}\\ntrailing"
+        text = 'Some leading text\\n{"rows": [{"instruction": "Q", "output": "A"}]}\\ntrailing'
         rows = parse_json_rows(text)
         assert len(rows) == 1
 
     def test_text_surrounding_json_array(self):
         """Text surrounding a JSON array should still parse."""
-        text = "Here is the result:\\n[{\"instruction\": \"Q\", \"output\": \"A\"}]\\nDone."
+        text = 'Here is the result:\\n[{"instruction": "Q", "output": "A"}]\\nDone.'
         rows = parse_json_rows(text)
         assert len(rows) == 1
 
@@ -394,9 +394,7 @@ class TestCallApiForQa:
         mock_response.status_code = 200
         output = "A " * 100
         content = json.dumps({"rows": [{"instruction": "Explain Python? Please be detailed.", "output": output}]})
-        mock_response.json.return_value = {
-            "choices": [{"message": {"content": content}}]
-        }
+        mock_response.json.return_value = {"choices": [{"message": {"content": content}}]}
         mock_post.return_value = mock_response
 
         result = _call_api_for_qa(
@@ -429,9 +427,7 @@ class TestCallApiForQa:
         content = json.dumps({"rows": [{"instruction": "Explain Python concepts in detail.", "output": output}]})
         success = MagicMock()
         success.status_code = 200
-        success.json.return_value = {
-            "choices": [{"message": {"content": content}}]
-        }
+        success.json.return_value = {"choices": [{"message": {"content": content}}]}
 
         mock_post.side_effect = [rate_limited, success]
         result = _call_api_for_qa(["kw"], {"title": "T"}, 1)
@@ -445,7 +441,10 @@ class TestCallApiForQa:
         mock_resolve.return_value = {"groq": "gk", "openai": "ok"}
         from requests.exceptions import Timeout
 
-        mock_post.side_effect = [Timeout("timeout"), MagicMock(status_code=200, json=lambda: {"choices": [{"message": {"content": "[]"}}]})]
+        mock_post.side_effect = [
+            Timeout("timeout"),
+            MagicMock(status_code=200, json=lambda: {"choices": [{"message": {"content": "[]"}}]}),
+        ]
         result = _call_api_for_qa(["kw"], {"title": "T"}, 1)
         assert result == []  # No valid rows from fallback
         assert mock_post.call_count == 2
@@ -505,10 +504,12 @@ class TestGeneratePairs:
         """When keywords < 2, should fallback to title words."""
         mock_call_api.return_value = []
         # Text with very few recognizable keywords
-        result = generate_pairs({
-            "text": "a b c d e f g h i j k l m n. " * 5,
-            "title": "Comprehensions Features",
-        })
+        result = generate_pairs(
+            {
+                "text": "a b c d e f g h i j k l m n. " * 5,
+                "title": "Comprehensions Features",
+            }
+        )
         assert result == []  # No API results, but fallback keywords were used
         assert mock_call_api.call_count == 1
 
@@ -653,12 +654,8 @@ class TestPrintQualityStats:
 
     def test_top_categories(self, capsys):
         """Top 5 categories should be shown."""
-        rows = [
-            {"instruction": f"Q{i}", "output": "A" * 100, "category": "python"}
-            for i in range(10)
-        ] + [
-            {"instruction": f"R{i}", "output": "B" * 100, "category": "other"}
-            for i in range(3)
+        rows = [{"instruction": f"Q{i}", "output": "A" * 100, "category": "python"} for i in range(10)] + [
+            {"instruction": f"R{i}", "output": "B" * 100, "category": "other"} for i in range(3)
         ]
         print_quality_stats(rows)
         captured = capsys.readouterr()
@@ -725,7 +722,7 @@ class TestApiProviders:
 
     def test_unique_model_names(self):
         """Model names should be unique per provider."""
-        models = [cfg["model"] for cfg in API_PROVIDERS.values()]
+        [cfg["model"] for cfg in API_PROVIDERS.values()]
         # Not requiring unique — multiple providers can use same model
 
 
@@ -740,6 +737,7 @@ class TestParseArgs:
     def test_default_values(self, monkeypatch):
         """Default values should be set correctly."""
         import sys
+
         monkeypatch.setattr(sys, "argv", ["augmenter.py"])
         args = parse_args()
         assert args.model == "auto"
@@ -754,11 +752,26 @@ class TestParseArgs:
     def test_custom_values(self, monkeypatch):
         """Custom values should override defaults."""
         import sys
-        monkeypatch.setattr(sys, "argv", [
-            "augmenter.py", "--model", "groq", "--limit", "10",
-            "--offset", "5", "--pairs-per-chunk", "3",
-            "--shuffle", "--merge", "--dry-run", "--stats",
-        ])
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "augmenter.py",
+                "--model",
+                "groq",
+                "--limit",
+                "10",
+                "--offset",
+                "5",
+                "--pairs-per-chunk",
+                "3",
+                "--shuffle",
+                "--merge",
+                "--dry-run",
+                "--stats",
+            ],
+        )
         args = parse_args()
         assert args.model == "groq"
         assert args.limit == 10
@@ -772,6 +785,7 @@ class TestParseArgs:
     def test_types(self, monkeypatch):
         """Numeric args should be parsed as ints."""
         import sys
+
         monkeypatch.setattr(sys, "argv", ["augmenter.py", "--limit", "50", "--offset", "10"])
         args = parse_args()
         assert isinstance(args.limit, int)

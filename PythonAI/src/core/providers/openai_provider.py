@@ -80,14 +80,16 @@ def call_openai(
         # Format tool calls
         tool_calls = []
         for tc in tool_calls_raw:
-            tool_calls.append({
-                "id": tc.get("id", ""),
-                "type": tc.get("type", "function"),
-                "function": {
-                    "name": tc.get("function", {}).get("name", ""),
-                    "arguments": tc.get("function", {}).get("arguments", "{}"),
-                },
-            })
+            tool_calls.append(
+                {
+                    "id": tc.get("id", ""),
+                    "type": tc.get("type", "function"),
+                    "function": {
+                        "name": tc.get("function", {}).get("name", ""),
+                        "arguments": tc.get("function", {}).get("arguments", "{}"),
+                    },
+                }
+            )
 
         usage = body.get("usage", {})
 
@@ -172,7 +174,9 @@ def call_openai_stream(
         path = "/" + "/".join(parsed_url.split("/")[1:]) if "/" in parsed_url else "/"
 
         if url.startswith("https"):
-            conn: http.client.HTTPSConnection | http.client.HTTPConnection = http.client.HTTPSConnection(host, timeout=120)
+            conn: http.client.HTTPSConnection | http.client.HTTPConnection = http.client.HTTPSConnection(
+                host, timeout=120
+            )
         else:
             conn = http.client.HTTPConnection(host, timeout=120)
 

@@ -77,12 +77,61 @@ def _score_relevance(expected: str, actual: str) -> float:
 
     # Remove common stopwords
     stopwords = {
-        "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-        "have", "has", "had", "do", "does", "did", "will", "would", "could",
-        "should", "may", "might", "shall", "can", "need", "to", "of", "in",
-        "for", "on", "with", "at", "by", "from", "as", "into", "through",
-        "it", "its", "this", "that", "these", "those", "and", "or", "but",
-        "not", "no", "so", "if", "then", "than", "too", "very", "just",
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "shall",
+        "can",
+        "need",
+        "to",
+        "of",
+        "in",
+        "for",
+        "on",
+        "with",
+        "at",
+        "by",
+        "from",
+        "as",
+        "into",
+        "through",
+        "it",
+        "its",
+        "this",
+        "that",
+        "these",
+        "those",
+        "and",
+        "or",
+        "but",
+        "not",
+        "no",
+        "so",
+        "if",
+        "then",
+        "than",
+        "too",
+        "very",
+        "just",
     }
     expected_set -= stopwords
     actual_set -= stopwords
@@ -209,9 +258,7 @@ class SelfEvaluator:
         self.eval_dir = Path(eval_dir) if eval_dir else _DEFAULT_EVAL_DIR
         self.eval_dir.mkdir(parents=True, exist_ok=True)
 
-        self.training_data_path = (
-            Path(training_data_path) if training_data_path else _DEFAULT_TRAINING_DATA
-        )
+        self.training_data_path = Path(training_data_path) if training_data_path else _DEFAULT_TRAINING_DATA
         self.sample_size = sample_size
 
     def load_eval_samples(self) -> list[dict[str, str]]:
@@ -263,7 +310,7 @@ class SelfEvaluator:
         return {
             "critique": "The generated answer was syntactically correct but missed the key instructions.",
             "suggestion": "Include explicit code examples demonstrating the use case.",
-            "llm_score": 0.4
+            "llm_score": 0.4,
         }
 
     def evaluate_single(
@@ -280,11 +327,7 @@ class SelfEvaluator:
         code_quality = _score_code_quality(actual_answer)
 
         # Weighted overall score
-        overall = (
-            0.45 * relevance
-            + 0.30 * completeness
-            + 0.25 * code_quality
-        )
+        overall = 0.45 * relevance + 0.30 * completeness + 0.25 * code_quality
 
         elapsed_ms = (time.time() - start) * 1000
 
@@ -304,7 +347,7 @@ class SelfEvaluator:
             code_quality_score=round(code_quality, 4),
             overall_score=round(overall, 4),
             eval_time_ms=round(elapsed_ms, 2),
-            errors=errors
+            errors=errors,
         )
 
     def evaluate_batch(
@@ -428,12 +471,14 @@ class SelfEvaluator:
             try:
                 with open(report_file, encoding="utf-8") as f:
                     data = json.load(f)
-                reports.append({
-                    "timestamp": data.get("timestamp", ""),
-                    "overall_score": data.get("overall_score", 0.0),
-                    "dimensions": data.get("dimensions", {}),
-                    "results_count": data.get("results_count", 0),
-                })
+                reports.append(
+                    {
+                        "timestamp": data.get("timestamp", ""),
+                        "overall_score": data.get("overall_score", 0.0),
+                        "dimensions": data.get("dimensions", {}),
+                        "results_count": data.get("results_count", 0),
+                    }
+                )
             except (json.JSONDecodeError, OSError):
                 continue
 

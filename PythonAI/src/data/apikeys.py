@@ -142,6 +142,7 @@ PROVIDER_LABELS: dict[str, str] = {
 #  I/O helpers
 # ═══════════════════════════════════════
 
+
 def _ensure_dir() -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -173,6 +174,7 @@ def _save(data: dict[str, dict[str, str]]) -> None:
 # ═══════════════════════════════════════
 #  Public API
 # ═══════════════════════════════════════
+
 
 def get_keys() -> dict[str, str]:
     """Return {provider: key} for all currently *stored* keys."""
@@ -340,6 +342,7 @@ def get_provider_info(provider: str) -> dict[str, Any]:
 #  Multi-Agent Key Manager
 # ═══════════════════════════════════════
 
+
 class RateLimitState:
     """Tracks rate-limit backoff for a single provider."""
 
@@ -366,7 +369,7 @@ class RateLimitState:
     def record_429(self) -> None:
         """Record a 429, increasing backoff exponentially."""
         self.consecutive_429s += 1
-        backoff = min(2 ** self.consecutive_429s, 120)  # Max 2 min
+        backoff = min(2**self.consecutive_429s, 120)  # Max 2 min
         self.backoff_until = time.time() + backoff
 
 
@@ -393,16 +396,12 @@ class MultiAgentKeyManager:
         """
         self._providers: dict[str, str] = providers if providers is not None else resolve_all()
         self._lock = threading.RLock()
-        self._rate_states: dict[str, RateLimitState] = {
-            p: RateLimitState() for p in self._providers
-        }
+        self._rate_states: dict[str, RateLimitState] = {p: RateLimitState() for p in self._providers}
         self._semaphores: dict[str, threading.BoundedSemaphore] = {
-            p: threading.BoundedSemaphore(PROVIDER_MAX_CONCURRENCY.get(p, 5))
-            for p in self._providers
+            p: threading.BoundedSemaphore(PROVIDER_MAX_CONCURRENCY.get(p, 5)) for p in self._providers
         }
         self._usage: dict[str, dict[str, int]] = {
-            p: {"calls": 0, "429s": 0, "errors": 0, "tokens": 0}
-            for p in self._providers
+            p: {"calls": 0, "429s": 0, "errors": 0, "tokens": 0} for p in self._providers
         }
         self._openai_rr_idx: int = 0
 
@@ -443,9 +442,7 @@ class MultiAgentKeyManager:
             if provider not in self._rate_states:
                 self._rate_states[provider] = RateLimitState()
             if provider not in self._semaphores:
-                self._semaphores[provider] = threading.BoundedSemaphore(
-                    PROVIDER_MAX_CONCURRENCY.get(provider, 5)
-                )
+                self._semaphores[provider] = threading.BoundedSemaphore(PROVIDER_MAX_CONCURRENCY.get(provider, 5))
             if provider not in self._usage:
                 self._usage[provider] = {"calls": 0, "429s": 0, "errors": 0, "tokens": 0}
 
@@ -566,7 +563,8 @@ class MultiAgentKeyManager:
         """
         with self._lock:
             compatible = [
-                p for p in self._providers
+                p
+                for p in self._providers
                 if p not in ("anthropic", "google")  # These have different APIs
                 and not (self._rate_states.get(p, RateLimitState()).is_rate_limited())
             ]
@@ -607,16 +605,20 @@ class MultiAgentKeyManager:
         report = self.get_usage_report()
         print("=" * 60)
         print("  Multi-Agent Key Manager — Usage Report")
-        print(f"  {report['summary']['total_calls']} total calls | "
-              f"{report['summary']['total_429s']} rate limits | "
-              f"{report['summary']['total_errors']} errors")
+        print(
+            f"  {report['summary']['total_calls']} total calls | "
+            f"{report['summary']['total_429s']} rate limits | "
+            f"{report['summary']['total_errors']} errors"
+        )
         print(f"  {report['total_providers']} providers active")
         print("=" * 60)
         for prov, info in report["providers"].items():
             rl = " 🔴 RATE LIMITED" if info["rate_limited"] else ""
-            print(f"  {info['label']:14s} | calls={info['calls']:4d} | "
-                  f"429s={info['429s']:2d} | errs={info['errors']:2d} | "
-                  f"tokens={info['tokens']:7d}{rl}")
+            print(
+                f"  {info['label']:14s} | calls={info['calls']:4d} | "
+                f"429s={info['429s']:2d} | errs={info['errors']:2d} | "
+                f"tokens={info['tokens']:7d}{rl}"
+            )
         print("=" * 60)
 
     # ── Context Manager for parallel execution ─────────────────
@@ -644,8 +646,6 @@ class MultiAgentKeyManager:
         """
         n_providers = len(self._providers)
         max_workers = max_workers or (n_providers * 2)
-
-        results: list[Any] = []
 
         def worker_wrapper(task_data: Any) -> Any:
             # Select a provider for this task

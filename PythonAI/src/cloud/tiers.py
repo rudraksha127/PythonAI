@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 class PlanTier:
     """Constant plan tier identifiers."""
+
     FREE = "free"
     PRO = "pro"
     TEAM = "team"
@@ -22,6 +23,7 @@ class PlanTier:
 @dataclass
 class PlanFeatures:
     """Feature set for a pricing tier."""
+
     # Training
     max_training_runs_per_month: int = 0
     max_signals_per_month: int = 0

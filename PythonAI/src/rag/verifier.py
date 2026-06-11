@@ -14,6 +14,7 @@ class AnswerVerifier:
     Verification System for RAG answers.
     Cross-references facts against context, checks code execution, and assigns confidence.
     """
+
     def __init__(self, model: str = DEFAULT_MODEL):
         self.model = model
 
@@ -25,7 +26,7 @@ class AnswerVerifier:
         results = []
         all_passed = True
 
-        for i, code in enumerate(code_blocks[:3]): # Check at most 3 blocks
+        for i, code in enumerate(code_blocks[:3]):  # Check at most 3 blocks
             output, error = execute_code(code, timeout=timeout)
 
             # If skipped due to safety, we consider it neutral (not a fail)
@@ -39,11 +40,7 @@ class AnswerVerifier:
             else:
                 results.append({"status": "success", "output": output})
 
-        return {
-            "all_passed": all_passed,
-            "details": results,
-            "blocks_checked": len(code_blocks[:3])
-        }
+        return {"all_passed": all_passed, "details": results, "blocks_checked": len(code_blocks[:3])}
 
     def verify_facts(self, question: str, answer_text: str, context: str) -> dict[str, Any]:
         """
@@ -70,9 +67,10 @@ Output ONLY a JSON object with this exact structure:
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 options={"temperature": 0.0, "num_predict": 150},
-                format="json"
+                format="json",
             )
             import json
+
             result = json.loads(response["message"]["content"])
             return result
         except Exception as e:
@@ -91,6 +89,6 @@ Output ONLY a JSON object with this exact structure:
         if not code_verification.get("all_passed", True):
             # Penalize for broken code
             error_count = sum(1 for d in code_verification.get("details", []) if d.get("status") == "error")
-            score -= (0.2 * error_count)
+            score -= 0.2 * error_count
 
         return max(0.0, min(1.0, score))

@@ -49,18 +49,18 @@ INDEX_FILE = ROOT / "data" / "kg_index.json"
 # ═══════════════════════════════════════
 
 EDGE_TYPES = {
-    "uses":             {"weight": 0.8, "desc": "A uses/requires B"},
-    "extends":          {"weight": 0.7, "desc": "A extends/inherits from B"},
-    "see_also":         {"weight": 0.6, "desc": "A is related to B"},
-    "alternative_to":   {"weight": 0.5, "desc": "A can replace B"},
-    "common_mistake":   {"weight": 0.9, "desc": "A has common mistake related to B"},
-    "conflicts_with":   {"weight": 0.4, "desc": "A conflicts with / contradicts B"},
-    "version_changed":  {"weight": 0.7, "desc": "Behavior changed across versions"},
-    "deprecated_by":    {"weight": 0.8, "desc": "A is deprecated in favor of B"},
-    "prerequisite":     {"weight": 0.9, "desc": "A must be understood before B"},
-    "example_of":       {"weight": 0.6, "desc": "A is an example/application of B"},
-    "similar_to":       {"weight": 0.5, "desc": "A is conceptually similar to B"},
-    "part_of":          {"weight": 0.7, "desc": "A is part of module/package B"},
+    "uses": {"weight": 0.8, "desc": "A uses/requires B"},
+    "extends": {"weight": 0.7, "desc": "A extends/inherits from B"},
+    "see_also": {"weight": 0.6, "desc": "A is related to B"},
+    "alternative_to": {"weight": 0.5, "desc": "A can replace B"},
+    "common_mistake": {"weight": 0.9, "desc": "A has common mistake related to B"},
+    "conflicts_with": {"weight": 0.4, "desc": "A conflicts with / contradicts B"},
+    "version_changed": {"weight": 0.7, "desc": "Behavior changed across versions"},
+    "deprecated_by": {"weight": 0.8, "desc": "A is deprecated in favor of B"},
+    "prerequisite": {"weight": 0.9, "desc": "A must be understood before B"},
+    "example_of": {"weight": 0.6, "desc": "A is an example/application of B"},
+    "similar_to": {"weight": 0.5, "desc": "A is conceptually similar to B"},
+    "part_of": {"weight": 0.7, "desc": "A is part of module/package B"},
 }
 
 # ═══════════════════════════════════════
@@ -121,9 +121,11 @@ _CONCEPT_GROUPS: dict[str, list[str]] = {
 # NODE BUILDER
 # ═══════════════════════════════════════
 
+
 @dataclass
 class GraphNode:
     """A node in the knowledge graph."""
+
     node_id: str
     title: str
     category: str
@@ -151,12 +153,50 @@ def _extract_entities(text: str) -> dict[str, list[str]]:
     class_re = re.compile(r"class\s+(\w+)", re.ASCII)
     module_re = re.compile(r"(?:import|from)\s+([\w.]+)", re.ASCII)
 
-    skip = {"self", "cls", "None", "True", "False", "print", "len", "range",
-            "str", "int", "float", "list", "dict", "set", "tuple", "type",
-            "super", "isinstance", "issubclass", "hasattr", "getattr",
-            "setattr", "delattr", "open", "input", "min", "max", "sum",
-            "abs", "round", "format", "repr", "iter", "next", "map",
-            "filter", "zip", "enumerate", "sorted", "reversed", "any", "all"}
+    skip = {
+        "self",
+        "cls",
+        "None",
+        "True",
+        "False",
+        "print",
+        "len",
+        "range",
+        "str",
+        "int",
+        "float",
+        "list",
+        "dict",
+        "set",
+        "tuple",
+        "type",
+        "super",
+        "isinstance",
+        "issubclass",
+        "hasattr",
+        "getattr",
+        "setattr",
+        "delattr",
+        "open",
+        "input",
+        "min",
+        "max",
+        "sum",
+        "abs",
+        "round",
+        "format",
+        "repr",
+        "iter",
+        "next",
+        "map",
+        "filter",
+        "zip",
+        "enumerate",
+        "sorted",
+        "reversed",
+        "any",
+        "all",
+    }
 
     funcs = [f for f in set(func_re.findall(text)) if f not in skip and len(f) > 2]
     classes = [c for c in set(class_re.findall(text)) if len(c) > 2]
@@ -178,8 +218,22 @@ def chunk_to_node(chunk: dict[str, Any]) -> GraphNode:
 
     # Extract keywords from title
     words = re.findall(r"[a-z][a-z_]{2,}", title.lower())
-    stop = {"the", "and", "for", "with", "from", "this", "that", "python",
-            "module", "function", "class", "method", "objects", "types"}
+    stop = {
+        "the",
+        "and",
+        "for",
+        "with",
+        "from",
+        "this",
+        "that",
+        "python",
+        "module",
+        "function",
+        "class",
+        "method",
+        "objects",
+        "types",
+    }
     keywords = [w for w in words if w not in stop][:10]
 
     return GraphNode(
@@ -199,6 +253,7 @@ def chunk_to_node(chunk: dict[str, Any]) -> GraphNode:
 # ═══════════════════════════════════════
 # EDGE BUILDER
 # ═══════════════════════════════════════
+
 
 def _find_pattern_edges(
     text: str,
@@ -233,6 +288,7 @@ def extract_edges(chunk: dict[str, Any]) -> list[tuple[str, str]]:
 # KNOWLEDGE GRAPH
 # ═══════════════════════════════════════
 
+
 class KnowledgeGraph:
     """
     The living knowledge graph. Connects concepts into a traversable web.
@@ -248,17 +304,16 @@ class KnowledgeGraph:
 
     def __init__(self) -> None:
         self.graph = nx.DiGraph()
-        self._title_to_id: dict[str, str] = {}      # title_lower → node_id
+        self._title_to_id: dict[str, str] = {}  # title_lower → node_id
         self._keyword_to_ids: dict[str, list[str]] = defaultdict(list)  # keyword → [node_ids]
-        self._entity_to_ids: dict[str, list[str]] = defaultdict(list)   # entity → [node_ids]
+        self._entity_to_ids: dict[str, list[str]] = defaultdict(list)  # entity → [node_ids]
 
     # ─── Build ──────────────────────────
 
     def build_from_chunks(self, chunks: list[dict[str, Any]]) -> None:
         """Build the knowledge graph from raw chunks."""
         skip_types = {"font", "image_png", "image_jpg", "image_gif", "static", "css"}
-        valid = [c for c in chunks if c.get("type", "") not in skip_types
-                 and len(c.get("text", "")) > 50]
+        valid = [c for c in chunks if c.get("type", "") not in skip_types and len(c.get("text", "")) > 50]
 
         print(f"\n[KG] Building knowledge graph from {len(valid):,} chunks...")
 
@@ -285,7 +340,8 @@ class KnowledgeGraph:
                     if target_id != source_id and not self.graph.has_edge(source_id, target_id):
                         weight = EDGE_TYPES.get(edge_type, {}).get("weight", 0.5)
                         self.graph.add_edge(
-                            source_id, target_id,
+                            source_id,
+                            target_id,
                             type=edge_type,
                             weight=weight,
                         )
@@ -372,7 +428,7 @@ class KnowledgeGraph:
 
             # Link each pair within the group
             for i, n1 in enumerate(group_nodes):
-                for n2 in group_nodes[i + 1:]:
+                for n2 in group_nodes[i + 1 :]:
                     if not self.graph.has_edge(n1, n2):
                         self.graph.add_edge(n1, n2, type="similar_to", weight=0.5)
                         edges_added += 1
@@ -403,9 +459,28 @@ class KnowledgeGraph:
 
         # Extract query concepts
         words = re.findall(r"[a-z][a-z_]{2,}", question.lower())
-        stop = {"how", "what", "why", "does", "can", "the", "and", "for",
-                "with", "python", "explain", "show", "give", "tell",
-                "please", "help", "using", "about", "work", "working"}
+        stop = {
+            "how",
+            "what",
+            "why",
+            "does",
+            "can",
+            "the",
+            "and",
+            "for",
+            "with",
+            "python",
+            "explain",
+            "show",
+            "give",
+            "tell",
+            "please",
+            "help",
+            "using",
+            "about",
+            "work",
+            "working",
+        }
         concepts = [w for w in words if w not in stop]
 
         # Find seed nodes
@@ -453,16 +528,18 @@ class KnowledgeGraph:
             degree = self.graph.degree(node_id)
             score += min(degree / 50, 0.2)  # Cap boost
 
-            results.append({
-                "node_id": node_id,
-                "title": node_data.get("title", ""),
-                "category": node_data.get("category", ""),
-                "version": node_data.get("version", ""),
-                "text_preview": node_data.get("text_preview", ""),
-                "distance": distance,
-                "score": round(score, 3),
-                "edge_types": self._get_edge_types(node_id, seed_nodes),
-            })
+            results.append(
+                {
+                    "node_id": node_id,
+                    "title": node_data.get("title", ""),
+                    "category": node_data.get("category", ""),
+                    "version": node_data.get("version", ""),
+                    "text_preview": node_data.get("text_preview", ""),
+                    "distance": distance,
+                    "score": round(score, 3),
+                    "edge_types": self._get_edge_types(node_id, seed_nodes),
+                }
+            )
 
         results.sort(key=lambda x: (-x["score"], x["distance"]))
         return results[:max_results]
@@ -486,24 +563,28 @@ class KnowledgeGraph:
             if edge_type and edge_data.get("type") != edge_type:
                 continue
             node_data = self.graph.nodes[successor]
-            results.append({
-                "node_id": successor,
-                "title": node_data.get("title", ""),
-                "edge_type": edge_data.get("type", "?"),
-                "weight": edge_data.get("weight", 0),
-            })
+            results.append(
+                {
+                    "node_id": successor,
+                    "title": node_data.get("title", ""),
+                    "edge_type": edge_data.get("type", "?"),
+                    "weight": edge_data.get("weight", 0),
+                }
+            )
 
         for predecessor in self.graph.predecessors(node_id):
             edge_data = self.graph.edges[predecessor, node_id]
             if edge_type and edge_data.get("type") != edge_type:
                 continue
             node_data = self.graph.nodes[predecessor]
-            results.append({
-                "node_id": predecessor,
-                "title": node_data.get("title", ""),
-                "edge_type": f"←{edge_data.get('type', '?')}",
-                "weight": edge_data.get("weight", 0),
-            })
+            results.append(
+                {
+                    "node_id": predecessor,
+                    "title": node_data.get("title", ""),
+                    "edge_type": f"←{edge_data.get('type', '?')}",
+                    "weight": edge_data.get("weight", 0),
+                }
+            )
 
         return results
 
@@ -591,8 +672,7 @@ class KnowledgeGraph:
         )[:10]
 
         top_hubs = [
-            {"node_id": nid, "title": self.graph.nodes[nid].get("title", "?"), "degree": deg}
-            for nid, deg in degrees
+            {"node_id": nid, "title": self.graph.nodes[nid].get("title", "?"), "degree": deg} for nid, deg in degrees
         ]
 
         return {
@@ -629,7 +709,7 @@ class KnowledgeGraph:
     def print_query_results(self, question: str, results: list[dict[str, Any]]) -> None:
         """Print formatted query results."""
         print(f"\n{'─' * 55}")
-        print(f"  Query: \"{question}\"")
+        print(f'  Query: "{question}"')
         print(f"  Found: {len(results)} related concepts")
         print(f"{'─' * 55}")
         for i, r in enumerate(results, 1):
@@ -646,8 +726,10 @@ class KnowledgeGraph:
 # CLI
 # ═══════════════════════════════════════
 
+
 def main() -> None:
     import argparse
+
     parser = argparse.ArgumentParser(description="OMNISCIENT Knowledge Graph")
     parser.add_argument("action", choices=["build", "stats", "query"], help="Action to perform")
     parser.add_argument("query_text", nargs="?", default="", help="Query text (for 'query' action)")
@@ -679,7 +761,7 @@ def main() -> None:
 
     elif args.action == "query":
         if not args.query_text:
-            print("[ERROR] Provide a query: python -m src.rag.knowledge_graph query \"list comprehension\"")
+            print('[ERROR] Provide a query: python -m src.rag.knowledge_graph query "list comprehension"')
             return
         if not kg.load():
             print("[ERROR] No knowledge graph found. Run: python -m src.rag.knowledge_graph build")

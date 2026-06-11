@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from pathlib import Path
 from typing import Any
 
 from src.rag.rag_engine import SimpleBM25, _cosine_sim, hybrid_search
@@ -148,10 +149,11 @@ class MockCollection:
         n_results = kwargs.get("n_results", len(self._docs))
         actual = self._docs[:n_results]
 
-        titles = [d["title"] for d in actual]
+        [d["title"] for d in actual]
         documents = [d["text"] for d in actual]
-        metadatas = [{"title": d["title"], "version": d.get("version", ""), "category": d.get("category", "")}
-                     for d in actual]
+        metadatas = [
+            {"title": d["title"], "version": d.get("version", ""), "category": d.get("category", "")} for d in actual
+        ]
         distances = [[1.0 - d.get("score", 0.5) for d in actual]]
 
         result: dict[str, list[Any]] = {
@@ -178,12 +180,30 @@ class TestHybridSearch:
     @staticmethod
     def _default_docs() -> list[dict[str, Any]]:
         return [
-            {"title": "Lists Guide", "text": "Python lists are mutable ordered sequences (Title: Lists Guide)",
-             "version": "3.12", "category": "library", "score": 0.9, "embedding": [0.5, 0.5, 0.0]},
-            {"title": "Dict Guide", "text": "Dictionaries store key-value pairs (Title: Dict Guide)",
-             "version": "3.12", "category": "library", "score": 0.8, "embedding": [0.5, 0.5, 0.0]},
-            {"title": "Sets Guide", "text": "Sets are unordered collections (Title: Sets Guide)",
-             "version": "3.11", "category": "library", "score": 0.7, "embedding": [0.5, 0.5, 0.0]},
+            {
+                "title": "Lists Guide",
+                "text": "Python lists are mutable ordered sequences (Title: Lists Guide)",
+                "version": "3.12",
+                "category": "library",
+                "score": 0.9,
+                "embedding": [0.5, 0.5, 0.0],
+            },
+            {
+                "title": "Dict Guide",
+                "text": "Dictionaries store key-value pairs (Title: Dict Guide)",
+                "version": "3.12",
+                "category": "library",
+                "score": 0.8,
+                "embedding": [0.5, 0.5, 0.0],
+            },
+            {
+                "title": "Sets Guide",
+                "text": "Sets are unordered collections (Title: Sets Guide)",
+                "version": "3.11",
+                "category": "library",
+                "score": 0.7,
+                "embedding": [0.5, 0.5, 0.0],
+            },
         ]
 
     def test_basic_no_bm25(self) -> None:
@@ -227,8 +247,9 @@ class TestHybridSearch:
         docs = self._default_docs()
         collection, embedder = self._make_mocks(docs)
 
-        results = hybrid_search("lists", collection, embedder, bm25=None, corpus_texts=None,
-                                top_k=5, version_filter="3.12")
+        results = hybrid_search(
+            "lists", collection, embedder, bm25=None, corpus_texts=None, top_k=5, version_filter="3.12"
+        )
 
         titles = [r["title"] for r in results]
         assert "Lists Guide" in titles
@@ -240,13 +261,15 @@ class TestHybridSearch:
         docs = self._default_docs()
         collection, embedder = self._make_mocks(docs)
 
-        results = hybrid_search("lists", collection, embedder, bm25=None, corpus_texts=None,
-                                top_k=5, category_filter="library")
+        results = hybrid_search(
+            "lists", collection, embedder, bm25=None, corpus_texts=None, top_k=5, category_filter="library"
+        )
 
         assert len(results) == 3  # all are library
 
-        results2 = hybrid_search("lists", collection, embedder, bm25=None, corpus_texts=None,
-                                 top_k=5, category_filter="tutorial")
+        results2 = hybrid_search(
+            "lists", collection, embedder, bm25=None, corpus_texts=None, top_k=5, category_filter="tutorial"
+        )
         assert len(results2) == 0  # none are tutorial
 
     def test_use_mmr(self) -> None:
@@ -258,8 +281,9 @@ class TestHybridSearch:
         docs[2]["embedding"] = [0.0, 0.0, 1.0]
 
         collection, embedder = self._make_mocks(docs)
-        results = hybrid_search("lists", collection, embedder, bm25=None, corpus_texts=None,
-                                top_k=3, use_mmr=True, mmr_lambda=0.7)
+        results = hybrid_search(
+            "lists", collection, embedder, bm25=None, corpus_texts=None, top_k=3, use_mmr=True, mmr_lambda=0.7
+        )
 
         assert len(results) == 3
         # All original docs should still be present
@@ -271,17 +295,36 @@ class TestHybridSearch:
     def test_mmr_lambda_zero(self) -> None:
         """With lambda=0, MMR should favour diversity over relevance."""
         docs = [
-            {"title": "Doc A", "text": "Text A", "version": "3.12", "category": "lib",
-             "score": 0.9, "embedding": [1.0, 0.0, 0.0]},
-            {"title": "Doc B", "text": "Text B", "version": "3.12", "category": "lib",
-             "score": 0.8, "embedding": [0.99, 0.01, 0.0]},
-            {"title": "Doc C", "text": "Text C", "version": "3.12", "category": "lib",
-             "score": 0.7, "embedding": [0.0, 1.0, 0.0]},
+            {
+                "title": "Doc A",
+                "text": "Text A",
+                "version": "3.12",
+                "category": "lib",
+                "score": 0.9,
+                "embedding": [1.0, 0.0, 0.0],
+            },
+            {
+                "title": "Doc B",
+                "text": "Text B",
+                "version": "3.12",
+                "category": "lib",
+                "score": 0.8,
+                "embedding": [0.99, 0.01, 0.0],
+            },
+            {
+                "title": "Doc C",
+                "text": "Text C",
+                "version": "3.12",
+                "category": "lib",
+                "score": 0.7,
+                "embedding": [0.0, 1.0, 0.0],
+            },
         ]
         collection, embedder = self._make_mocks(docs)
         # No BM25 needed for this test
-        results = hybrid_search("query", collection, embedder, bm25=None, corpus_texts=None,
-                                top_k=3, use_mmr=True, mmr_lambda=0.0)
+        results = hybrid_search(
+            "query", collection, embedder, bm25=None, corpus_texts=None, top_k=3, use_mmr=True, mmr_lambda=0.0
+        )
 
         assert len(results) == 3
 
@@ -304,8 +347,14 @@ class TestHybridSearch:
     def test_return_capped_at_six(self) -> None:
         """Returned list should be capped at 6 items."""
         many_docs = [
-            {"title": f"Doc {i}", "text": f"Text {i}", "version": "3.12", "category": "lib",
-             "score": 0.9 - i * 0.05, "embedding": [0.5, 0.5, 0.0]}
+            {
+                "title": f"Doc {i}",
+                "text": f"Text {i}",
+                "version": "3.12",
+                "category": "lib",
+                "score": 0.9 - i * 0.05,
+                "embedding": [0.5, 0.5, 0.0],
+            }
             for i in range(20)
         ]
         collection, embedder = self._make_mocks(many_docs)
@@ -327,11 +376,13 @@ class TestMmrRerank:
     def test_empty_docs(self) -> None:
         """Empty docs list should return empty list."""
         from src.rag.rag_engine import mmr_rerank
+
         assert mmr_rerank([], [0.0, 0.0, 0.0]) == []
 
     def test_single_doc(self) -> None:
         """Single doc should be returned as-is."""
         from src.rag.rag_engine import mmr_rerank
+
         docs = [self._make_doc("A", 0.9, [1.0, 0.0, 0.0])]
         result = mmr_rerank(docs, [0.5, 0.5, 0.0])
         assert len(result) == 1
@@ -340,6 +391,7 @@ class TestMmrRerank:
     def test_lambda_one_pure_relevance(self) -> None:
         """lambda=1.0 should rank purely by relevance score (no diversity)."""
         from src.rag.rag_engine import mmr_rerank
+
         docs = [
             self._make_doc("High", 0.9, [1.0, 0.0, 0.0]),
             self._make_doc("Medium", 0.7, [0.0, 1.0, 0.0]),
@@ -353,6 +405,7 @@ class TestMmrRerank:
     def test_lambda_zero_pure_diversity(self) -> None:
         """lambda=0.0 should purely penalise similarity (diversity first)."""
         from src.rag.rag_engine import mmr_rerank
+
         # Two very similar docs, one very different doc
         docs = [
             self._make_doc("SimilarA", 0.9, [1.0, 0.0, 0.0]),
@@ -369,16 +422,15 @@ class TestMmrRerank:
     def test_top_k_limits_results(self) -> None:
         """top_k should limit how many docs are returned."""
         from src.rag.rag_engine import mmr_rerank
-        docs = [
-            self._make_doc(f"Doc {i}", 0.9 - i * 0.05, [float(i % 2), float((i + 1) % 2), 0.0])
-            for i in range(10)
-        ]
+
+        docs = [self._make_doc(f"Doc {i}", 0.9 - i * 0.05, [float(i % 2), float((i + 1) % 2), 0.0]) for i in range(10)]
         result = mmr_rerank(docs, [0.5, 0.5, 0.0], top_k=3)
         assert len(result) == 3
 
     def test_no_embeddings_fallback(self) -> None:
         """Docs with empty embeddings should fall back gracefully."""
         from src.rag.rag_engine import mmr_rerank
+
         docs = [
             {"title": "A", "score": 0.9, "embedding": [], "text": "A"},
             {"title": "B", "score": 0.8, "embedding": [], "text": "B"},
@@ -390,6 +442,7 @@ class TestMmrRerank:
     def test_all_same_embeddings(self) -> None:
         """Docs with identical embeddings should still return in score order."""
         from src.rag.rag_engine import mmr_rerank
+
         docs = [
             self._make_doc("High", 0.9, [1.0, 0.0, 0.0]),
             self._make_doc("Medium", 0.8, [1.0, 0.0, 0.0]),
@@ -407,6 +460,7 @@ class TestMmrRerank:
     def test_citation_numbers_preserved(self) -> None:
         """MMR should preserve citation numbers on selected docs."""
         from src.rag.rag_engine import mmr_rerank
+
         docs = [
             {"title": "A", "score": 0.9, "embedding": [1.0, 0.0], "citation_num": 5},
             {"title": "B", "score": 0.8, "embedding": [0.0, 1.0], "citation_num": 3},
@@ -422,6 +476,7 @@ class TestMmrRerank:
     def test_diversity_selection(self) -> None:
         """MMR should select diverse docs even when scores are similar."""
         from src.rag.rag_engine import mmr_rerank
+
         # Doc A and Doc B related (similar), Doc C very different
         # Scores: A=0.9, B=0.85, C=0.8
         # MMR with lambda=0.5 should pick A first, then C (diverse), then B
@@ -517,6 +572,7 @@ def test_expand_query_extracts_queries() -> None:
 
 class _MockResponse:
     """Simulates ollama.generate response."""
+
     def __init__(self, text: str) -> None:
         self._text = text
 
@@ -526,13 +582,14 @@ class _MockResponse:
         return default
 
 
-from contextlib import contextmanager
+from contextlib import contextmanager  # noqa: E402
 
 
 @contextmanager
 def _mock_ollama_generate(response_text: str, should_raise: bool = False):
     """Context manager to mock ollama.generate."""
     import ollama as ollama_module
+
     original = ollama_module.generate
 
     def _fake_generate(*args: object, **kwargs: object) -> _MockResponse:
@@ -634,7 +691,7 @@ def foo(): pass
     blocks = extract_code_blocks(text)
     assert len(blocks) == 2
     assert 'print("hello")' in blocks[0]
-    assert 'def foo(): pass' in blocks[1]
+    assert "def foo(): pass" in blocks[1]
 
 
 def test_extract_code_blocks_no_code() -> None:
@@ -703,6 +760,7 @@ class TestCodeChunksToRagFormat:
     def test_empty_list(self) -> None:
         """An empty list should return an empty list."""
         from src.rag.rag_engine import _code_chunks_to_rag_format
+
         assert _code_chunks_to_rag_format([]) == []
 
     def test_multiple_chunks(self) -> None:
@@ -712,19 +770,34 @@ class TestCodeChunksToRagFormat:
 
         chunks = [
             CodeChunk(
-                content="import os", chunk_type="import_block",
-                start_line=1, end_line=1, name="imports",
-                filepath="mod.py", language="python", token_count=1,
+                content="import os",
+                chunk_type="import_block",
+                start_line=1,
+                end_line=1,
+                name="imports",
+                filepath="mod.py",
+                language="python",
+                token_count=1,
             ),
             CodeChunk(
-                content="def util(): pass", chunk_type="function",
-                start_line=3, end_line=3, name="util",
-                filepath="mod.py", language="python", token_count=1,
+                content="def util(): pass",
+                chunk_type="function",
+                start_line=3,
+                end_line=3,
+                name="util",
+                filepath="mod.py",
+                language="python",
+                token_count=1,
             ),
             CodeChunk(
-                content="class Helper: pass", chunk_type="class",
-                start_line=5, end_line=5, name="Helper",
-                filepath="mod.py", language="python", token_count=1,
+                content="class Helper: pass",
+                chunk_type="class",
+                start_line=5,
+                end_line=5,
+                name="Helper",
+                filepath="mod.py",
+                language="python",
+                token_count=1,
             ),
         ]
         result = _code_chunks_to_rag_format(chunks)
@@ -741,10 +814,14 @@ class TestCodeChunksToRagFormat:
         chunk = CodeChunk(
             content="def compute(x, y):\n    return x + y",
             chunk_type="function",
-            start_line=1, end_line=2, name="compute",
+            start_line=1,
+            end_line=2,
+            name="compute",
             signature="def compute(x, y):",
             docstring="Add two numbers.",
-            filepath="calc.py", language="python", token_count=4,
+            filepath="calc.py",
+            language="python",
+            token_count=4,
         )
         result = _code_chunks_to_rag_format([chunk])
         text = result[0]["text"]
@@ -765,6 +842,7 @@ def test_load_or_build_db_force_rebuild() -> None:
     import inspect
 
     from src.rag.rag_engine import load_or_build_db
+
     sig = inspect.signature(load_or_build_db)
     assert "force_rebuild" in sig.parameters
 
@@ -844,16 +922,19 @@ class TestToPlainList:
 
     def test_plain_list_passes_through(self) -> None:
         from src.rag.rag_engine import _to_plain_list
+
         assert _to_plain_list([1.0, 2.0, 3.0]) == [1.0, 2.0, 3.0]
 
     def test_empty_list(self) -> None:
         from src.rag.rag_engine import _to_plain_list
+
         assert _to_plain_list([]) == []
 
     def test_numpy_array(self) -> None:
         import numpy as np
 
         from src.rag.rag_engine import _to_plain_list
+
         arr = np.array([0.5, 0.3, 0.1])
         result = _to_plain_list(arr)
         assert result == [0.5, 0.3, 0.1]
@@ -863,6 +944,7 @@ class TestToPlainList:
         import numpy as np
 
         from src.rag.rag_engine import _to_plain_list
+
         arr = np.array([[0.1, 0.2], [0.3, 0.4]])
         result = _to_plain_list(arr)
         assert result == [[0.1, 0.2], [0.3, 0.4]]
@@ -870,10 +952,12 @@ class TestToPlainList:
 
     def test_tuple_input(self) -> None:
         from src.rag.rag_engine import _to_plain_list
+
         assert _to_plain_list((1, 2, 3)) == [1, 2, 3]
 
     def test_generator_input(self) -> None:
         from src.rag.rag_engine import _to_plain_list
+
         assert _to_plain_list(x * 2 for x in [1, 2, 3]) == [2, 4, 6]
 
 
@@ -887,8 +971,10 @@ class TestParseArgs:
 
     def test_default_values(self, monkeypatch: Any) -> None:
         import sys
+
         monkeypatch.setattr(sys, "argv", ["rag_engine.py", "--question", "test"])
         from src.rag.rag_engine import parse_args
+
         args = parse_args()
         assert args.model == "qwen2.5-coder:14b"
         assert args.question == "test"
@@ -904,8 +990,12 @@ class TestParseArgs:
 
     def test_boolean_flags(self, monkeypatch: Any) -> None:
         import sys
-        monkeypatch.setattr(sys, "argv", ["rag_engine.py", "--rebuild", "--stats", "--no-exec", "--query-expansion", "--mmr"])
+
+        monkeypatch.setattr(
+            sys, "argv", ["rag_engine.py", "--rebuild", "--stats", "--no-exec", "--query-expansion", "--mmr"]
+        )
         from src.rag.rag_engine import parse_args
+
         args = parse_args()
         assert args.rebuild is True
         assert args.stats is True
@@ -915,17 +1005,29 @@ class TestParseArgs:
 
     def test_custom_values(self, monkeypatch: Any) -> None:
         import sys
-        monkeypatch.setattr(sys, "argv", [
-            "rag_engine.py",
-            "--model", "llama3.2:3b",
-            "--question", "What is a list?",
-            "--exec-timeout", "10",
-            "--mmr-lambda", "0.5",
-            "--version", "3.12",
-            "--category", "library",
-            "--list-models",
-        ])
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "rag_engine.py",
+                "--model",
+                "llama3.2:3b",
+                "--question",
+                "What is a list?",
+                "--exec-timeout",
+                "10",
+                "--mmr-lambda",
+                "0.5",
+                "--version",
+                "3.12",
+                "--category",
+                "library",
+                "--list-models",
+            ],
+        )
         from src.rag.rag_engine import parse_args
+
         args = parse_args()
         assert args.model == "llama3.2:3b"
         assert args.question == "What is a list?"
@@ -937,8 +1039,10 @@ class TestParseArgs:
 
     def test_list_models_flag(self, monkeypatch: Any) -> None:
         import sys
+
         monkeypatch.setattr(sys, "argv", ["rag_engine.py", "--list-models"])
         from src.rag.rag_engine import parse_args
+
         args = parse_args()
         assert args.list_models is True
 
@@ -953,10 +1057,12 @@ class TestFormatSourcesExtended:
 
     def test_empty_list(self) -> None:
         from src.rag.rag_engine import format_sources
+
         assert format_sources([]) == ""
 
     def test_single_source(self) -> None:
         from src.rag.rag_engine import format_sources
+
         docs = [{"citation_num": 1, "title": "Doc A", "version": "3.12", "category": "lib"}]
         result = format_sources(docs)
         assert result.startswith("\n")
@@ -965,13 +1071,14 @@ class TestFormatSourcesExtended:
 
     def test_multiple_sources(self) -> None:
         from src.rag.rag_engine import format_sources
+
         docs = [
             {"citation_num": 1, "title": "Doc A", "version": "3.12", "category": "lib"},
             {"citation_num": 2, "title": "Doc B", "version": "3.11", "category": "tutorial"},
             {"citation_num": 3, "title": "Doc C", "version": "", "category": ""},
         ]
         result = format_sources(docs)
-        lines = [l for l in result.split("\n") if l.strip()]
+        lines = [line for line in result.split("\n") if line.strip()]
         assert len(lines) >= 4  # header + 3 docs
         assert "[1]" in result
         assert "[2]" in result
@@ -980,12 +1087,14 @@ class TestFormatSourcesExtended:
     def test_none_version(self) -> None:
         """Missing version should not cause crash."""
         from src.rag.rag_engine import format_sources
+
         docs = [{"citation_num": 1, "title": "Doc", "version": None, "category": "lib"}]
         result = format_sources(docs)
         assert "Doc" in result
 
     def test_long_title_truncation(self) -> None:
         from src.rag.rag_engine import format_sources
+
         docs = [{"citation_num": 1, "title": "A" * 100, "version": "3.12", "category": "lib"}]
         result = format_sources(docs)
         assert len(result) < 200  # title should be truncated to 50 chars
@@ -1001,16 +1110,19 @@ class TestExtractCodeBlocksExtended:
 
     def test_empty_text(self) -> None:
         from src.rag.rag_engine import extract_code_blocks
+
         assert extract_code_blocks("") == []
 
     def test_no_fence(self) -> None:
         from src.rag.rag_engine import extract_code_blocks
+
         text = "Here is some inline `code` but no fences."
         assert extract_code_blocks(text) == []
 
     def test_other_language_fence(self) -> None:
         """Non-python fences should not be extracted."""
         from src.rag.rag_engine import extract_code_blocks
+
         text = """```javascript
 console.log("hello");
 ```"""
@@ -1019,6 +1131,7 @@ console.log("hello");
     def test_mixed_fences(self) -> None:
         """Python fences mixed with other languages should only extract python ones."""
         from src.rag.rag_engine import extract_code_blocks
+
         text = """```python
 x = 1
 ```
@@ -1031,6 +1144,7 @@ echo hello
 
     def test_empty_python_block(self) -> None:
         from src.rag.rag_engine import extract_code_blocks
+
         text = """```python
 ```"""
         blocks = extract_code_blocks(text)
@@ -1039,6 +1153,7 @@ echo hello
 
     def test_code_with_backticks_inside(self) -> None:
         from src.rag.rag_engine import extract_code_blocks
+
         text = """```python
 print('hello')
 ```"""
@@ -1056,6 +1171,7 @@ class TestExecuteCodeExtended:
 
     def test_empty_code(self) -> None:
         from src.rag.rag_engine import execute_code
+
         stdout, stderr = execute_code("", timeout=5)
         # Empty code behavior varies by platform; verify tuple is returned without crash
         assert isinstance(stdout, (str, type(None)))
@@ -1063,12 +1179,14 @@ class TestExecuteCodeExtended:
 
     def test_import_socket_blocked(self) -> None:
         from src.rag.rag_engine import execute_code
+
         stdout, stderr = execute_code("import socket; s = socket.socket()", timeout=5)
         assert stdout is None
         assert stderr == "Skipped (safety)"
 
     def test_dangerous_open_blocked(self) -> None:
         from src.rag.rag_engine import execute_code
+
         # 'open(' in code should be blocked
         stdout, stderr = execute_code('open("test.txt", "w").write("data")', timeout=5)
         assert stdout is None
@@ -1076,12 +1194,14 @@ class TestExecuteCodeExtended:
 
     def test_import_shutil_blocked(self) -> None:
         from src.rag.rag_engine import execute_code
+
         stdout, stderr = execute_code("import shutil; shutil.rmtree('/')", timeout=5)
         assert stdout is None
         assert stderr == "Skipped (safety)"
 
     def test_import_ctypes_blocked(self) -> None:
         from src.rag.rag_engine import execute_code
+
         stdout, stderr = execute_code("import ctypes; ctypes.CDLL('libc.so.6')", timeout=5)
         assert stdout is None
         assert stderr == "Skipped (safety)"
@@ -1089,6 +1209,7 @@ class TestExecuteCodeExtended:
     def test_import_os_inside_function(self) -> None:
         """Even within a function definition, import os should be blocked."""
         from src.rag.rag_engine import execute_code
+
         code = """def foo():
     import os
     return os.getcwd()
@@ -1137,8 +1258,13 @@ class TestExportConversationMarkdown:
                 "role": "assistant",
                 "content": "Lists are ordered.",
                 "docs": [
-                    {"citation_num": 1, "title": "Lists Guide", "version": "3.12", "category": "library",
-                     "text": "Python lists are mutable"},
+                    {
+                        "citation_num": 1,
+                        "title": "Lists Guide",
+                        "version": "3.12",
+                        "category": "library",
+                        "text": "Python lists are mutable",
+                    },
                 ],
             },
         ]
@@ -1220,6 +1346,7 @@ class TestListConversations:
                 {"role": "assistant", "content": "Python is great."},
             ]
             import json
+
             json.dump(conv_data, (conv_dir / "conversation_20250101_120000.json").open("w"))
 
             results = list_conversations()
@@ -1245,6 +1372,7 @@ class TestListConversations:
                 {"role": "assistant", "content": "A list is a mutable sequence."},
             ]
             import json
+
             json.dump(conv_data, (conv_dir / "conversation_20250101_120000.json").open("w"))
 
             results = search_conversations("Python list")
@@ -1290,6 +1418,7 @@ class TestListConversations:
             conv_dir.mkdir(parents=True, exist_ok=True)
 
             import json
+
             for i in range(5):
                 conv_data = [{"role": "user", "content": f"Question {i} about Python"}]
                 json.dump(conv_data, (conv_dir / f"conversation_2025010{i}_120000.json").open("w"))
@@ -1313,17 +1442,30 @@ class TestGetAnswer:
         from src.rag.rag_engine import get_answer
 
         # Create mock collection with one doc
-        coll = MockCollection([
-            {"title": "Lists Guide", "text": "Lists are mutable (Title: Lists Guide)",
-             "version": "3.12", "category": "library", "score": 0.9, "embedding": [0.5, 0.5, 0.0]},
-        ])
+        coll = MockCollection(
+            [
+                {
+                    "title": "Lists Guide",
+                    "text": "Lists are mutable (Title: Lists Guide)",
+                    "version": "3.12",
+                    "category": "library",
+                    "score": 0.9,
+                    "embedding": [0.5, 0.5, 0.0],
+                },
+            ]
+        )
         embedder = MockEmbedder()
 
         with _mock_ollama_generate("1. How do lists work?"):
             with _mock_ollama_chat("Lists are ordered and mutable."):
                 answer, docs = get_answer(
-                    "What are lists?", coll, embedder, [],
-                    bm25=None, corpus_texts=None, kg=None,
+                    "What are lists?",
+                    coll,
+                    embedder,
+                    [],
+                    bm25=None,
+                    corpus_texts=None,
+                    kg=None,
                     use_query_expansion=False,
                 )
 
@@ -1335,16 +1477,27 @@ class TestGetAnswer:
         """get_answer with query_expansion=True should not crash."""
         from src.rag.rag_engine import get_answer
 
-        coll = MockCollection([
-            {"title": "Doc A", "text": "Content of Doc A (Title: Doc A)",
-             "version": "3.12", "category": "lib", "score": 0.8, "embedding": [0.5, 0.5, 0.0]},
-        ])
+        coll = MockCollection(
+            [
+                {
+                    "title": "Doc A",
+                    "text": "Content of Doc A (Title: Doc A)",
+                    "version": "3.12",
+                    "category": "lib",
+                    "score": 0.8,
+                    "embedding": [0.5, 0.5, 0.0],
+                },
+            ]
+        )
         embedder = MockEmbedder()
 
         with _mock_ollama_generate("1. Alternative query?\n2. Another query?"):
             with _mock_ollama_chat("Here is the answer."):
                 answer, docs = get_answer(
-                    "What is Python?", coll, embedder, [],
+                    "What is Python?",
+                    coll,
+                    embedder,
+                    [],
                     use_query_expansion=True,
                 )
 
@@ -1361,7 +1514,10 @@ class TestGetAnswer:
         with _mock_ollama_generate(""):
             with _mock_ollama_chat("I'll answer from my knowledge."):
                 answer, docs = get_answer(
-                    "What is Python?", coll, embedder, [],
+                    "What is Python?",
+                    coll,
+                    embedder,
+                    [],
                     no_exec=True,
                 )
 
@@ -1377,6 +1533,7 @@ def _mock_ollama_chat(response_text: str):
     where each chunk has chunk["message"]["content"].
     """
     import ollama as ollama_module
+
     original = ollama_module.chat
 
     def _fake_chat(*args: object, **kwargs: object) -> list[dict[str, dict[str, str]]]:
@@ -1398,6 +1555,7 @@ def test_show_model_info_with_data(capsys: Any) -> None:
     """show_model_info should print model details."""
     with _mock_ollama_show({"modelfile": "FROM qwen", "parameters": "num_ctx 512"}):
         from src.rag.rag_engine import show_model_info
+
         show_model_info("test-model")
         captured = capsys.readouterr()
         assert "test-model" in captured.out
@@ -1407,6 +1565,7 @@ def test_show_model_info_with_empty_response(capsys: Any) -> None:
     """show_model_info should handle empty/error response."""
     with _mock_ollama_show({}):
         from src.rag.rag_engine import show_model_info
+
         show_model_info("unknown-model")
         captured = capsys.readouterr()
         assert "unknown-model" in captured.out
@@ -1416,6 +1575,7 @@ def test_show_model_info_with_empty_response(capsys: Any) -> None:
 def _mock_ollama_show(return_data: dict[str, Any]):
     """Context manager to mock ollama.show."""
     import ollama as ollama_module
+
     original = ollama_module.show
 
     def _fake_show(model: str = "") -> dict[str, Any]:

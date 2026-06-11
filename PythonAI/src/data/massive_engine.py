@@ -55,6 +55,7 @@ def _save_state(state: dict[str, Any]) -> None:
 # Source-type handlers (each one knows how to fetch & parse its API)
 # ════════════════════════════════════════════════════
 
+
 async def _handle_arxiv(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch arXiv papers via OAI-PMH for a specific category."""
     params = config["params"]
@@ -83,14 +84,16 @@ async def _handle_arxiv(session, config: dict, out_dir: Path, state: dict) -> in
             paper_id = record.findtext("ar:id", namespaces=ns)
             if not paper_id:
                 continue
-            papers.append({
-                "id": paper_id,
-                "title": (record.findtext("ar:title", namespaces=ns) or "").strip(),
-                "abstract": (record.findtext("ar:abstract", namespaces=ns) or "").strip(),
-                "categories": (record.findtext("ar:categories", namespaces=ns) or ""),
-                "created": (record.findtext("ar:created", namespaces=ns) or ""),
-                "source": "arxiv_massive",
-            })
+            papers.append(
+                {
+                    "id": paper_id,
+                    "title": (record.findtext("ar:title", namespaces=ns) or "").strip(),
+                    "abstract": (record.findtext("ar:abstract", namespaces=ns) or "").strip(),
+                    "categories": (record.findtext("ar:categories", namespaces=ns) or ""),
+                    "created": (record.findtext("ar:created", namespaces=ns) or ""),
+                    "source": "arxiv_massive",
+                }
+            )
             total += 1
 
         if papers:
@@ -122,9 +125,11 @@ async def _handle_pubmed(session, config: dict, out_dir: Path, state: dict) -> i
 
     total = 0
     for batch_start in range(0, len(id_list), 50):
-        batch_ids = id_list[batch_start:batch_start + 50]
+        batch_ids = id_list[batch_start : batch_start + 50]
         fetch_params = {"db": "pubmed", "id": ",".join(batch_ids), "retmode": "xml", "rettype": "abstract"}
-        async with session.get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi", params=fetch_params) as resp:
+        async with session.get(
+            "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi", params=fetch_params
+        ) as resp:
             xml_text = await resp.text()
 
         root = ET.fromstring(xml_text)
@@ -142,14 +147,16 @@ async def _handle_pubmed(session, config: dict, out_dir: Path, state: dict) -> i
                 year = article.findtext(".//PubDate/Year", "")
                 journal = article.findtext(".//Journal/Title", "")
 
-                records.append({
-                    "id": f"pmid:{pmid}",
-                    "title": title.strip(),
-                    "abstract": abstract.strip()[:3000],
-                    "year": year,
-                    "journal": journal,
-                    "source": "pubmed_massive",
-                })
+                records.append(
+                    {
+                        "id": f"pmid:{pmid}",
+                        "title": title.strip(),
+                        "abstract": abstract.strip()[:3000],
+                        "year": year,
+                        "journal": journal,
+                        "source": "pubmed_massive",
+                    }
+                )
                 total += 1
             except Exception:
                 continue
@@ -190,17 +197,19 @@ async def _handle_crossref(session, config: dict, out_dir: Path, state: dict) ->
 
         records = []
         for item in items:
-            authors = [f"{a.get('given','')} {a.get('family','')}" for a in (item.get("author") or [])]
-            records.append({
-                "id": item.get("DOI", ""),
-                "title": (item.get("title") or [""])[0],
-                "abstract": (item.get("abstract") or "")[:3000],
-                "year": item.get("published-print", {}).get("date-parts", [[None]])[0][0],
-                "citations": item.get("is-referenced-by-count", 0),
-                "authors": authors[:10],
-                "publisher": item.get("publisher", ""),
-                "source": "crossref_massive",
-            })
+            authors = [f"{a.get('given', '')} {a.get('family', '')}" for a in (item.get("author") or [])]
+            records.append(
+                {
+                    "id": item.get("DOI", ""),
+                    "title": (item.get("title") or [""])[0],
+                    "abstract": (item.get("abstract") or "")[:3000],
+                    "year": item.get("published-print", {}).get("date-parts", [[None]])[0][0],
+                    "citations": item.get("is-referenced-by-count", 0),
+                    "authors": authors[:10],
+                    "publisher": item.get("publisher", ""),
+                    "source": "crossref_massive",
+                }
+            )
             total += 1
 
         if records:
@@ -248,16 +257,18 @@ async def _handle_semantic_scholar(session, config: dict, out_dir: Path, state: 
         records = []
         for p in papers:
             authors = [a.get("name", "") for a in (p.get("authors") or [])]
-            records.append({
-                "id": p.get("paperId", ""),
-                "title": p.get("title", ""),
-                "abstract": (p.get("abstract") or "")[:3000],
-                "year": p.get("year"),
-                "citations": p.get("citationCount", 0),
-                "venue": p.get("venue", ""),
-                "authors": authors[:10],
-                "source": "semantic_scholar_massive",
-            })
+            records.append(
+                {
+                    "id": p.get("paperId", ""),
+                    "title": p.get("title", ""),
+                    "abstract": (p.get("abstract") or "")[:3000],
+                    "year": p.get("year"),
+                    "citations": p.get("citationCount", 0),
+                    "venue": p.get("venue", ""),
+                    "authors": authors[:10],
+                    "source": "semantic_scholar_massive",
+                }
+            )
             total += 1
 
         if records:
@@ -302,17 +313,19 @@ async def _handle_github(session, config: dict, out_dir: Path, state: dict) -> i
 
         records = []
         for r in repos:
-            records.append({
-                "id": r.get("full_name", ""),
-                "name": r.get("full_name", ""),
-                "description": (r.get("description") or "")[:500],
-                "stars": r.get("stargazers_count", 0),
-                "language": r.get("language", ""),
-                "topics": r.get("topics", []),
-                "url": r.get("html_url", ""),
-                "forks": r.get("forks_count", 0),
-                "source": "github_massive",
-            })
+            records.append(
+                {
+                    "id": r.get("full_name", ""),
+                    "name": r.get("full_name", ""),
+                    "description": (r.get("description") or "")[:500],
+                    "stars": r.get("stargazers_count", 0),
+                    "language": r.get("language", ""),
+                    "topics": r.get("topics", []),
+                    "url": r.get("html_url", ""),
+                    "forks": r.get("forks_count", 0),
+                    "source": "github_massive",
+                }
+            )
             total += 1
 
         if records:
@@ -354,15 +367,17 @@ async def _handle_stackexchange(session, config: dict, out_dir: Path, state: dic
 
         records = []
         for q in questions:
-            records.append({
-                "id": f"se:{site}:{q.get('question_id')}",
-                "title": q.get("title", ""),
-                "body": (q.get("body") or "")[:3000],
-                "score": q.get("score", 0),
-                "tags": q.get("tags", []),
-                "is_answered": q.get("is_answered", False),
-                "source": f"stackexchange_{site}",
-            })
+            records.append(
+                {
+                    "id": f"se:{site}:{q.get('question_id')}",
+                    "title": q.get("title", ""),
+                    "body": (q.get("body") or "")[:3000],
+                    "score": q.get("score", 0),
+                    "tags": q.get("tags", []),
+                    "is_answered": q.get("is_answered", False),
+                    "source": f"stackexchange_{site}",
+                }
+            )
             total += 1
 
         if records:
@@ -390,7 +405,14 @@ async def _handle_openalex(session, config: dict, out_dir: Path, state: dict) ->
     max_records = config.get("max_records", 100000)
 
     while total < max_records:
-        params = {"search": search, "filter": filter_str, "per-page": per_page, "cursor": cursor, "mailto": email, "select": select}
+        params = {
+            "search": search,
+            "filter": filter_str,
+            "per-page": per_page,
+            "cursor": cursor,
+            "mailto": email,
+            "select": select,
+        }
 
         async with session.get("https://api.openalex.org/works", params=params) as resp:
             if resp.status == 429:
@@ -411,15 +433,17 @@ async def _handle_openalex(session, config: dict, out_dir: Path, state: dict) ->
                     words[pos] = word
             abstract = " ".join(words[i] for i in sorted(words.keys())) if words else ""
 
-            records.append({
-                "id": work.get("id", ""),
-                "title": work.get("title", ""),
-                "abstract": abstract[:3000],
-                "year": work.get("publication_year"),
-                "citations": work.get("cited_by_count", 0),
-                "doi": work.get("doi", ""),
-                "source": "openalex_massive",
-            })
+            records.append(
+                {
+                    "id": work.get("id", ""),
+                    "title": work.get("title", ""),
+                    "abstract": abstract[:3000],
+                    "year": work.get("publication_year"),
+                    "citations": work.get("cited_by_count", 0),
+                    "doi": work.get("doi", ""),
+                    "source": "openalex_massive",
+                }
+            )
             total += 1
 
         if records:
@@ -443,8 +467,12 @@ async def _handle_wikipedia(session, config: dict, out_dir: Path, state: dict) -
     max_articles = config["params"].get("max_articles", 200)
 
     search_params = {
-        "action": "query", "list": "search", "srsearch": category,
-        "srlimit": max_articles, "format": "json", "srprop": "snippet|titlesnippet",
+        "action": "query",
+        "list": "search",
+        "srsearch": category,
+        "srlimit": max_articles,
+        "format": "json",
+        "srprop": "snippet|titlesnippet",
     }
     async with session.get("https://en.wikipedia.org/w/api.php", params=search_params) as resp:
         search_data = await resp.json()
@@ -457,11 +485,16 @@ async def _handle_wikipedia(session, config: dict, out_dir: Path, state: dict) -
     page_titles = [p["title"] for p in pages]
 
     for batch_start in range(0, len(page_titles), 10):
-        batch_titles = page_titles[batch_start:batch_start + 10]
+        batch_titles = page_titles[batch_start : batch_start + 10]
         content_params = {
-            "action": "query", "titles": "|".join(batch_titles),
-            "prop": "extracts|info", "exintro": True, "explaintext": True,
-            "inprop": "url", "format": "json", "redirects": 1,
+            "action": "query",
+            "titles": "|".join(batch_titles),
+            "prop": "extracts|info",
+            "exintro": True,
+            "explaintext": True,
+            "inprop": "url",
+            "format": "json",
+            "redirects": 1,
         }
         async with session.get("https://en.wikipedia.org/w/api.php", params=content_params) as resp:
             content_data = await resp.json()
@@ -472,17 +505,19 @@ async def _handle_wikipedia(session, config: dict, out_dir: Path, state: dict) -
             if page_id == "-1":
                 continue
             title = page_data.get("title", "")
-            extract = (page_data.get("extract") or "")
+            extract = page_data.get("extract") or ""
             if len(extract) < 100:
                 continue
-            records.append({
-                "id": f"wiki:{page_id}",
-                "title": title,
-                "text": extract[:5000],
-                "url": page_data.get("fullurl", ""),
-                "category": category,
-                "source": "wikipedia_massive",
-            })
+            records.append(
+                {
+                    "id": f"wiki:{page_id}",
+                    "title": title,
+                    "text": extract[:5000],
+                    "url": page_data.get("fullurl", ""),
+                    "category": category,
+                    "source": "wikipedia_massive",
+                }
+            )
             total += 1
 
         if records:
@@ -498,14 +533,14 @@ async def _handle_doaj(session, config: dict, out_dir: Path, state: dict) -> int
     """Fetch open access articles from DOAJ."""
 
     query = config["params"]["query"]
-    pageSize = config["params"].get("pageSize", 100)
+    page_size = config["params"].get("pageSize", 100)
 
     page = state.get("page", 1)
     total = state.get("total", 0)
     max_records = config.get("max_records", 100000)
 
     while total < max_records:
-        params = {"query": query, "page": page, "pageSize": pageSize}
+        params = {"query": query, "page": page, "pageSize": page_size}
         async with session.get("https://doaj.org/api/v3/search/articles/", params=params) as resp:
             if resp.status != 200:
                 break
@@ -519,15 +554,17 @@ async def _handle_doaj(session, config: dict, out_dir: Path, state: dict) -> int
         for r in results:
             biblio = r.get("bibjson", {})
             authors = [a.get("name", "") for a in (biblio.get("author") or [])]
-            records.append({
-                "id": r.get("id", ""),
-                "title": biblio.get("title", ""),
-                "abstract": (biblio.get("abstract") or "")[:3000],
-                "year": biblio.get("year", ""),
-                "authors": authors[:10],
-                "journal": biblio.get("journal", {}).get("title", ""),
-                "source": "doaj_massive",
-            })
+            records.append(
+                {
+                    "id": r.get("id", ""),
+                    "title": biblio.get("title", ""),
+                    "abstract": (biblio.get("abstract") or "")[:3000],
+                    "year": biblio.get("year", ""),
+                    "authors": authors[:10],
+                    "journal": biblio.get("journal", {}).get("title", ""),
+                    "source": "doaj_massive",
+                }
+            )
             total += 1
 
         if records:
@@ -574,17 +611,19 @@ async def _handle_reddit(session, config: dict, out_dir: Path, state: dict) -> i
         records = []
         for post_data in posts:
             post = post_data.get("data", {})
-            records.append({
-                "id": f"reddit:{subreddit}:{post.get('id')}",
-                "title": post.get("title", ""),
-                "text": (post.get("selftext") or "")[:3000],
-                "score": post.get("score", 0),
-                "num_comments": post.get("num_comments", 0),
-                "author": post.get("author", ""),
-                "created_utc": post.get("created_utc", 0),
-                "subreddit": subreddit,
-                "source": "reddit_massive",
-            })
+            records.append(
+                {
+                    "id": f"reddit:{subreddit}:{post.get('id')}",
+                    "title": post.get("title", ""),
+                    "text": (post.get("selftext") or "")[:3000],
+                    "score": post.get("score", 0),
+                    "num_comments": post.get("num_comments", 0),
+                    "author": post.get("author", ""),
+                    "created_utc": post.get("created_utc", 0),
+                    "subreddit": subreddit,
+                    "source": "reddit_massive",
+                }
+            )
             total += 1
 
         if records:
@@ -622,14 +661,16 @@ async def _handle_rss(session, config: dict, out_dir: Path, state: dict) -> int:
 
     records = []
     for entry in feed.entries[:max_items]:
-        records.append({
-            "id": entry.get("id", entry.get("link", f"rss:{safe_name}:{total}")),
-            "title": entry.get("title", ""),
-            "summary": (entry.get("summary") or entry.get("description") or "")[:3000],
-            "link": entry.get("link", ""),
-            "published": entry.get("published", ""),
-            "source": "rss_massive",
-        })
+        records.append(
+            {
+                "id": entry.get("id", entry.get("link", f"rss:{safe_name}:{total}")),
+                "title": entry.get("title", ""),
+                "summary": (entry.get("summary") or entry.get("description") or "")[:3000],
+                "link": entry.get("link", ""),
+                "published": entry.get("published", ""),
+                "source": "rss_massive",
+            }
+        )
         total += 1
 
     if records:
@@ -681,14 +722,16 @@ async def _handle_openlibrary(session, config: dict, out_dir: Path, state: dict)
     docs = data.get("docs", [])
     records = []
     for doc in docs:
-        records.append({
-            "id": doc.get("key", f"ol:{query}:{len(records)}"),
-            "title": doc.get("title", ""),
-            "author": (doc.get("author_name") or [""])[0],
-            "year": doc.get("first_publish_year"),
-            "subjects": doc.get("subject", [])[:10],
-            "source": "openlibrary_massive",
-        })
+        records.append(
+            {
+                "id": doc.get("key", f"ol:{query}:{len(records)}"),
+                "title": doc.get("title", ""),
+                "author": (doc.get("author_name") or [""])[0],
+                "year": doc.get("first_publish_year"),
+                "subjects": doc.get("subject", [])[:10],
+                "source": "openlibrary_massive",
+            }
+        )
 
     if records:
         _append_jsonl(out_dir / f"{query.replace(' ', '_')[:50]}.jsonl", records)
@@ -712,13 +755,15 @@ async def _handle_gutendex(session, config: dict, out_dir: Path, state: dict) ->
     records = []
     for book in books:
         authors = [a.get("name", "") for a in (book.get("authors") or [])]
-        records.append({
-            "id": f"gut:{book.get('id')}",
-            "title": book.get("title", ""),
-            "authors": authors[:5],
-            "subjects": book.get("subjects", []),
-            "source": "gutenberg_massive",
-        })
+        records.append(
+            {
+                "id": f"gut:{book.get('id')}",
+                "title": book.get("title", ""),
+                "authors": authors[:5],
+                "subjects": book.get("subjects", []),
+                "source": "gutenberg_massive",
+            }
+        )
 
     if records:
         _append_jsonl(out_dir / f"{query.replace(' ', '_')[:50]}.jsonl", records)
@@ -745,20 +790,22 @@ async def _handle_biorxiv(session, config: dict, out_dir: Path, state: dict) -> 
     articles = data.get("collection", [])
     records = []
     for article in articles:
-        title = (article.get("title") or "")
-        abstract = (article.get("abstract") or "")
+        title = article.get("title") or ""
+        abstract = article.get("abstract") or ""
         combined = (title + " " + abstract).lower()
         if category.replace("-", " ") not in combined:
             continue
 
-        records.append({
-            "id": f"{server}:{article.get('doi', '')}",
-            "title": title,
-            "abstract": abstract[:3000],
-            "authors": (article.get("authors", "") or "").split(";")[:10],
-            "date": article.get("date", ""),
-            "source": f"{server}_massive",
-        })
+        records.append(
+            {
+                "id": f"{server}:{article.get('doi', '')}",
+                "title": title,
+                "abstract": abstract[:3000],
+                "authors": (article.get("authors", "") or "").split(";")[:10],
+                "date": article.get("date", ""),
+                "source": f"{server}_massive",
+            }
+        )
 
     if records:
         _append_jsonl(out_dir / f"{category}.jsonl", records)
@@ -796,15 +843,17 @@ async def _handle_worldbank(session, config: dict, out_dir: Path, state: dict) -
         for entry in records_data:
             if entry.get("value") is None:
                 continue
-            records.append({
-                "id": f"wb:{indicator}:{entry.get('country',{}).get('id','')}:{entry.get('date','')}",
-                "indicator": indicator,
-                "country": entry.get("country", {}).get("value", ""),
-                "country_code": entry.get("country", {}).get("id", ""),
-                "year": entry.get("date", ""),
-                "value": entry.get("value"),
-                "source": "worldbank_massive",
-            })
+            records.append(
+                {
+                    "id": f"wb:{indicator}:{entry.get('country', {}).get('id', '')}:{entry.get('date', '')}",
+                    "indicator": indicator,
+                    "country": entry.get("country", {}).get("value", ""),
+                    "country_code": entry.get("country", {}).get("id", ""),
+                    "year": entry.get("date", ""),
+                    "value": entry.get("value"),
+                    "source": "worldbank_massive",
+                }
+            )
             total += 1
 
         if records:
@@ -822,7 +871,7 @@ async def _handle_clinicaltrials(session, config: dict, out_dir: Path, state: di
     """Fetch clinical trials from ClinicalTrials.gov API v2."""
 
     condition = config["params"]["condition"]
-    pageSize = config["params"].get("pageSize", 100)
+    page_size = config["params"].get("pageSize", 100)
 
     page = state.get("page", 1)
     total = state.get("total", 0)
@@ -832,7 +881,7 @@ async def _handle_clinicaltrials(session, config: dict, out_dir: Path, state: di
         url = "https://clinicaltrials.gov/api/v2/studies"
         params = {
             "query.cond": condition,
-            "pageSize": pageSize,
+            "pageSize": page_size,
             "page": page,
             "format": "json",
             "fields": "NCTId,BriefTitle,OfficialTitle,BriefSummary,Condition,Status,Phase,StartDate,CompletionDate",
@@ -855,17 +904,19 @@ async def _handle_clinicaltrials(session, config: dict, out_dir: Path, state: di
             design_module = protocol.get("designModule", {})
             conditions_module = protocol.get("conditionsModule", {})
 
-            records.append({
-                "id": id_module.get("nctId", ""),
-                "title": id_module.get("briefTitle", ""),
-                "summary": (status_module.get("briefSummary") or "")[:3000],
-                "conditions": conditions_module.get("conditions", []),
-                "status": status_module.get("overallStatus", ""),
-                "phase": design_module.get("phases", []),
-                "start_date": status_module.get("startDateStruct", {}).get("date", ""),
-                "completion_date": status_module.get("completionDateStruct", {}).get("date", ""),
-                "source": "clinicaltrials_massive",
-            })
+            records.append(
+                {
+                    "id": id_module.get("nctId", ""),
+                    "title": id_module.get("briefTitle", ""),
+                    "summary": (status_module.get("briefSummary") or "")[:3000],
+                    "conditions": conditions_module.get("conditions", []),
+                    "status": status_module.get("overallStatus", ""),
+                    "phase": design_module.get("phases", []),
+                    "start_date": status_module.get("startDateStruct", {}).get("date", ""),
+                    "completion_date": status_module.get("completionDateStruct", {}).get("date", ""),
+                    "source": "clinicaltrials_massive",
+                }
+            )
             total += 1
 
         if records:
@@ -919,13 +970,15 @@ async def _handle_fred(session, config: dict, out_dir: Path, state: dict) -> int
         for obs in observations:
             if obs.get("value") in (".", "NaN", ""):
                 continue
-            records.append({
-                "id": f"fred:{series_id}:{obs.get('date')}",
-                "series_id": series_id,
-                "date": obs.get("date", ""),
-                "value": obs.get("value"),
-                "source": "fred_massive",
-            })
+            records.append(
+                {
+                    "id": f"fred:{series_id}:{obs.get('date')}",
+                    "series_id": series_id,
+                    "date": obs.get("date", ""),
+                    "value": obs.get("value"),
+                    "source": "fred_massive",
+                }
+            )
             total += 1
 
         if records:
@@ -1036,17 +1089,19 @@ async def _handle_europeana(session, config: dict, out_dir: Path, state: dict) -
 
         records = []
         for item in items:
-            records.append({
-                "id": item.get("id", ""),
-                "title": (item.get("title") or [""])[0],
-                "description": (item.get("dcDescription") or [""])[0][:2000],
-                "creator": (item.get("dcCreator") or [""])[0],
-                "year": (item.get("year") or [""])[0],
-                "type": item.get("type", ""),
-                "language": (item.get("language") or [""])[0],
-                "rights": (item.get("rights") or [""])[0],
-                "source": "europeana_massive",
-            })
+            records.append(
+                {
+                    "id": item.get("id", ""),
+                    "title": (item.get("title") or [""])[0],
+                    "description": (item.get("dcDescription") or [""])[0][:2000],
+                    "creator": (item.get("dcCreator") or [""])[0],
+                    "year": (item.get("year") or [""])[0],
+                    "type": item.get("type", ""),
+                    "language": (item.get("language") or [""])[0],
+                    "rights": (item.get("rights") or [""])[0],
+                    "source": "europeana_massive",
+                }
+            )
             total += 1
 
         if records:
@@ -1064,7 +1119,7 @@ async def _handle_europeana(session, config: dict, out_dir: Path, state: dict) -
 
 async def _handle_musicbrainz(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch music metadata from MusicBrainz API.
-    
+
     Dynamically selects endpoint based on query prefix:
       - artist:bach  → /ws/2/artist/
       - work:symphony  → /ws/2/work/
@@ -1157,7 +1212,7 @@ async def _handle_musicbrainz(session, config: dict, out_dir: Path, state: dict)
 
 async def _handle_datagovin(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch Indian government open data from data.gov.in catalog API.
-    
+
     Uses the catalog search endpoint to find datasets by sector:
       https://api.data.gov.in/catalog?api-key={key}&format=json&sector={sector}
     """
@@ -1194,15 +1249,17 @@ async def _handle_datagovin(session, config: dict, out_dir: Path, state: dict) -
 
         records = []
         for entry in records_data:
-            records.append({
-                "id": entry.get("id", entry.get("_id", f"datagovin:{sector}:{total}")),
-                "title": entry.get("title", ""),
-                "description": (entry.get("description") or "")[:2000],
-                "sector": sector,
-                "source": "datagovin_massive",
-                "resource_type": entry.get("type", ""),
-                "organization": entry.get("organization", ""),
-            })
+            records.append(
+                {
+                    "id": entry.get("id", entry.get("_id", f"datagovin:{sector}:{total}")),
+                    "title": entry.get("title", ""),
+                    "description": (entry.get("description") or "")[:2000],
+                    "sector": sector,
+                    "source": "datagovin_massive",
+                    "resource_type": entry.get("type", ""),
+                    "organization": entry.get("organization", ""),
+                }
+            )
             total += 1
 
         if records:
@@ -1253,16 +1310,18 @@ async def _handle_opencorporates(session, config: dict, out_dir: Path, state: di
         records = []
         for company_data in companies_data:
             company = company_data.get("company", {})
-            records.append({
-                "id": company.get("company_number", ""),
-                "name": company.get("name", ""),
-                "jurisdiction": company.get("jurisdiction_code", ""),
-                "incorporation_date": company.get("incorporation_date", ""),
-                "company_type": company.get("company_type", ""),
-                "status": company.get("current_status", ""),
-                "address": (company.get("registered_address", {}) or {}).get("address_line_1", ""),
-                "source": "opencorporates_massive",
-            })
+            records.append(
+                {
+                    "id": company.get("company_number", ""),
+                    "name": company.get("name", ""),
+                    "jurisdiction": company.get("jurisdiction_code", ""),
+                    "incorporation_date": company.get("incorporation_date", ""),
+                    "company_type": company.get("company_type", ""),
+                    "status": company.get("current_status", ""),
+                    "address": (company.get("registered_address", {}) or {}).get("address_line_1", ""),
+                    "source": "opencorporates_massive",
+                }
+            )
             total += 1
 
         if records:
@@ -1311,22 +1370,24 @@ async def _handle_gbif(session, config: dict, out_dir: Path, state: dict) -> int
         records = []
         for occ in results:
             species = occ.get("species", "")
-            records.append({
-                "id": f"gbif:{occ.get('key', '')}",
-                "species": species,
-                "kingdom": occ.get("kingdom", ""),
-                "phylum": occ.get("phylum", ""),
-                "class": occ.get("class", ""),
-                "order": occ.get("order", ""),
-                "family": occ.get("family", ""),
-                "genus": occ.get("genus", ""),
-                "country": occ.get("country", ""),
-                "year": occ.get("year"),
-                "decimal_latitude": occ.get("decimalLatitude"),
-                "decimal_longitude": occ.get("decimalLongitude"),
-                "basis_of_record": occ.get("basisOfRecord", ""),
-                "source": "gbif_massive",
-            })
+            records.append(
+                {
+                    "id": f"gbif:{occ.get('key', '')}",
+                    "species": species,
+                    "kingdom": occ.get("kingdom", ""),
+                    "phylum": occ.get("phylum", ""),
+                    "class": occ.get("class", ""),
+                    "order": occ.get("order", ""),
+                    "family": occ.get("family", ""),
+                    "genus": occ.get("genus", ""),
+                    "country": occ.get("country", ""),
+                    "year": occ.get("year"),
+                    "decimal_latitude": occ.get("decimalLatitude"),
+                    "decimal_longitude": occ.get("decimalLongitude"),
+                    "basis_of_record": occ.get("basisOfRecord", ""),
+                    "source": "gbif_massive",
+                }
+            )
             total += 1
 
         if records:
@@ -1377,7 +1438,7 @@ HANDLERS: dict[str, Callable] = {
 
 # Buffered JSONL writer for batch I/O (reduces filesystem syscalls by ~50x)
 _WRITE_BUFFER: dict[str, list[str]] = {}
-_WRITE_BUFFER_LOCK = asyncio.Lock() if hasattr(asyncio, 'Lock') else None
+_WRITE_BUFFER_LOCK = asyncio.Lock() if hasattr(asyncio, "Lock") else None
 _BUFFER_FLUSH_SIZE = 200  # Flush after N records
 
 
@@ -1421,14 +1482,15 @@ def _flush_all_buffers() -> None:
 # THE ENGINE
 # ════════════════════════════════════════════════════
 
+
 class MassiveWorkerEngine:
     """
     Config-driven engine that runs 1200+ data collection workers — v2.0 100x FASTER.
-    
+
     Usage:
         engine = MassiveWorkerEngine(max_concurrent=500)
         await engine.run_forever()  # runs continuously
-    
+
     Performance features (v2.0):
     - TCP connection pooling: 500+ simultaneous connections via aiohttp TCPConnector
     - DNS caching: parallel DNS resolution with 300s TTL
@@ -1480,14 +1542,15 @@ class MassiveWorkerEngine:
         """Create high-performance HTTP session with connection pooling."""
         if self._http_session is None:
             import aiohttp
+
             # TCP connection pool: 500 total, 100 per host
             connector = aiohttp.TCPConnector(
                 limit=500,
                 limit_per_host=100,
-                ttl_dns_cache=300,       # Cache DNS for 5 min
+                ttl_dns_cache=300,  # Cache DNS for 5 min
                 use_dns_cache=True,
                 enable_cleanup_closed=True,
-                force_close=False,       # Reuse connections
+                force_close=False,  # Reuse connections
                 keepalive_timeout=30,
             )
             self._http_session = aiohttp.ClientSession(
@@ -1588,6 +1651,7 @@ class MassiveWorkerEngine:
         """
         # Group by source type for connection reuse, then shuffle within groups
         from collections import defaultdict as _dd
+
         by_type: dict[str, list[dict]] = _dd(list)
         for c in self.configs:
             by_type[c["type"]].append(c)
@@ -1682,6 +1746,7 @@ class MassiveWorkerEngine:
 
 if __name__ == "__main__":
     import logging
+
     logging.basicConfig(level=logging.INFO)
 
     async def main():
@@ -1695,46 +1760,49 @@ if __name__ == "__main__":
             ws = await websockets.connect("ws://localhost:8765")
 
             async def log(**kw):
-                msg = f"[{kw.get('level','info').upper()}] {kw.get('msg','')}"
+                msg = f"[{kw.get('level', 'info').upper()}] {kw.get('msg', '')}"
                 print(msg)
                 if ws:
                     try:
-                        await ws.send(json.dumps({
-                            "type": "LOG",
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                            "data": kw
-                        }))
+                        await ws.send(
+                            json.dumps({"type": "LOG", "timestamp": datetime.now(timezone.utc).isoformat(), "data": kw})
+                        )
                     except Exception:
                         pass
 
             async def progress(**kw):
-                total = kw.get('total_collected', 0)
-                source = kw.get('source', '')
+                total = kw.get("total_collected", 0)
+                source = kw.get("source", "")
                 print(f"  Records collected: {total:,} (source: {source})")
                 if ws:
                     try:
                         # Map sources to phases
                         phase = "RAG Pipeline Indexing"
-                        if "arxiv" in source: phase = "arXiv Papers"
-                        elif "openalex" in source: phase = "OpenAlex Research"
-                        elif "huggingface" in source: phase = "HuggingFace Datasets"
+                        if "arxiv" in source:
+                            phase = "arXiv Papers"
+                        elif "openalex" in source:
+                            phase = "OpenAlex Research"
+                        elif "huggingface" in source:
+                            phase = "HuggingFace Datasets"
 
-                        await ws.send(json.dumps({
-                            "type": "PROGRESS",
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                            "data": {
-                                "phase": phase,
-                                "label": source,
-                                "count": total
-                            }
-                        }))
+                        await ws.send(
+                            json.dumps(
+                                {
+                                    "type": "PROGRESS",
+                                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                                    "data": {"phase": phase, "label": source, "count": total},
+                                }
+                            )
+                        )
                     except Exception:
                         pass
         except Exception as e:
             print(f"Failed to connect to dashboard WS: {e}")
             ws = None
+
             async def log(**kw):
-                print(f"[{kw.get('level','info').upper()}] {kw.get('msg','')}")
+                print(f"[{kw.get('level', 'info').upper()}] {kw.get('msg', '')}")
+
             async def progress(**kw):
                 print(f"  Records collected: {kw.get('total_collected', 0):,} (source: {kw.get('source')})")
 

@@ -55,9 +55,11 @@ class MetaLearner:
     def add_reward(self, record: RewardRecord) -> None:
         """Record a reward from a completed SEAL cycle."""
         self.reward_history.append(record)
-        logger.debug(f"[SEAL-META] Reward recorded: cycle={record.cycle}, "
-                     f"delta={record.reward_delta:+.4f}, "
-                     f"{record.improvement_direction}")
+        logger.debug(
+            f"[SEAL-META] Reward recorded: cycle={record.cycle}, "
+            f"delta={record.reward_delta:+.4f}, "
+            f"{record.improvement_direction}"
+        )
 
     def should_train(self) -> bool:
         """Check if there are enough reward records to run meta-learning.
@@ -96,10 +98,12 @@ class MetaLearner:
 
             # The training example: given this state, generate this action
             action_json = record.action.to_json()
-            reward_info = json.dumps({
-                "reward_delta": record.reward_delta,
-                "improvement_direction": record.improvement_direction,
-            })
+            reward_info = json.dumps(
+                {
+                    "reward_delta": record.reward_delta,
+                    "improvement_direction": record.improvement_direction,
+                }
+            )
 
             example = {
                 "instruction": f"State: {state_context}\nGoal: Generate the best curriculum action for this state",
@@ -136,8 +140,10 @@ class MetaLearner:
             }
             examples.append(example)
 
-        logger.info(f"[SEAL-META] Built {len(examples)} meta-training examples "
-                    f"({sum(1 for r in self.reward_history if r.is_improvement())} positive cycles)")
+        logger.info(
+            f"[SEAL-META] Built {len(examples)} meta-training examples "
+            f"({sum(1 for r in self.reward_history if r.is_improvement())} positive cycles)"
+        )
         return examples
 
     def train(self) -> dict[str, Any]:
@@ -147,8 +153,10 @@ class MetaLearner:
         (state → action) pairs so it learns to generate better instructions.
         """
         if not self.should_train():
-            logger.info(f"[SEAL-META] Not enough data to train yet "
-                        f"({len(self.reward_history)}/{self.config.meta_min_rewards_for_training} min)")
+            logger.info(
+                f"[SEAL-META] Not enough data to train yet "
+                f"({len(self.reward_history)}/{self.config.meta_min_rewards_for_training} min)"
+            )
             return {"status": "skipped", "reason": "insufficient_data"}
 
         examples = self.build_training_data()
@@ -159,8 +167,7 @@ class MetaLearner:
 
         try:
             metrics = self._run_meta_sft(examples)
-            logger.info(f"[SEAL-META] Training complete: "
-                        f"loss={metrics.get('train_loss', 'N/A')}")
+            logger.info(f"[SEAL-META] Training complete: loss={metrics.get('train_loss', 'N/A')}")
             return metrics
 
         except ImportError as e:
@@ -221,6 +228,7 @@ class MetaLearner:
 # ═══════════════════════════════════════════════════════════════
 # Outer Loop Reward Calculator
 # ═══════════════════════════════════════════════════════════════
+
 
 class OuterLoopReward:
     """Computes the outer loop reward signal.
@@ -301,9 +309,11 @@ class OuterLoopReward:
                 inner_eval_loss=inner_metrics.get("eval_loss") if inner_metrics else None,
             )
 
-            logger.info(f"[SEAL] Reward: Δ={record.reward_delta:+.4f} "
-                        f"({rate_before*100:.1f}% → {rate_after*100:.1f}%) "
-                        f"— {record.improvement_direction}")
+            logger.info(
+                f"[SEAL] Reward: Δ={record.reward_delta:+.4f} "
+                f"({rate_before * 100:.1f}% → {rate_after * 100:.1f}%) "
+                f"— {record.improvement_direction}"
+            )
             return record
 
         except Exception as e:

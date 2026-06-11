@@ -29,6 +29,7 @@ def make_mock_agent(
     delay: float = 0.0,
 ) -> SubAgent:
     """Create a SubAgent with a mock call_llm_fn that returns immediately."""
+
     def mock_llm(messages, tools):
         if delay:
             time.sleep(delay)
@@ -45,6 +46,7 @@ def make_mock_agent(
 
 def make_failing_agent(name: str, role: str = "coding") -> SubAgent:
     """Create a SubAgent whose mock LLM fails."""
+
     def mock_llm(messages, tools):
         raise RuntimeError(f"LLM failure for {name}")
 
@@ -142,11 +144,13 @@ class TestSwarmRunAll:
         swarm.add_agent(make_mock_agent("researcher", return_output="Research"))
         swarm.add_agent(make_mock_agent("reviewer", return_output="Review"))
 
-        results = swarm.run_all({
-            "coder": "Write code",
-            "researcher": "Do research",
-            "reviewer": "Review code",
-        })
+        results = swarm.run_all(
+            {
+                "coder": "Write code",
+                "researcher": "Do research",
+                "reviewer": "Review code",
+            }
+        )
         assert len(results) == 3
         assert results["coder"].output == "Code"
         assert results["researcher"].output == "Research"
@@ -193,11 +197,13 @@ class TestSwarmRunAll:
         swarm.add_agent(make_mock_agent("agent_c", delay=0.15))
 
         start = time.time()
-        results = swarm.run_all({
-            "agent_a": "Task A",
-            "agent_b": "Task B",
-            "agent_c": "Task C",
-        })
+        results = swarm.run_all(
+            {
+                "agent_a": "Task A",
+                "agent_b": "Task B",
+                "agent_c": "Task C",
+            }
+        )
         elapsed = time.time() - start
 
         # With max_concurrent=1, should take ~0.45s (3 sequential)
@@ -319,11 +325,13 @@ class TestSwarmRunSequential:
         swarm.add_agent(make_tracking_agent("agent_b"))
         swarm.add_agent(make_tracking_agent("agent_c"))
 
-        swarm.run_sequential([
-            ("agent_a", "Task A"),
-            ("agent_b", "Task B"),
-            ("agent_c", "Task C"),
-        ])
+        swarm.run_sequential(
+            [
+                ("agent_a", "Task A"),
+                ("agent_b", "Task B"),
+                ("agent_c", "Task C"),
+            ]
+        )
 
         assert execution_order == ["agent_a", "agent_b", "agent_c"]
 
@@ -406,7 +414,11 @@ class TestSwarmRunSequential:
         # Patch run() directly to return a failed result instead of raising
         agent_a = make_mock_agent("agent_a")
         agent_a.run = lambda task, ctx=None: SubAgentResult(  # type: ignore[method-assign]
-            agent_name="agent_a", role="", success=False, output="", error="Failed",
+            agent_name="agent_a",
+            role="",
+            success=False,
+            output="",
+            error="Failed",
         )
         swarm.add_agent(agent_a)
         swarm.add_agent(make_mock_agent("agent_b", return_output="B result"))
@@ -444,7 +456,11 @@ class TestSwarmOutputAndSummary:
         swarm.add_agent(make_mock_agent("coder", return_output="Code"))
         failing = make_mock_agent("researcher")
         failing.run = lambda task, ctx=None: SubAgentResult(  # type: ignore[method-assign]
-            agent_name="researcher", role="", success=False, output="", error="Failed",
+            agent_name="researcher",
+            role="",
+            success=False,
+            output="",
+            error="Failed",
         )
         swarm.add_agent(failing)
 
@@ -474,7 +490,11 @@ class TestSwarmOutputAndSummary:
         swarm = AgentSwarm()
         agent_a = make_mock_agent("coder")
         agent_a.run = lambda task, ctx=None: SubAgentResult(  # type: ignore[method-assign]
-            agent_name="coder", role="", success=False, output="", error="Something broke",
+            agent_name="coder",
+            role="",
+            success=False,
+            output="",
+            error="Something broke",
         )
         swarm.add_agent(agent_a)
         swarm.run_all({"coder": "Task"})

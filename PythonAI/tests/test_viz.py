@@ -237,6 +237,7 @@ class TestLoadMetricsFromJson:
 _MATPLOTLIB_AVAILABLE: bool = False
 try:
     import matplotlib  # noqa: F401
+
     _MATPLOTLIB_AVAILABLE = True
 except ImportError:
     pass

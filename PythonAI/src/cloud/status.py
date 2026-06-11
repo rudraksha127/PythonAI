@@ -43,6 +43,7 @@ def get_cloud_status() -> dict:
                 # Lightweight health check — just verify the URL is reachable
                 # by making a simple API request that doesn't require auth
                 import requests
+
                 resp = requests.get(f"{cfg.supabase_url}/rest/v1/", timeout=5)
                 status["services"]["supabase"]["connected"] = resp.status_code < 500
             else:
@@ -56,6 +57,7 @@ def get_cloud_status() -> dict:
         status["services"]["stripe"]["configured"] = True
         try:
             import stripe
+
             stripe.api_key = cfg.stripe_secret_key
             stripe.Balance.retrieve()
             status["services"]["stripe"]["connected"] = True
@@ -84,6 +86,7 @@ def get_stripe_status() -> dict:
 
     try:
         import stripe
+
         stripe.api_key = cfg.stripe_secret_key
 
         # Check balance (confirms API key works)
@@ -94,20 +97,24 @@ def get_stripe_status() -> dict:
         for product in stripe.Product.list(active=True, limit=50, expand=["data.default_price"]):
             prices = []
             for price in stripe.Price.list(product=product.id, active=True, limit=5):
-                prices.append({
-                    "id": price.id,
-                    "amount": (price.unit_amount or 0) / 100,
-                    "currency": price.currency.upper(),
-                    "interval": price.recurring.get("interval", "one_time") if price.recurring else "one_time",
-                    "lookup_key": price.lookup_key,
-                })
-            products.append({
-                "id": product.id,
-                "name": product.name,
-                "description": product.description,
-                "prices": prices,
-                "metadata": product.metadata,
-            })
+                prices.append(
+                    {
+                        "id": price.id,
+                        "amount": (price.unit_amount or 0) / 100,
+                        "currency": price.currency.upper(),
+                        "interval": price.recurring.get("interval", "one_time") if price.recurring else "one_time",
+                        "lookup_key": price.lookup_key,
+                    }
+                )
+            products.append(
+                {
+                    "id": product.id,
+                    "name": product.name,
+                    "description": product.description,
+                    "prices": prices,
+                    "metadata": product.metadata,
+                }
+            )
 
         result["connected"] = True
         result["products"] = products

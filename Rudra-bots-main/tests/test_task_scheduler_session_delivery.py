@@ -1,4 +1,5 @@
 """Regression tests for task-result delivery into chat sessions (issue #326)."""
+
 import asyncio
 import sys
 import types as _types
@@ -29,7 +30,9 @@ from src.task_scheduler import TaskScheduler
 # Skip in that case — the test passes correctly in isolation or when collected
 # before the stubbing files.
 if type(Base).__name__ == "MagicMock":
-    pytest.skip("core.database is stubbed — run this file in isolation", allow_module_level=True)
+    pytest.skip(
+        "core.database is stubbed — run this file in isolation", allow_module_level=True
+    )
 
 
 def _make_db():

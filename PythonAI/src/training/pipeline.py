@@ -141,13 +141,15 @@ def build_training_examples(chunks: list[dict[str, Any]], max_examples: int) -> 
             if fingerprint in seen:
                 continue
             seen.add(fingerprint)
-            examples.append({
-                "instruction": instruction,
-                "output": output,
-                "source": source,
-                "category": category,
-                "version": version,
-            })
+            examples.append(
+                {
+                    "instruction": instruction,
+                    "output": output,
+                    "source": source,
+                    "category": category,
+                    "version": version,
+                }
+            )
 
             if len(examples) >= max_examples:
                 break
@@ -171,14 +173,22 @@ def launch_training(
     print("[4/4] Launching fine-tuning...")
     command = [
         sys.executable,
-        "-m", "src.training.trainer",
-        "--base-model", model_name,
-        "--source-files", str(TRAINING_DATA),
-        "--max-examples", str(max_examples),
-        "--max-steps", str(max_steps),
-        "--batch-size", str(batch_size),
-        "--grad-accum", str(grad_accum),
-        "--output-dir", str(ROOT / "checkpoints" / "full_pipeline_model"),
+        "-m",
+        "src.training.trainer",
+        "--base-model",
+        model_name,
+        "--source-files",
+        str(TRAINING_DATA),
+        "--max-examples",
+        str(max_examples),
+        "--max-steps",
+        str(max_steps),
+        "--batch-size",
+        str(batch_size),
+        "--grad-accum",
+        str(grad_accum),
+        "--output-dir",
+        str(ROOT / "checkpoints" / "full_pipeline_model"),
     ]
 
     if dataset_version:
@@ -197,12 +207,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--grad-accum", type=int, default=2)
     parser.add_argument("--refresh-collection", action="store_true")
-    parser.add_argument("--skip-collection", action="store_true",
-                        help="Skip data collection step")
-    parser.add_argument("--skip-generation", action="store_true",
-                        help="Skip training pair generation step")
-    parser.add_argument("--dataset-version", default="",
-                        help="Label to tag output checkpoints")
+    parser.add_argument("--skip-collection", action="store_true", help="Skip data collection step")
+    parser.add_argument("--skip-generation", action="store_true", help="Skip training pair generation step")
+    parser.add_argument("--dataset-version", default="", help="Label to tag output checkpoints")
     return parser.parse_args()
 
 

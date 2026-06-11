@@ -12,7 +12,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 
-_USER_TZ_OFFSET_MIN: ContextVar[Optional[int]] = ContextVar("user_tz_offset_min", default=None)
+_USER_TZ_OFFSET_MIN: ContextVar[Optional[int]] = ContextVar(
+    "user_tz_offset_min", default=None
+)
 _USER_TZ_NAME: ContextVar[Optional[str]] = ContextVar("user_tz_name", default=None)
 
 
@@ -73,6 +75,7 @@ def user_timezone() -> timezone:
         if name:
             try:
                 from zoneinfo import ZoneInfo
+
                 return ZoneInfo(name)
             except Exception:
                 pass

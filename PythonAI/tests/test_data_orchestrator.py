@@ -52,8 +52,7 @@ class TestEnums:
 
     def test_all_phases_cover_full_pipeline(self):
         """All expected phase names should be in Phase enum."""
-        expected = {"phase1", "phase2", "phase3", "phase4", "phase5",
-                     "hf", "arxiv", "openalex", "audio", "synthetic"}
+        expected = {"phase1", "phase2", "phase3", "phase4", "phase5", "hf", "arxiv", "openalex", "audio", "synthetic"}
         actual = {p.value for p in Phase}
         assert actual == expected
 
@@ -74,10 +73,14 @@ class TestDataclasses:
     def test_collection_task_full(self):
         """CollectionTask with all fields."""
         task = CollectionTask(
-            name="full", source_type="arxiv",
-            status=TaskStatus.RUNNING, progress=0.5,
-            records_collected=100, error_message="",
-            started_at=100.0, completed_at=200.0,
+            name="full",
+            source_type="arxiv",
+            status=TaskStatus.RUNNING,
+            progress=0.5,
+            records_collected=100,
+            error_message="",
+            started_at=100.0,
+            completed_at=200.0,
         )
         assert task.progress == 0.5
         assert task.records_collected == 100
@@ -119,10 +122,14 @@ class TestDataclasses:
     def test_data_source_status_full(self):
         """DataSourceStatus with all fields."""
         ds = DataSourceStatus(
-            name="full", source_type="arxiv",
-            status="complete", size_bytes=1000,
-            num_items=50, started_at="2024-01-01",
-            completed_at="2024-01-02", error=None,
+            name="full",
+            source_type="arxiv",
+            status="complete",
+            size_bytes=1000,
+            num_items=50,
+            started_at="2024-01-01",
+            completed_at="2024-01-02",
+            error=None,
         )
         assert ds.num_items == 50
         assert ds.size_bytes == 1000
@@ -169,7 +176,7 @@ class TestOrchestratorInit:
         with open(config_path, "w") as f:
             json.dump({"base_output_dir": str(custom_dir)}, f)
 
-        orch = AntiGravityOrchestrator(config_path=config_path)
+        AntiGravityOrchestrator(config_path=config_path)
         assert custom_dir.exists()
         assert (custom_dir / ".status").exists()
 

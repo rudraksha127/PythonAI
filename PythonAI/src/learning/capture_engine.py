@@ -41,6 +41,7 @@ from cryptography.fernet import Fernet
 
 class SignalType(str, Enum):
     """Types of developer feedback signals."""
+
     ACCEPT = "accept"
     REJECT = "reject"
     EDIT = "edit"
@@ -53,6 +54,7 @@ class SignalType(str, Enum):
 @dataclass
 class TrainingSignal:
     """A single training signal from developer interaction."""
+
     signal_type: SignalType
     timestamp: float
     session_id: str
@@ -155,7 +157,7 @@ def _compute_edit_distance(original: str, final: str) -> float:
     # Simple Levenshtein-based normalized distance
     len_orig = len(original)
     len_final = len(final)
-    max_len = max(len_orig, len_final)
+    max(len_orig, len_final)
 
     # Use simple diff for efficiency
     orig_lines = original.strip().splitlines()
@@ -178,7 +180,7 @@ def _compute_edit_distance(original: str, final: str) -> float:
 class CaptureEngine:
     """
     Local encrypted signal capture and storage.
-    
+
     Design principles:
     - Privacy-first: all data stored locally, encrypted at rest
     - Low latency: signals captured asynchronously
@@ -211,6 +213,7 @@ class CaptureEngine:
             key = hashlib.sha256(machine_id.encode()).digest()
             # Use first 32 bytes as Fernet key (base64 encoded)
             import base64
+
             self.fernet = Fernet(base64.urlsafe_b64encode(key[:32]))
 
         self._init_db()
@@ -219,6 +222,7 @@ class CaptureEngine:
         """Get a unique but anonymized machine identifier."""
         try:
             import platform
+
             return platform.node() + platform.machine()
         except Exception:
             return str(uuid.getnode())
@@ -484,7 +488,8 @@ class CaptureEngine:
         cursor = conn.cursor()
 
         data = signal.to_dict()
-        cursor.execute("""
+        cursor.execute(
+            """
         INSERT INTO signals (
             signal_id, signal_type, timestamp, session_id, file_path, line_number,
             language, framework, project_type, suggestion, suggestion_metadata,
@@ -492,17 +497,33 @@ class CaptureEngine:
             test_passed, lint_passed, compilation_passed, git_sha, branch_name,
             pr_number, developer_id
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            data["signal_id"], data["signal_type"], data["timestamp"],
-            data["session_id"], data["file_path"], data["line_number"],
-            data["language"], data["framework"], data["project_type"],
-            data["suggestion"], data["suggestion_metadata"],
-            data["context_before"], data["context_after"], data["full_context"],
-            data["final_code"], data["edit_distance"],
-            data["test_passed"], data["lint_passed"], data["compilation_passed"],
-            data["git_sha"], data["branch_name"], data["pr_number"],
-            data["developer_id"],
-        ))
+        """,
+            (
+                data["signal_id"],
+                data["signal_type"],
+                data["timestamp"],
+                data["session_id"],
+                data["file_path"],
+                data["line_number"],
+                data["language"],
+                data["framework"],
+                data["project_type"],
+                data["suggestion"],
+                data["suggestion_metadata"],
+                data["context_before"],
+                data["context_after"],
+                data["full_context"],
+                data["final_code"],
+                data["edit_distance"],
+                data["test_passed"],
+                data["lint_passed"],
+                data["compilation_passed"],
+                data["git_sha"],
+                data["branch_name"],
+                data["pr_number"],
+                data["developer_id"],
+            ),
+        )
 
         conn.commit()
         conn.close()
@@ -510,36 +531,45 @@ class CaptureEngine:
     def _update_session_accept(self):
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
         INSERT INTO sessions (session_id, start_time, project_name)
         VALUES (?, ?, ?)
         ON CONFLICT(session_id) DO UPDATE SET
             total_accepts = total_accepts + 1
-        """, (self.session_id, time.time(), self.project_name))
+        """,
+            (self.session_id, time.time(), self.project_name),
+        )
         conn.commit()
         conn.close()
 
     def _update_session_reject(self):
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
         INSERT INTO sessions (session_id, start_time, project_name)
         VALUES (?, ?, ?)
         ON CONFLICT(session_id) DO UPDATE SET
             total_rejects = total_rejects + 1
-        """, (self.session_id, time.time(), self.project_name))
+        """,
+            (self.session_id, time.time(), self.project_name),
+        )
         conn.commit()
         conn.close()
 
     def _update_session_edit(self):
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
         INSERT INTO sessions (session_id, start_time, project_name)
         VALUES (?, ?, ?)
         ON CONFLICT(session_id) DO UPDATE SET
             total_edits = total_edits + 1
-        """, (self.session_id, time.time(), self.project_name))
+        """,
+            (self.session_id, time.time(), self.project_name),
+        )
         conn.commit()
         conn.close()
 
@@ -550,32 +580,41 @@ class CaptureEngine:
         cursor = conn.cursor()
 
         if event_type == "accept":
-            cursor.execute("""
+            cursor.execute(
+                """
             INSERT INTO acceptance_metrics (date, total_accepts, total_suggestions, acceptance_rate)
             VALUES (?, 1, 1, 1.0)
             ON CONFLICT(date) DO UPDATE SET
                 total_accepts = total_accepts + 1,
                 total_suggestions = total_suggestions + 1,
                 acceptance_rate = CAST(total_accepts AS REAL) / total_suggestions
-            """, (today,))
+            """,
+                (today,),
+            )
         elif event_type == "reject":
-            cursor.execute("""
+            cursor.execute(
+                """
             INSERT INTO acceptance_metrics (date, total_rejects, total_suggestions, acceptance_rate)
             VALUES (?, 1, 1, 0.0)
             ON CONFLICT(date) DO UPDATE SET
                 total_rejects = total_rejects + 1,
                 total_suggestions = total_suggestions + 1,
                 acceptance_rate = CAST(total_accepts AS REAL) / total_suggestions
-            """, (today,))
+            """,
+                (today,),
+            )
         elif event_type == "edit":
-            cursor.execute("""
+            cursor.execute(
+                """
             INSERT INTO acceptance_metrics (date, total_accepts, total_suggestions, edit_rate)
             VALUES (?, 1, 1, 0.0)
             ON CONFLICT(date) DO UPDATE SET
                 total_accepts = total_accepts + 1,
                 total_suggestions = total_suggestions + 1,
                 edit_rate = CAST(total_accepts AS REAL) / total_suggestions
-            """, (today,))
+            """,
+                (today,),
+            )
 
         conn.commit()
         conn.close()
@@ -600,20 +639,28 @@ class CaptureEngine:
         """Record a training run with before/after acceptance rate."""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
         INSERT INTO training_runs (
             run_id, timestamp, model_name, signals_used,
             train_loss, eval_loss,
             acceptance_rate_before, acceptance_rate_after,
             adapter_path, metrics
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            run_id, time.time(), model_name, signals_used,
-            train_loss, eval_loss,
-            acceptance_rate_before, acceptance_rate_after,
-            adapter_path,
-            json.dumps(metrics) if metrics else None,
-        ))
+        """,
+            (
+                run_id,
+                time.time(),
+                model_name,
+                signals_used,
+                train_loss,
+                eval_loss,
+                acceptance_rate_before,
+                acceptance_rate_after,
+                adapter_path,
+                json.dumps(metrics) if metrics else None,
+            ),
+        )
         conn.commit()
         conn.close()
 
@@ -624,7 +671,8 @@ class CaptureEngine:
         """Get recent training runs with acceptance rate deltas."""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
         SELECT run_id, timestamp, model_name, signals_used,
                train_loss, eval_loss,
                acceptance_rate_before, acceptance_rate_after,
@@ -632,7 +680,9 @@ class CaptureEngine:
         FROM training_runs
         ORDER BY timestamp DESC
         LIMIT ?
-        """, (limit,))
+        """,
+            (limit,),
+        )
         rows = cursor.fetchall()
         conn.close()
 
@@ -640,18 +690,20 @@ class CaptureEngine:
         for row in rows:
             rate_before = row[6] or 0.0
             rate_after = row[7] or 0.0
-            results.append({
-                "run_id": row[0],
-                "timestamp": row[1],
-                "model_name": row[2],
-                "signals_used": row[3],
-                "train_loss": row[4],
-                "eval_loss": row[5],
-                "acceptance_rate_before": rate_before,
-                "acceptance_rate_after": rate_after,
-                "acceptance_delta": rate_after - rate_before,
-                "adapter_path": row[8],
-            })
+            results.append(
+                {
+                    "run_id": row[0],
+                    "timestamp": row[1],
+                    "model_name": row[2],
+                    "signals_used": row[3],
+                    "train_loss": row[4],
+                    "eval_loss": row[5],
+                    "acceptance_rate_before": rate_before,
+                    "acceptance_rate_after": rate_after,
+                    "acceptance_delta": rate_after - rate_before,
+                    "adapter_path": row[8],
+                }
+            )
         return results
 
     # ─── Query Methods ───────────────────────────────────────────────────
@@ -695,13 +747,41 @@ class CaptureEngine:
         rows = cursor.fetchall()
         conn.close()
 
-        return [TrainingSignal.from_dict(dict(zip([
-            "signal_id", "signal_type", "timestamp", "session_id", "file_path",
-            "line_number", "language", "framework", "project_type", "suggestion",
-            "suggestion_metadata", "context_before", "context_after", "full_context",
-            "final_code", "edit_distance", "test_passed", "lint_passed",
-            "compilation_passed", "git_sha", "branch_name", "pr_number", "developer_id"
-        ], row))) for row in rows]
+        return [
+            TrainingSignal.from_dict(
+                dict(
+                    zip(
+                        [
+                            "signal_id",
+                            "signal_type",
+                            "timestamp",
+                            "session_id",
+                            "file_path",
+                            "line_number",
+                            "language",
+                            "framework",
+                            "project_type",
+                            "suggestion",
+                            "suggestion_metadata",
+                            "context_before",
+                            "context_after",
+                            "full_context",
+                            "final_code",
+                            "edit_distance",
+                            "test_passed",
+                            "lint_passed",
+                            "compilation_passed",
+                            "git_sha",
+                            "branch_name",
+                            "pr_number",
+                            "developer_id",
+                        ],
+                        row,
+                    )
+                )
+            )
+            for row in rows
+        ]
 
     def get_training_data(
         self,
@@ -712,7 +792,7 @@ class CaptureEngine:
     ) -> list[dict[str, Any]]:
         """
         Extract training data from signals.
-        
+
         Returns list of dicts suitable for SFT training:
         {
             "instruction": "<context + task>",
@@ -736,7 +816,7 @@ class CaptureEngine:
 
         placeholders = ",".join("?" * len(signal_types))
         query = f"""
-        SELECT * FROM signals 
+        SELECT * FROM signals
         WHERE signal_type IN ({placeholders})
         ORDER BY timestamp DESC
         """
@@ -748,11 +828,29 @@ class CaptureEngine:
         training_data = []
         for row in rows:
             cols = [
-                "signal_id", "signal_type", "timestamp", "session_id", "file_path",
-                "line_number", "language", "framework", "project_type", "suggestion",
-                "suggestion_metadata", "context_before", "context_after", "full_context",
-                "final_code", "edit_distance", "test_passed", "lint_passed",
-                "compilation_passed", "git_sha", "branch_name", "pr_number", "developer_id"
+                "signal_id",
+                "signal_type",
+                "timestamp",
+                "session_id",
+                "file_path",
+                "line_number",
+                "language",
+                "framework",
+                "project_type",
+                "suggestion",
+                "suggestion_metadata",
+                "context_before",
+                "context_after",
+                "full_context",
+                "final_code",
+                "edit_distance",
+                "test_passed",
+                "lint_passed",
+                "compilation_passed",
+                "git_sha",
+                "branch_name",
+                "pr_number",
+                "developer_id",
             ]
             data = dict(zip(cols, row))
 
@@ -782,17 +880,19 @@ class CaptureEngine:
                 f"Context:\n{context[:2000]}"
             )
 
-            training_data.append({
-                "instruction": instruction,
-                "input": context[:1000],
-                "output": output,
-                "metadata": {
-                    "signal_id": data["signal_id"],
-                    "signal_type": data["signal_type"],
-                    "language": data["language"],
-                    "quality_score": quality,
+            training_data.append(
+                {
+                    "instruction": instruction,
+                    "input": context[:1000],
+                    "output": output,
+                    "metadata": {
+                        "signal_id": data["signal_id"],
+                        "signal_type": data["signal_type"],
+                        "language": data["language"],
+                        "quality_score": quality,
+                    },
                 }
-            })
+            )
 
         return training_data
 
@@ -807,8 +907,9 @@ class CaptureEngine:
 
         cutoff = time.time() - (days * 86400)
 
-        cursor.execute("""
-        SELECT 
+        cursor.execute(
+            """
+        SELECT
             DATE(timestamp, 'unixepoch') as date,
             SUM(CASE WHEN signal_type = 'accept' OR signal_type = 'pr_merge' THEN 1 ELSE 0 END) as accepts,
             SUM(CASE WHEN signal_type = 'reject' THEN 1 ELSE 0 END) as rejects,
@@ -818,7 +919,9 @@ class CaptureEngine:
         WHERE timestamp >= ?
         GROUP BY DATE(timestamp, 'unixepoch')
         ORDER BY date
-        """, (cutoff,))
+        """,
+            (cutoff,),
+        )
 
         rows = cursor.fetchall()
         conn.close()

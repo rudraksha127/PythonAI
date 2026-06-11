@@ -15,6 +15,7 @@ from typing import Any
 # LRU RESULT CACHE
 # ═══════════════════════════════════════
 
+
 class LRUCache:
     """Thread-safe LRU cache for task results."""
 
@@ -62,6 +63,7 @@ class LRUCache:
 # PRIORITY QUEUE
 # ═══════════════════════════════════════
 
+
 @dataclass(order=True)
 class PrioritizedTask:
     task: Any = field(compare=False)
@@ -79,11 +81,13 @@ class PriorityQueue:
     def push(self, task: Any, priority: int = 5) -> None:
         with self._lock:
             import heapq
+
             heapq.heappush(self._items, PrioritizedTask(priority=priority, task=task))
 
     def pop(self) -> Any | None:
         with self._lock:
             import heapq
+
             if not self._items:
                 return None
             return heapq.heappop(self._items).task
@@ -106,6 +110,7 @@ class PriorityQueue:
 # ═══════════════════════════════════════
 # QUALITY SCORING
 # ═══════════════════════════════════════
+
 
 def score_output_quality(output: str) -> dict[str, Any]:
     """Score the quality of a generated output on multiple dimensions."""
@@ -168,6 +173,7 @@ def score_output_quality(output: str) -> dict[str, Any]:
 # COST ESTIMATION
 # ═══════════════════════════════════════
 
+
 def estimate_api_cost(text: str, provider: str = "groq") -> dict[str, Any]:
     """Estimate API cost for generating/processing text.
 
@@ -175,7 +181,7 @@ def estimate_api_cost(text: str, provider: str = "groq") -> dict[str, Any]:
     Cost per million tokens (input/output):
     """
     # Approximate costs per 1M tokens (input / output)
-    PROVIDER_COSTS: dict[str, tuple[float, float]] = {
+    provider_costs: dict[str, tuple[float, float]] = {
         "groq": (0.15, 0.60),
         "cerebras": (0.10, 0.40),
         "sambanova": (0.10, 0.40),
@@ -190,7 +196,7 @@ def estimate_api_cost(text: str, provider: str = "groq") -> dict[str, Any]:
 
     # Rough estimate: 4 chars ≈ 1 token
     est_tokens = max(1, len(text) // 4)
-    cost_per_million = PROVIDER_COSTS.get(provider, (0.20, 0.80))
+    cost_per_million = provider_costs.get(provider, (0.20, 0.80))
 
     return {
         "estimated_tokens": est_tokens,
@@ -202,6 +208,7 @@ def estimate_api_cost(text: str, provider: str = "groq") -> dict[str, Any]:
 
 
 # CORE DATA TYPES
+
 
 @dataclass(frozen=True)
 class GenerationTask:
@@ -233,6 +240,7 @@ class RetryStrategy(Enum):
 
 
 # TASK DECOMPOSER
+
 
 class TaskDecomposer:
     """Split a chunk into a dependency-aware task graph."""
@@ -272,6 +280,7 @@ class TaskDecomposer:
 
 # MCP TOOL SYSTEM
 
+
 @dataclass
 class MCPTool:
     name: str
@@ -309,6 +318,7 @@ class MCPRegistry:
 
 # SWARM MONITOR / STATS
 
+
 @dataclass
 class SwarmStats:
     total_tasks: int = 0
@@ -334,7 +344,9 @@ class SwarmStats:
         if self.by_type:
             lines.append("  By Type:")
             for tt, info in sorted(self.by_type.items()):
-                lines.append(f"    {tt:15s}: {info['count']:3d} tasks, {info['failed']:2d} failed, avg {info['avg_duration']:.2f}s")
+                lines.append(
+                    f"    {tt:15s}: {info['count']:3d} tasks, {info['failed']:2d} failed, avg {info['avg_duration']:.2f}s"
+                )
         if self.worker_usage:
             lines.append("  Workers:")
             for w, c in sorted(self.worker_usage.items()):
@@ -381,14 +393,19 @@ class SwarmMonitor:
             info["avg_duration"] = sum(durs) / len(durs) if durs else 0.0
 
         return SwarmStats(
-            total_tasks=total, completed=completed, failed=failed,
-            total_retries=retries, total_duration=elapsed,
+            total_tasks=total,
+            completed=completed,
+            failed=failed,
+            total_retries=retries,
+            total_duration=elapsed,
             avg_duration=sum(durations) / len(durations) if durations else 0.0,
-            by_type=by_type, worker_usage=worker_usage,
+            by_type=by_type,
+            worker_usage=worker_usage,
         )
 
 
 # AGENT SWARM (ENHANCED)
+
 
 class AgentSwarm:
     """Execute independent tasks in parallel while honoring dependencies.
@@ -412,6 +429,7 @@ class AgentSwarm:
         if not mcp_registry:
             try:
                 from src.tools import ALL_TOOLS
+
                 for tool in ALL_TOOLS:
                     self.mcp.register(tool)
             except ImportError:
@@ -430,7 +448,9 @@ class AgentSwarm:
         else:
             return self.retry_delay * (2 ** (attempt - 1))
 
-    def _run_with_retry(self, task: GenerationTask, worker: Callable[[GenerationTask], dict[str, Any]], worker_name: str = "") -> TaskResult:
+    def _run_with_retry(
+        self, task: GenerationTask, worker: Callable[[GenerationTask], dict[str, Any]], worker_name: str = ""
+    ) -> TaskResult:
         max_attempts = max(1, task.max_retries + 1)
         last_error = ""
         start = time.time()
@@ -444,9 +464,13 @@ class AgentSwarm:
                     result = worker(task)
 
                 return TaskResult(
-                    task_id=task.task_id, task_type=task.task_type,
-                    success=True, data=result, attempts=attempt,
-                    duration=time.time() - start, worker_name=worker_name,
+                    task_id=task.task_id,
+                    task_type=task.task_type,
+                    success=True,
+                    data=result,
+                    attempts=attempt,
+                    duration=time.time() - start,
+                    worker_name=worker_name,
                 )
 
             except Exception as exc:
@@ -455,13 +479,22 @@ class AgentSwarm:
                     time.sleep(self._compute_delay(attempt))
 
         return TaskResult(
-            task_id=task.task_id, task_type=task.task_type,
-            success=False, data={}, error=last_error,
-            attempts=max_attempts, duration=time.time() - start,
+            task_id=task.task_id,
+            task_type=task.task_type,
+            success=False,
+            data={},
+            error=last_error,
+            attempts=max_attempts,
+            duration=time.time() - start,
             worker_name=worker_name,
         )
 
-    def execute(self, tasks: list[GenerationTask], worker: Callable[[GenerationTask], dict[str, Any]], worker_name: str = "default") -> dict[str, dict[str, Any]]:
+    def execute(
+        self,
+        tasks: list[GenerationTask],
+        worker: Callable[[GenerationTask], dict[str, Any]],
+        worker_name: str = "default",
+    ) -> dict[str, dict[str, Any]]:
         self.monitor.start()
         pending = {task.task_id: task for task in tasks}
         completed: set[str] = set()
@@ -482,14 +515,25 @@ class AgentSwarm:
                     if task_result.success:
                         results[task.task_id] = task_result.data
                     else:
-                        results[task.task_id] = {"task_type": task.task_type, "pairs": [], "error": task_result.error, "_attempts": task_result.attempts}
+                        results[task.task_id] = {
+                            "task_type": task.task_type,
+                            "pairs": [],
+                            "error": task_result.error,
+                            "_attempts": task_result.attempts,
+                        }
 
                     completed.add(task.task_id)
                     pending.pop(task.task_id, None)
 
         return results
 
-    def execute_with_priority(self, tasks: list[GenerationTask], worker: Callable[[GenerationTask], dict[str, Any]], worker_name: str = "default", priorities: dict[str, int] | None = None) -> dict[str, dict[str, Any]]:
+    def execute_with_priority(
+        self,
+        tasks: list[GenerationTask],
+        worker: Callable[[GenerationTask], dict[str, Any]],
+        worker_name: str = "default",
+        priorities: dict[str, int] | None = None,
+    ) -> dict[str, dict[str, Any]]:
         """Execute tasks with priority ordering. Lower number = higher priority."""
         priorities = priorities or {}
         self.monitor.start()
@@ -524,14 +568,21 @@ class AgentSwarm:
                     if task_result.success:
                         results[task.task_id] = task_result.data
                     else:
-                        results[task.task_id] = {"task_type": task.task_type, "pairs": [], "error": task_result.error, "_attempts": task_result.attempts}
+                        results[task.task_id] = {
+                            "task_type": task.task_type,
+                            "pairs": [],
+                            "error": task_result.error,
+                            "_attempts": task_result.attempts,
+                        }
 
                     completed.add(task.task_id)
                     pending.pop(task.task_id, None)
 
         return results
 
-    def _run_with_cache(self, task: GenerationTask, worker: Callable[[GenerationTask], dict[str, Any]], worker_name: str) -> TaskResult:
+    def _run_with_cache(
+        self, task: GenerationTask, worker: Callable[[GenerationTask], dict[str, Any]], worker_name: str
+    ) -> TaskResult:
         """Run a task with cache lookup if caching is enabled."""
         if self.cache is not None:
             cache_key = LRUCache.make_key(task.task_type, task.prompt, task.metadata)
@@ -539,9 +590,13 @@ class AgentSwarm:
             if cached is not None:
                 self._cache_hits += 1
                 return TaskResult(
-                    task_id=task.task_id, task_type=task.task_type,
-                    success=True, data=cached, attempts=1,
-                    duration=0.0, worker_name=f"{worker_name}[cached]",
+                    task_id=task.task_id,
+                    task_type=task.task_type,
+                    success=True,
+                    data=cached,
+                    attempts=1,
+                    duration=0.0,
+                    worker_name=f"{worker_name}[cached]",
                 )
             self._cache_misses += 1
 
@@ -552,7 +607,12 @@ class AgentSwarm:
 
         return self._run_with_retry(task, worker, worker_name)
 
-    def execute_monitored(self, tasks: list[GenerationTask], worker: Callable[[GenerationTask], dict[str, Any]], worker_name: str = "default") -> tuple[dict[str, dict[str, Any]], SwarmStats]:
+    def execute_monitored(
+        self,
+        tasks: list[GenerationTask],
+        worker: Callable[[GenerationTask], dict[str, Any]],
+        worker_name: str = "default",
+    ) -> tuple[dict[str, dict[str, Any]], SwarmStats]:
         results = self.execute(tasks, worker, worker_name)
         return results, self.monitor.stats()
 
@@ -567,9 +627,11 @@ class AgentSwarm:
             "size": self.cache.size() if self.cache else 0,
         }
 
+
 # ═══════════════════════════════════════
 # AGENT ROUTER
 # ═══════════════════════════════════════
+
 
 class AgentRouter:
     """Routes questions to specialized agents."""
@@ -582,7 +644,7 @@ class AgentRouter:
             "architecture": ["orchestrator", "docs", "retrieval"],
             "how-to": ["code", "teacher", "retrieval"],
             "version": ["docs", "retrieval"],
-            "general": ["orchestrator", "retrieval"]
+            "general": ["orchestrator", "retrieval"],
         }
 
     def classify_and_route(self, question: str) -> list[str]:
@@ -600,6 +662,7 @@ class AgentRouter:
 
         return self.routes["general"]
 
+
 def execute_agents(question: str, swarm: AgentSwarm, workers: dict[str, Callable]) -> dict[str, Any]:
     """Execute specialized agents based on question routing."""
     router = AgentRouter()
@@ -609,12 +672,7 @@ def execute_agents(question: str, swarm: AgentSwarm, workers: dict[str, Callable
     for i, agent_type in enumerate(agents_to_run):
         if agent_type in workers:
             tasks.append(
-                GenerationTask(
-                    task_id=f"agent_{agent_type}_{i}",
-                    task_type=agent_type,
-                    prompt=question,
-                    timeout=30.0
-                )
+                GenerationTask(task_id=f"agent_{agent_type}_{i}", task_type=agent_type, prompt=question, timeout=30.0)
             )
 
     def dispatcher(task: GenerationTask) -> dict[str, Any]:
@@ -630,7 +688,9 @@ def execute_agents(question: str, swarm: AgentSwarm, workers: dict[str, Callable
     synthesis = {}
     for task_id, res_data in results.items():
         if not res_data.get("error"):
-            synthesis[res_data.get("task_type", res_data.get("task_type", "unknown"))] = res_data.get("output", res_data)
+            synthesis[res_data.get("task_type", res_data.get("task_type", "unknown"))] = res_data.get(
+                "output", res_data
+            )
         else:
             synthesis[res_data.get("task_type", "unknown")] = f"[Error]: {res_data.get('error')}"
 

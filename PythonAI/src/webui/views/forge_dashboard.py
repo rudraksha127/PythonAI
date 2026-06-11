@@ -25,6 +25,7 @@ def _get_engine(db_path: str | Path | None = None) -> Any | None:
     """Lazy-load the CaptureEngine."""
     try:
         from src.learning.capture_engine import CaptureEngine
+
         return CaptureEngine(db_path=db_path)
     except Exception:
         return None
@@ -49,8 +50,14 @@ def _load_data() -> dict[str, Any]:
         "breakdown": {},
         "languages": [],
         "runs": [],
-        "sessions": {"total_signals": 0, "total_sessions": 0, "unique_developers": 0,
-                     "total_accepts": 0, "total_rejects": 0, "overall_rate": 0},
+        "sessions": {
+            "total_signals": 0,
+            "total_sessions": 0,
+            "unique_developers": 0,
+            "total_accepts": 0,
+            "total_rejects": 0,
+            "overall_rate": 0,
+        },
         "db_exists": db_path.exists(),
         "db_path": str(db_path),
     }
@@ -81,6 +88,7 @@ def render() -> None:
     # ── Data Source Config ──
     with st.expander("Signal Database Configuration", expanded=False):
         from src.learning.forge_dashboard import _get_db_path
+
         db_path = _get_db_path()
         col1, col2 = st.columns([3, 1])
         with col1:
@@ -100,6 +108,7 @@ def render() -> None:
         with col_b:
             if st.button("Generate Demo Dashboard", use_container_width=True):
                 from src.learning.forge_dashboard import generate_dashboard
+
                 html = generate_dashboard(demo=True)
                 st.session_state.forge_demo_html = html
                 st.toast("Demo dashboard generated!", icon="[OK]")
@@ -107,9 +116,10 @@ def render() -> None:
         # Generate & open HTML dashboard button
         if st.button("📊 Open Full HTML Dashboard", use_container_width=True):
             from src.learning.forge_dashboard import generate_dashboard
+
             output = Path(db_path.parent) / "forge_dashboard.html"
             generate_dashboard(output_path=str(output))
-            html_dashboard = open_html = str(output.resolve())
+            html_dashboard = str(output.resolve())
             st.markdown(f"Dashboard saved to: `{html_dashboard}`")
             st.toast(f"Dashboard saved to {output.name}", icon="[OK]")
 
@@ -156,11 +166,15 @@ def render() -> None:
 
         chart_data = []
         for i, d in enumerate(daily):
-            chart_data.append({
-                "date": d["date"],
-                "daily_rate": d["acceptance_rate"],
-                "rolling_avg": data["rolling"][i] if i < len(data["rolling"]) and data["rolling"][i] is not None else None,
-            })
+            chart_data.append(
+                {
+                    "date": d["date"],
+                    "daily_rate": d["acceptance_rate"],
+                    "rolling_avg": data["rolling"][i]
+                    if i < len(data["rolling"]) and data["rolling"][i] is not None
+                    else None,
+                }
+            )
 
         # Convert to Streamlit-friendly format
         chart_dates = [d["date"] for d in daily]
@@ -168,11 +182,14 @@ def render() -> None:
         chart_rolling = [r if r is not None else None for r in data["rolling"]]
 
         import pandas as pd
-        df = pd.DataFrame({
-            "date": chart_dates,
-            "Daily Rate (%)": chart_rates,
-            "7-Day Avg (%)": chart_rolling,
-        })
+
+        df = pd.DataFrame(
+            {
+                "date": chart_dates,
+                "Daily Rate (%)": chart_rates,
+                "7-Day Avg (%)": chart_rolling,
+            }
+        )
 
         st.line_chart(
             df.set_index("date"),
@@ -191,10 +208,12 @@ def render() -> None:
         breakdown = data["breakdown"]
         if breakdown:
             signal_type_order = ["accept", "reject", "edit", "test_pass", "test_fail", "pr_merge"]
-            bdf = pd.DataFrame({
-                "Type": [s.capitalize() for s in signal_type_order if breakdown.get(s, 0) > 0],
-                "Count": [breakdown.get(s, 0) for s in signal_type_order if breakdown.get(s, 0) > 0],
-            }).set_index("Type")
+            bdf = pd.DataFrame(
+                {
+                    "Type": [s.capitalize() for s in signal_type_order if breakdown.get(s, 0) > 0],
+                    "Count": [breakdown.get(s, 0) for s in signal_type_order if breakdown.get(s, 0) > 0],
+                }
+            ).set_index("Type")
             st.bar_chart(bdf, use_container_width=True, height=300)
         else:
             st.info("No signal data to display.")
@@ -204,8 +223,7 @@ def render() -> None:
         lang_data = data["languages"]
         if lang_data:
             ldf = pd.DataFrame(
-                {"Language": [l["language"] for l in lang_data],
-                 "Count": [l["count"] for l in lang_data]}
+                {"Language": [ln["language"] for ln in lang_data], "Count": [ln["count"] for ln in lang_data]}
             ).set_index("Language")
             st.bar_chart(ldf, use_container_width=True, height=300)
         else:
@@ -229,13 +247,13 @@ def render() -> None:
             met_cols = st.columns(3)
             met_cols[0].metric("Avg Acceptance Improvement", f"{avg_improvement:+.1f}%")
             if best_run is not None:
-                met_cols[1].metric("Best Run", f"{best_run.get('delta', '—'):+.1f}%",
-                                   help=f"Run: {best_run.get('date', '?')}")
+                met_cols[1].metric(
+                    "Best Run", f"{best_run.get('delta', '—'):+.1f}%", help=f"Run: {best_run.get('date', '?')}"
+                )
             met_cols[2].metric("Total Runs", str(len(runs)))
 
         st.dataframe(
-            run_df[["date", "model", "signals_used", "train_loss", "eval_loss",
-                    "rate_before", "rate_after"]],
+            run_df[["date", "model", "signals_used", "train_loss", "eval_loss", "rate_before", "rate_after"]],
             use_container_width=True,
             column_config={
                 "date": "Date",

@@ -19,6 +19,7 @@ def test_cost_tracker():
             assert "openai" in data
             assert "cost_usd" in data
 
+
 def test_deduplicator():
     dedup = Deduplicator(threshold=0.5, num_perm=64)
 

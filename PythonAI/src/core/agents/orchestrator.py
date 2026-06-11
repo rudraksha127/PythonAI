@@ -34,6 +34,7 @@ logger = logging.getLogger("pythonai.orchestrator")
 @dataclass
 class PlanStep:
     """A single step in the orchestration plan."""
+
     id: str
     agent_name: str
     task: str
@@ -242,16 +243,13 @@ class AgentOrchestrator:
         if self.on_stream is not None:
             self.on_stream("  [LLM] Planning...\n")
 
-        agents_info = [
-            f"- {agent_name} ({agent.role})"
-            for agent_name, agent in self._swarm.agents.items()
-        ]
+        agents_info = [f"- {agent_name} ({agent.role})" for agent_name, agent in self._swarm.agents.items()]
 
         mcp_tools = [f"{t.name}: {t.description[:100]}" for t in self.registry.list_mcp()]
         mcp_info = "\nAvailable MCP Tools:\n" + "\n".join(mcp_tools) if mcp_tools else ""
 
         system_prompt = f"""You are an elite orchestrator AI. Your job is to break down a complex user request into a sequence of sub-tasks assigned to specialized agents.
-        
+
 Available Agents:
 {chr(10).join(agents_info)}
 {mcp_info}
@@ -303,13 +301,15 @@ Expected JSON schema:
                     # Map back to a known agent or fallback
                     agent_name = "coder" if "coder" in self._swarm.agents else list(self._swarm.agents.keys())[0]
 
-                steps.append(PlanStep(
-                    id=item["id"],
-                    agent_name=agent_name,
-                    task=item["task"],
-                    depends_on=item.get("depends_on", []),
-                    priority=item.get("priority", 5),
-                ))
+                steps.append(
+                    PlanStep(
+                        id=item["id"],
+                        agent_name=agent_name,
+                        task=item["task"],
+                        depends_on=item.get("depends_on", []),
+                        priority=item.get("priority", 5),
+                    )
+                )
 
             return steps
 
@@ -328,84 +328,136 @@ Expected JSON schema:
         step_id = 0
 
         # Check if research is needed (reading files, searching)
-        needs_research = any(w in request_lower for w in [
-            "find", "search", "read", "lookup", "check", "what",
-            "list", "show", "where", "examine", "review existing",
-        ])
+        needs_research = any(
+            w in request_lower
+            for w in [
+                "find",
+                "search",
+                "read",
+                "lookup",
+                "check",
+                "what",
+                "list",
+                "show",
+                "where",
+                "examine",
+                "review existing",
+            ]
+        )
 
         # Check if coding is needed
-        needs_coding = any(w in request_lower for w in [
-            "write", "create", "implement", "build", "code", "fix",
-            "add", "update", "modify", "change", "edit", "refactor",
-            "make", "generate", "develop",
-        ])
+        needs_coding = any(
+            w in request_lower
+            for w in [
+                "write",
+                "create",
+                "implement",
+                "build",
+                "code",
+                "fix",
+                "add",
+                "update",
+                "modify",
+                "change",
+                "edit",
+                "refactor",
+                "make",
+                "generate",
+                "develop",
+            ]
+        )
 
         # Check if review is needed (complex tasks)
-        needs_review = needs_coding and any(w in request_lower for w in [
-            "complex", "sophisticated", "production", "secure",
-            "review", "validate", "verify",
-        ])
+        needs_review = needs_coding and any(
+            w in request_lower
+            for w in [
+                "complex",
+                "sophisticated",
+                "production",
+                "secure",
+                "review",
+                "validate",
+                "verify",
+            ]
+        )
 
         # Check if MCP is needed
-        needs_mcp = any(w in request_lower for w in [
-            "mcp", "filesystem", "database", "server", "external",
-        ]) and bool(self.registry.list_mcp())
+        needs_mcp = any(
+            w in request_lower
+            for w in [
+                "mcp",
+                "filesystem",
+                "database",
+                "server",
+                "external",
+            ]
+        ) and bool(self.registry.list_mcp())
 
         # Build the plan
         if needs_research:
-            steps.append(PlanStep(
-                id=f"step_{step_id}",
-                agent_name="researcher",
-                task=f"Research: {user_request}",
-                depends_on=[],
-                priority=1,
-            ))
+            steps.append(
+                PlanStep(
+                    id=f"step_{step_id}",
+                    agent_name="researcher",
+                    task=f"Research: {user_request}",
+                    depends_on=[],
+                    priority=1,
+                )
+            )
             step_id += 1
 
         if needs_coding:
             deps = ["step_0"] if needs_research else []
-            steps.append(PlanStep(
-                id=f"step_{step_id}",
-                agent_name="coder",
-                task=f"Implement: {user_request}",
-                depends_on=deps,
-                priority=2,
-            ))
+            steps.append(
+                PlanStep(
+                    id=f"step_{step_id}",
+                    agent_name="coder",
+                    task=f"Implement: {user_request}",
+                    depends_on=deps,
+                    priority=2,
+                )
+            )
             step_id += 1
 
         if needs_mcp:
             deps = []
             if needs_research:
                 deps.append("step_0")
-            steps.append(PlanStep(
-                id=f"step_{step_id}",
-                agent_name="mcp-worker",
-                task=f"MCP: {user_request}",
-                depends_on=deps,
-                priority=3,
-            ))
+            steps.append(
+                PlanStep(
+                    id=f"step_{step_id}",
+                    agent_name="mcp-worker",
+                    task=f"MCP: {user_request}",
+                    depends_on=deps,
+                    priority=3,
+                )
+            )
             step_id += 1
 
         if needs_review:
             deps = [f"step_{i}" for i in range(step_id)]
-            steps.append(PlanStep(
-                id=f"step_{step_id}",
-                agent_name="reviewer",
-                task=f"Review: {user_request}",
-                depends_on=deps,
-                priority=4,
-            ))
+            steps.append(
+                PlanStep(
+                    id=f"step_{step_id}",
+                    agent_name="reviewer",
+                    task=f"Review: {user_request}",
+                    depends_on=deps,
+                    priority=4,
+                )
+            )
             step_id += 1
 
         # Fallback: use coder agent as default
         if not steps:
-            steps.append(PlanStep(
-                id="step_0",
-                agent_name="coder",
-                task=user_request,
-                depends_on=[],
-                priority=5,
-            ))
+            steps.append(
+                PlanStep(
+                    id="step_0",
+                    agent_name="coder",
+                    task=user_request,
+                    depends_on=[],
+                    priority=5,
+                )
+            )
 
         return steps
 
@@ -460,18 +512,14 @@ Expected JSON schema:
                     connected_count += 1
                     tool_count += count
                     if self.on_stream is not None:
-                        self.on_stream(
-                            f"  [OK] {name}: {len(conn.tools)} tools, "
-                            f"{len(conn.resources)} resources\n"
-                        )
+                        self.on_stream(f"  [OK] {name}: {len(conn.tools)} tools, {len(conn.resources)} resources\n")
                 else:
                     if self.on_stream is not None:
                         self.on_stream(f"  [--] {name}: {conn.error or 'failed'}\n")
 
             if connected_count and self.on_stream is not None:
                 self.on_stream(
-                    f"  Total: {connected_count}/{len(connections)} connected, "
-                    f"{tool_count} tools registered\n"
+                    f"  Total: {connected_count}/{len(connections)} connected, {tool_count} tools registered\n"
                 )
 
             # 5. Re-init default agents so MCP agent is available
@@ -561,10 +609,7 @@ Expected JSON schema:
         mcp_tools = self._auto_connect_mcp()
 
         if self.on_stream is not None:
-            self.on_stream(
-                f"  Tools: {self.registry.total_count} registered "
-                f"({mcp_tools} MCP)\n"
-            )
+            self.on_stream(f"  Tools: {self.registry.total_count} registered ({mcp_tools} MCP)\n")
 
         # Phase 1: Plan
         if self.on_stream is not None:
@@ -585,10 +630,7 @@ Expected JSON schema:
             round_num += 1
 
             # Find steps whose dependencies are met
-            ready = [
-                s for s in pending.values()
-                if all(dep in executed for dep in s.depends_on)
-            ]
+            ready = [s for s in pending.values() if all(dep in executed for dep in s.depends_on)]
 
             if not ready:
                 break  # Circular dependency or all blocked
@@ -607,9 +649,7 @@ Expected JSON schema:
                     if dep_step and dep_step.agent_name in self.results:
                         r = self.results[dep_step.agent_name]
                         if r.success:
-                            context_parts.append(
-                                f"[{dep_step.agent_name} output]:\n{r.output[:1500]}"
-                            )
+                            context_parts.append(f"[{dep_step.agent_name} output]:\n{r.output[:1500]}")
                 contexts[step.agent_name] = "\n\n".join(context_parts) if context_parts else None
 
             # Execute ready steps
@@ -645,10 +685,7 @@ Expected JSON schema:
 
     def _synthesize(self, user_request: str) -> str:
         """Combine all agent results into a coherent response."""
-        successful = {
-            name: r for name, r in self.results.items()
-            if r.success and r.output
-        }
+        successful = {name: r for name, r in self.results.items() if r.success and r.output}
 
         if not successful:
             return "[Orchestrator] All agents failed. See errors above."

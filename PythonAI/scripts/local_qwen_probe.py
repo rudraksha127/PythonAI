@@ -1,6 +1,7 @@
 """
 Thin wrapper — delegates to src/rag/prober.py
 """
+
 import sys
 from pathlib import Path
 
@@ -10,4 +11,5 @@ if str(ROOT) not in sys.path:
 
 if __name__ == "__main__":
     from src.rag.prober import main
+
     main()

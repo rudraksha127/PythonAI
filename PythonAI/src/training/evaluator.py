@@ -102,10 +102,7 @@ def generate(
 
     if batch:
         # Batch evaluation: format all prompts and generate at once
-        formatted = [
-            f"### Instruction:\n{p}\n\n### Response:\n"
-            for p in prompts
-        ]
+        formatted = [f"### Instruction:\n{p}\n\n### Response:\n" for p in prompts]
         inputs = tokenizer(
             formatted,
             return_tensors="pt",
@@ -123,10 +120,12 @@ def generate(
             )
         for i, prompt in enumerate(prompts):
             text = tokenizer.decode(generated[i], skip_special_tokens=True)
-            outputs.append({
-                "prompt": prompt,
-                "output": text[len(formatted[i]):].strip(),
-            })
+            outputs.append(
+                {
+                    "prompt": prompt,
+                    "output": text[len(formatted[i]) :].strip(),
+                }
+            )
     else:
         # Sequential evaluation (original behavior)
         for prompt in prompts:
@@ -141,7 +140,7 @@ def generate(
                     eos_token_id=tokenizer.eos_token_id,
                 )
             text = tokenizer.decode(generated[0], skip_special_tokens=True)
-            outputs.append({"prompt": prompt, "output": text[len(formatted):].strip()})
+            outputs.append({"prompt": prompt, "output": text[len(formatted) :].strip()})
 
     return outputs
 
@@ -246,7 +245,7 @@ def interactive_eval(adapter_path: Path, max_new_tokens: int) -> None:
                 eos_token_id=tokenizer.eos_token_id,
             )
         text = tokenizer.decode(generated[0], skip_special_tokens=True)
-        output = text[len(formatted):].strip()
+        output = text[len(formatted) :].strip()
         print(f"\n{output}\n")
 
 
@@ -255,14 +254,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--adapter-path", default="checkpoints/local_auto_model")
     parser.add_argument("--max-new-tokens", type=int, default=96)
     parser.add_argument("--output-json", default="checkpoints/local_eval_outputs.json")
-    parser.add_argument("--num-prompts", type=int, default=3,
-                        help="Number of test prompts to run (uses first N from DEFAULT_PROMPTS)")
-    parser.add_argument("--batch", action="store_true",
-                        help="Evaluate all prompts in a single batch for faster inference")
-    parser.add_argument("--interactive", action="store_true",
-                        help="Interactive mode: type prompts and see real-time output")
-    parser.add_argument("--reference-json", default="",
-                        help="Optional JSON file with reference outputs for metrics")
+    parser.add_argument(
+        "--num-prompts", type=int, default=3, help="Number of test prompts to run (uses first N from DEFAULT_PROMPTS)"
+    )
+    parser.add_argument(
+        "--batch", action="store_true", help="Evaluate all prompts in a single batch for faster inference"
+    )
+    parser.add_argument(
+        "--interactive", action="store_true", help="Interactive mode: type prompts and see real-time output"
+    )
+    parser.add_argument("--reference-json", default="", help="Optional JSON file with reference outputs for metrics")
     return parser.parse_args()
 
 
@@ -276,7 +277,7 @@ def main() -> None:
         return
 
     # Standard evaluation with configurable number of prompts
-    prompts = DEFAULT_PROMPTS[:args.num_prompts]
+    prompts = DEFAULT_PROMPTS[: args.num_prompts]
     outputs = generate(adapter_path, prompts, args.max_new_tokens, batch=args.batch)
 
     reference_map: dict[str, str] = {}

@@ -40,12 +40,13 @@ print(s.getvalue())
         return {"success": False, "error": error}
     return {"success": True, "output": output}
 
+
 profiler_tool = MCPTool(
     name="profiler",
     description="Run Python code through cProfile to identify performance bottlenecks and slow function calls.",
     handler=handle_profiler,
     parameters={
         "code": {"type": "string", "description": "The Python code to profile"},
-        "timeout": {"type": "integer", "description": "Execution timeout in seconds", "default": 10}
-    }
+        "timeout": {"type": "integer", "description": "Execution timeout in seconds", "default": 10},
+    },
 )

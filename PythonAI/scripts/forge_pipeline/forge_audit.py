@@ -27,6 +27,7 @@ console = Console()
 
 # ── HARDWARE AUDIT ──────────────────────────────────────────────────────────
 
+
 def audit_hardware(cfg: ForgeConfig) -> dict:
     """Audit CPU, RAM, Disk, GPU and return recommended config."""
     print("\n== HARDWARE ==================================================")
@@ -69,14 +70,14 @@ def audit_hardware(cfg: ForgeConfig) -> dict:
 
 # ── PROJECT AUDIT ───────────────────────────────────────────────────────────
 
+
 def audit_project(cfg: ForgeConfig) -> tuple[list[dict], dict, list[dict]]:
     """Scan the project for files, grouped by type."""
     print("\n== PROJECT STRUCTURE =========================================")
     root_path = Path(cfg.root_dir)
 
     all_files = []
-    excluded_dirs = {".git", "__pycache__", ".venv", "node_modules", ".gemini",
-                     "forge_workspace"}
+    excluded_dirs = {".git", "__pycache__", ".venv", "node_modules", ".gemini", "forge_workspace"}
 
     for f in root_path.rglob("*"):
         if f.is_file():
@@ -84,12 +85,14 @@ def audit_project(cfg: ForgeConfig) -> tuple[list[dict], dict, list[dict]]:
             if any(part in excluded_dirs for part in f.relative_to(root_path).parts):
                 continue
             size = f.stat().st_size
-            all_files.append({
-                "path": str(f.relative_to(root_path)),
-                "size_kb": round(size / 1024, 2),
-                "ext": f.suffix.lower(),
-                "name": f.name,
-            })
+            all_files.append(
+                {
+                    "path": str(f.relative_to(root_path)),
+                    "size_kb": round(size / 1024, 2),
+                    "ext": f.suffix.lower(),
+                    "name": f.name,
+                }
+            )
 
     by_ext = defaultdict(list)
     for f in all_files:
@@ -106,15 +109,17 @@ def audit_project(cfg: ForgeConfig) -> tuple[list[dict], dict, list[dict]]:
 
     # Important files summary
     important = {
-        "Training scripts": [f for f in all_files if any(k in f["name"].lower()
-                              for k in ["train", "finetune", "fine_tune"])],
-        "Config files":     [f for f in all_files if f["ext"] in [".yaml", ".json", ".toml"]
-                              and "checkpoint" not in f["path"]],
-        "Data files":       [f for f in all_files if f["ext"] in [".jsonl", ".parquet",
-                              ".csv", ".txt"] and f["size_kb"] > 10],
-        "Model weights":    [f for f in all_files if f["ext"] in [".safetensors", ".bin",
-                              ".pt", ".pth", ".ckpt"]],
-        "Requirements":     [f for f in all_files if "requirements" in f["name"].lower()],
+        "Training scripts": [
+            f for f in all_files if any(k in f["name"].lower() for k in ["train", "finetune", "fine_tune"])
+        ],
+        "Config files": [
+            f for f in all_files if f["ext"] in [".yaml", ".json", ".toml"] and "checkpoint" not in f["path"]
+        ],
+        "Data files": [
+            f for f in all_files if f["ext"] in [".jsonl", ".parquet", ".csv", ".txt"] and f["size_kb"] > 10
+        ],
+        "Model weights": [f for f in all_files if f["ext"] in [".safetensors", ".bin", ".pt", ".pth", ".ckpt"]],
+        "Requirements": [f for f in all_files if "requirements" in f["name"].lower()],
     }
 
     print(f"\nKey files found:")
@@ -122,15 +127,17 @@ def audit_project(cfg: ForgeConfig) -> tuple[list[dict], dict, list[dict]]:
         if files:
             print(f"\n  {category}:")
             for f in files[:5]:
-                print(f"    {f['path']:50} ({f['size_kb']/1024:.2f} MB)")
+                print(f"    {f['path']:50} ({f['size_kb'] / 1024:.2f} MB)")
 
-    data_files = [f for f in all_files if f["ext"] in [".jsonl", ".json", ".parquet",
-                  ".csv", ".txt"] and f["size_kb"] > 1]
+    data_files = [
+        f for f in all_files if f["ext"] in [".jsonl", ".json", ".parquet", ".csv", ".txt"] and f["size_kb"] > 1
+    ]
 
     return all_files, important, data_files
 
 
 # ── DUPLICATE DETECTION ─────────────────────────────────────────────────────
+
 
 def find_duplicates(all_files: list[dict], min_size_kb: float = 10) -> list[list[dict]]:
     """Find duplicate files by MD5 hash."""
@@ -173,14 +180,19 @@ def find_duplicates(all_files: list[dict], min_size_kb: float = 10) -> list[list
 
 # ── SAFE CLEANUP ────────────────────────────────────────────────────────────
 
+
 def safe_cleanup(cfg: ForgeConfig, dry_run: bool = True):
     """Remove cache, pyc, temp files. Dry-run by default."""
     print(f"\n== CLEANUP {'(DRY RUN)' if dry_run else '(EXECUTING)'} ====")
 
     patterns_to_delete = [
-        "**/__pycache__", "**/*.pyc", "**/*.pyo",
-        "**/.DS_Store", "**/Thumbs.db",
-        "**/.ipynb_checkpoints", "**/.pytest_cache",
+        "**/__pycache__",
+        "**/*.pyc",
+        "**/*.pyo",
+        "**/.DS_Store",
+        "**/Thumbs.db",
+        "**/.ipynb_checkpoints",
+        "**/.pytest_cache",
         "**/*.egg-info",
     ]
 
@@ -200,7 +212,7 @@ def safe_cleanup(cfg: ForgeConfig, dry_run: bool = True):
             total_bytes += size
 
     for path, size in to_delete:
-        print(f"  {'[WOULD DELETE]' if dry_run else '[DELETING]':16} {path.relative_to(root)} ({size/1024:.1f} KB)")
+        print(f"  {'[WOULD DELETE]' if dry_run else '[DELETING]':16} {path.relative_to(root)} ({size / 1024:.1f} KB)")
         if not dry_run:
             try:
                 if path.is_dir():
@@ -216,6 +228,7 @@ def safe_cleanup(cfg: ForgeConfig, dry_run: bool = True):
 
 
 # ── EXISTING DATA ANALYSIS ──────────────────────────────────────────────────
+
 
 def analyze_existing_data(data_files: list[dict]):
     """Sample and describe existing training data files."""
@@ -252,6 +265,7 @@ def analyze_existing_data(data_files: list[dict]):
             elif path.suffix == ".parquet":
                 try:
                     import pandas as pd
+
                     df = pd.read_parquet(path, nrows=5)
                     print(f"  Columns: {list(df.columns)}")
                     print(f"  Sample:\n{df.head(2).to_string()[:300]}")
@@ -265,6 +279,7 @@ def analyze_existing_data(data_files: list[dict]):
 
 
 # ── MAIN ────────────────────────────────────────────────────────────────────
+
 
 def scan_project(cfg: ForgeConfig) -> dict:
     """Run full audit and return results."""
@@ -288,10 +303,7 @@ def scan_project(cfg: ForgeConfig) -> dict:
             "tier": cfg.hardware_profile.get("tier", "unknown"),
         },
         "duplicates_found": len(duplicates),
-        "existing_data_files": {
-            f_info["path"]: f_info["size_kb"] / 1024
-            for f_info in data_files[:20]
-        },
+        "existing_data_files": {f_info["path"]: f_info["size_kb"] / 1024 for f_info in data_files[:20]},
     }
 
     report_path = Path(cfg.workspace_dir) / "audit_report.json"
@@ -308,6 +320,7 @@ def scan_project(cfg: ForgeConfig) -> dict:
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="FORGE-OMEGA System Audit")
     parser.add_argument("--clean", action="store_true", help="Actually execute cleanup")
     args = parser.parse_args()

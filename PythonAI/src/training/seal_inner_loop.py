@@ -102,6 +102,7 @@ class SyntheticExampleGenerator:
             return self._ollama_available
         try:
             import ollama
+
             ollama.list()
             self._ollama_available = True
         except Exception:
@@ -180,16 +181,16 @@ class SyntheticExampleGenerator:
 
             if len(batch_results) < batch_target:
                 # Generation rate is low; wait briefly then continue
-                logger.info(f"[SEAL] Generated {len(batch_results)}/{batch_target} in batch"
-                            f" ({len(examples)}/{count} total)")
+                logger.info(
+                    f"[SEAL] Generated {len(batch_results)}/{batch_target} in batch ({len(examples)}/{count} total)"
+                )
                 time.sleep(0.5)
 
             # Vary the prompt slightly for diversity
             prompt = _vary_prompt(prompt)
             batch_size = min(batch_size + 1, 8)
 
-        logger.info(f"[SEAL] Generated {len(examples)} synthetic examples "
-                    f"({action.domain}/{action.difficulty})")
+        logger.info(f"[SEAL] Generated {len(examples)} synthetic examples ({action.domain}/{action.difficulty})")
         return examples[:count]
 
     def _generate_template_examples(
@@ -272,8 +273,7 @@ class SyntheticExampleGenerator:
         augmented = list(real_examples)
 
         if self.check_ollama():
-            logger.info(f"[SEAL] Augmenting {len(real_examples)} real examples "
-                        f"(factor={augmentation_factor})...")
+            logger.info(f"[SEAL] Augmenting {len(real_examples)} real examples (factor={augmentation_factor})...")
             for ex in real_examples[:20]:  # Cap to avoid excessive generation
                 variations = self._generate_variations(ex, augmentation_factor)
                 augmented.extend(variations)
@@ -285,8 +285,9 @@ class SyntheticExampleGenerator:
                     if variation:
                         augmented.append(variation)
 
-        logger.info(f"[SEAL] Augmented {len(real_examples)} examples → "
-                    f"{len(augmented)} total (factor={augmentation_factor})")
+        logger.info(
+            f"[SEAL] Augmented {len(real_examples)} examples → {len(augmented)} total (factor={augmentation_factor})"
+        )
         return augmented
 
     def _generate_variations(
@@ -340,10 +341,7 @@ Return them as a JSON array."""
         try:
             data = json.loads(text.strip())
             if isinstance(data, list):
-                return [
-                    d for d in data
-                    if d.get("instruction") and d.get("output")
-                ]
+                return [d for d in data if d.get("instruction") and d.get("output")]
             elif isinstance(data, dict):
                 return [data] if data.get("instruction") else []
         except json.JSONDecodeError:
@@ -354,6 +352,7 @@ Return them as a JSON array."""
 # ═══════════════════════════════════════════════════════════════
 # Inner Loop Runner
 # ═══════════════════════════════════════════════════════════════
+
 
 class SealInnerLoop:
     """Runs the inner SFT loop: curriculum → data → training → adapter.
@@ -395,8 +394,9 @@ class SealInnerLoop:
         Returns:
             (metrics_dict, generated_examples_list)
         """
-        logger.info(f"[SEAL] Inner loop executing: {action.action_type.value} "
-                    f"(domain={action.domain}, count={action.count})")
+        logger.info(
+            f"[SEAL] Inner loop executing: {action.action_type.value} (domain={action.domain}, count={action.count})"
+        )
 
         # Phase 1: Generate synthetic data
         synthetic = self._generate_data(action)
@@ -426,8 +426,7 @@ class SealInnerLoop:
 
     def _generate_data(self, action: SelfEditAction) -> list[dict[str, Any]]:
         """Generate synthetic training data from the curriculum action."""
-        logger.info(f"[SEAL] Generating {action.count} examples "
-                    f"({action.domain}/{action.difficulty})...")
+        logger.info(f"[SEAL] Generating {action.count} examples ({action.domain}/{action.difficulty})...")
         return self.generator.generate_examples(action)
 
     def _fetch_real_signals(self) -> list[dict[str, Any]]:
@@ -492,9 +491,11 @@ class SealInnerLoop:
         # Use SDFT's replay buffer for mixing
         mixed = self.replay_buffer.create_mixed_dataset(current_examples)
 
-        logger.info(f"[SEAL] Combined dataset: {len(mixed)} examples "
-                    f"({len(synthetic)} synthetic + {len(real)} real "
-                    f"+ replay buffer)")
+        logger.info(
+            f"[SEAL] Combined dataset: {len(mixed)} examples "
+            f"({len(synthetic)} synthetic + {len(real)} real "
+            f"+ replay buffer)"
+        )
         return mixed
 
     def _run_training(
@@ -532,10 +533,12 @@ class SealInnerLoop:
             metrics["cycle"] = cycle
             metrics["examples_trained"] = len(examples)
 
-            logger.info(f"[SEAL] Inner loop training complete: "
-                        f"train_loss={metrics.get('train_loss', 'N/A'):.4f}, "
-                        f"eval_loss={metrics.get('eval_loss', 'N/A'):.4f}, "
-                        f"steps={metrics.get('total_steps', 0)}")
+            logger.info(
+                f"[SEAL] Inner loop training complete: "
+                f"train_loss={metrics.get('train_loss', 'N/A'):.4f}, "
+                f"eval_loss={metrics.get('eval_loss', 'N/A'):.4f}, "
+                f"steps={metrics.get('total_steps', 0)}"
+            )
             return metrics
 
         except ImportError as e:
@@ -569,14 +572,14 @@ class SealInnerLoop:
             for ex in examples:
                 f.write(json.dumps(ex, ensure_ascii=False) + "\n")
 
-        logger.info(f"[SEAL] Synthetic data saved: {output_path} "
-                    f"({len(examples)} examples)")
+        logger.info(f"[SEAL] Synthetic data saved: {output_path} ({len(examples)} examples)")
         return str(output_path)
 
 
 # ═══════════════════════════════════════════════════════════════
 # Helpers
 # ═══════════════════════════════════════════════════════════════
+
 
 def _vary_prompt(prompt: str) -> str:
     """Slightly vary the generation prompt for diversity."""
@@ -636,12 +639,21 @@ def _get_domain_templates(domain: str, language: str) -> list[dict[str, str]]:
     """
     templates: dict[str, list[dict[str, str]]] = {
         "general": [
-            {"instruction": f"Write a {language} function that processes a list of items and returns a summary", "input": ""},
+            {
+                "instruction": f"Write a {language} function that processes a list of items and returns a summary",
+                "input": "",
+            },
             {"instruction": f"Create a {language} class for managing configuration settings", "input": ""},
-            {"instruction": f"Implement a utility function in {language} for file reading with error handling", "input": ""},
+            {
+                "instruction": f"Implement a utility function in {language} for file reading with error handling",
+                "input": "",
+            },
         ],
         "error_handling": [
-            {"instruction": f"Write a {language} function with comprehensive error handling for network requests", "input": ""},
+            {
+                "instruction": f"Write a {language} function with comprehensive error handling for network requests",
+                "input": "",
+            },
             {"instruction": f"Create a custom exception hierarchy in {language} for a library", "input": ""},
             {"instruction": f"Implement retry logic with exponential backoff in {language}", "input": ""},
         ],
@@ -659,7 +671,10 @@ def _get_domain_templates(domain: str, language: str) -> list[dict[str, str]]:
             {"instruction": f"Create integration tests in {language} for an API endpoint", "input": ""},
         ],
         "performance": [
-            {"instruction": f"Optimize this {language} function for better performance", "input": "def slow_function(items):\n    result = []\n    for i in items:\n        for j in items:\n            result.append(i * j)\n    return result"},
+            {
+                "instruction": f"Optimize this {language} function for better performance",
+                "input": "def slow_function(items):\n    result = []\n    for i in items:\n        for j in items:\n            result.append(i * j)\n    return result",
+            },
             {"instruction": f"Write a memory-efficient {language} generator for large datasets", "input": ""},
         ],
     }

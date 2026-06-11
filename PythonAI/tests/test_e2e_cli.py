@@ -26,11 +26,23 @@ def test_cli_ask_with_all_flags() -> None:
     from src.cli import build_parser
 
     parser = build_parser()
-    ask_args = parser.parse_args([
-        "ask", "What is a list?",
-        "--rebuild", "--stats", "--no-exec", "--exec-timeout", "10",
-        "--query-expansion", "--mmr", "--version", "3.12", "--category", "library",
-    ])
+    ask_args = parser.parse_args(
+        [
+            "ask",
+            "What is a list?",
+            "--rebuild",
+            "--stats",
+            "--no-exec",
+            "--exec-timeout",
+            "10",
+            "--query-expansion",
+            "--mmr",
+            "--version",
+            "3.12",
+            "--category",
+            "library",
+        ]
+    )
     assert ask_args.command == "ask"
     assert ask_args.question == "What is a list?"
     assert ask_args.rebuild is True
@@ -48,10 +60,17 @@ def test_cli_train_with_flags() -> None:
     from src.cli import build_parser
 
     parser = build_parser()
-    train_args = parser.parse_args([
-        "train", "--mode", "smoke", "--max-steps", "5",
-        "--skip-train", "--no-auth",
-    ])
+    train_args = parser.parse_args(
+        [
+            "train",
+            "--mode",
+            "smoke",
+            "--max-steps",
+            "5",
+            "--skip-train",
+            "--no-auth",
+        ]
+    )
     assert train_args.command == "train"
     assert train_args.mode == "smoke"
     assert train_args.max_steps == 5

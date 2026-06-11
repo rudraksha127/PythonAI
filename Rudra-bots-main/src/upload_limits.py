@@ -11,7 +11,9 @@ def format_byte_limit(limit: int) -> str:
     return f"{limit} bytes"
 
 
-async def read_upload_limited(upload: UploadFile, limit: int, label: str = "Upload") -> bytes:
+async def read_upload_limited(
+    upload: UploadFile, limit: int, label: str = "Upload"
+) -> bytes:
     """Read an UploadFile with a hard byte cap."""
     data = await upload.read(limit + 1)
     if len(data) > limit:

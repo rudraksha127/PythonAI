@@ -13,6 +13,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+
 class Phase1Orchestrator:
     def __init__(self):
         self.output_dir = Path("data")
@@ -46,6 +47,7 @@ class Phase1Orchestrator:
         self.run_week3()
         self.run_week4()
         logger.info("Phase 1 Orchestration complete.")
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

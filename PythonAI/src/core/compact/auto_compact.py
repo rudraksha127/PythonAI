@@ -18,11 +18,11 @@ from collections.abc import Callable
 from typing import Any
 
 # Default thresholds
-DEFAULT_CONTEXT_WINDOW = 128_000    # Default model context window
+DEFAULT_CONTEXT_WINDOW = 128_000  # Default model context window
 DEFAULT_COMPACT_THRESHOLD_PCT = 0.90  # Compact at 90% of context
-DEFAULT_RESERVE_TOKENS = 20_000    # Reserve for output during compaction
+DEFAULT_RESERVE_TOKENS = 20_000  # Reserve for output during compaction
 AUTOCOMPACT_BUFFER_TOKENS = 13_000  # Buffer before threshold
-MAX_CONSECUTIVE_FAILURES = 3       # Circuit breaker limit
+MAX_CONSECUTIVE_FAILURES = 3  # Circuit breaker limit
 
 
 def get_effective_context_window(
@@ -157,7 +157,7 @@ def _simple_compact(messages: list[dict[str, Any]]) -> dict[str, Any]:
     keep_suffix = non_system[-4:] if len(non_system) >= 4 else non_system
 
     # Messages to compact
-    to_compact = messages[len(keep_prefix):-len(keep_suffix)] if keep_suffix else messages[len(keep_prefix):]
+    to_compact = messages[len(keep_prefix) : -len(keep_suffix)] if keep_suffix else messages[len(keep_prefix) :]
 
     if not to_compact:
         return {

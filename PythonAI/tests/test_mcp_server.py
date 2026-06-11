@@ -28,14 +28,9 @@ TOOLS = [
         "description": "Echo back the input message",
         "inputSchema": {
             "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "description": "The message to echo back"
-                }
-            },
-            "required": ["message"]
-        }
+            "properties": {"message": {"type": "string", "description": "The message to echo back"}},
+            "required": ["message"],
+        },
     },
     {
         "name": "greet",
@@ -43,31 +38,20 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Name of the person to greet"
-                },
-                "title": {
-                    "type": "string",
-                    "description": "Optional title (Mr., Dr., etc.)"
-                }
+                "name": {"type": "string", "description": "Name of the person to greet"},
+                "title": {"type": "string", "description": "Optional title (Mr., Dr., etc.)"},
             },
-            "required": ["name"]
-        }
+            "required": ["name"],
+        },
     },
     {
         "name": "reverse_string",
         "description": "Reverse a string input",
         "inputSchema": {
             "type": "object",
-            "properties": {
-                "text": {
-                    "type": "string",
-                    "description": "The text to reverse"
-                }
-            },
-            "required": ["text"]
-        }
+            "properties": {"text": {"type": "string", "description": "The text to reverse"}},
+            "required": ["text"],
+        },
     },
     {
         "name": "add_numbers",
@@ -75,34 +59,22 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "a": {
-                    "type": "number",
-                    "description": "First number"
-                },
-                "b": {
-                    "type": "number",
-                    "description": "Second number"
-                }
+                "a": {"type": "number", "description": "First number"},
+                "b": {"type": "number", "description": "Second number"},
             },
-            "required": ["a", "b"]
-        }
-    }
+            "required": ["a", "b"],
+        },
+    },
 ]
 
 
 def handle_initialize(params):
     """Handle MCP initialize request."""
-    protocol_version = params.get("protocolVersion", "2025-03-26")
+    params.get("protocolVersion", "2025-03-26")
     return {
         "protocolVersion": "2025-03-26",
-        "capabilities": {
-            "tools": {},
-            "resources": {}
-        },
-        "serverInfo": {
-            "name": "pythonai-test-mcp",
-            "version": "1.0.0"
-        }
+        "capabilities": {"tools": {}, "resources": {}},
+        "serverInfo": {"name": "pythonai-test-mcp", "version": "1.0.0"},
     }
 
 
@@ -118,43 +90,24 @@ def handle_tools_call(params):
 
     if tool_name == "echo":
         message = arguments.get("message", "")
-        return {
-            "content": [
-                {"type": "text", "text": f"Echo: {message}"}
-            ]
-        }
+        return {"content": [{"type": "text", "text": f"Echo: {message}"}]}
 
     elif tool_name == "greet":
         name = arguments.get("name", "World")
         title = arguments.get("title", "")
         prefix = f"{title} " if title else ""
-        return {
-            "content": [
-                {"type": "text", "text": f"Hello, {prefix}{name}! Welcome to PythonAI MCP."}
-            ]
-        }
+        return {"content": [{"type": "text", "text": f"Hello, {prefix}{name}! Welcome to PythonAI MCP."}]}
 
     elif tool_name == "reverse_string":
         text = arguments.get("text", "")
         reversed_text = text[::-1]
-        return {
-            "content": [
-                {
-                    "type": "text",
-                    "text": f"Original: {text}\nReversed: {reversed_text}"
-                }
-            ]
-        }
+        return {"content": [{"type": "text", "text": f"Original: {text}\nReversed: {reversed_text}"}]}
 
     elif tool_name == "add_numbers":
         a = arguments.get("a", 0)
         b = arguments.get("b", 0)
         result = a + b
-        return {
-            "content": [
-                {"type": "text", "text": f"{a} + {b} = {result}"}
-            ]
-        }
+        return {"content": [{"type": "text", "text": f"{a} + {b} = {result}"}]}
 
     else:
         raise ValueError(f"Unknown tool: {tool_name}")
@@ -198,45 +151,21 @@ def handle_message(message):
     try:
         handler = HANDLERS.get(method)
         if handler is None:
-            return {
-                "jsonrpc": "2.0",
-                "id": msg_id,
-                "error": {
-                    "code": -32601,
-                    "message": f"Method not found: {method}"
-                }
-            }
+            return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": -32601, "message": f"Method not found: {method}"}}
 
         result = handler(params)
-        return {
-            "jsonrpc": "2.0",
-            "id": msg_id,
-            "result": result
-        }
+        return {"jsonrpc": "2.0", "id": msg_id, "result": result}
 
     except ValueError as e:
-        return {
-            "jsonrpc": "2.0",
-            "id": msg_id,
-            "error": {
-                "code": -32603,
-                "message": str(e)
-            }
-        }
+        return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": -32603, "message": str(e)}}
     except Exception as e:
-        return {
-            "jsonrpc": "2.0",
-            "id": msg_id,
-            "error": {
-                "code": -32603,
-                "message": f"Internal error: {e}"
-            }
-        }
+        return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": -32603, "message": f"Internal error: {e}"}}
 
 
 # ─────────────────────────────────────────────
 #  Main Loop
 # ─────────────────────────────────────────────
+
 
 def main():
     """Main loop: read JSON-RPC from stdin, write responses to stdout."""
@@ -254,14 +183,7 @@ def main():
                 sys.stdout.write(json.dumps(response) + "\n")
                 sys.stdout.flush()
         except json.JSONDecodeError as e:
-            error_response = {
-                "jsonrpc": "2.0",
-                "id": None,
-                "error": {
-                    "code": -32700,
-                    "message": f"Parse error: {e}"
-                }
-            }
+            error_response = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": f"Parse error: {e}"}}
             sys.stdout.write(json.dumps(error_response) + "\n")
             sys.stdout.flush()
             print(f"[MCP Server] Parse error: {e}", file=sys.stderr, flush=True)

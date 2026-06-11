@@ -32,9 +32,11 @@ from .tool import (
 #  Immutable Config Snapshot
 # =======================================
 
+
 @dataclass(frozen=True)
 class QueryConfig:
     """Immutable config snapshot captured at query entry."""
+
     max_tool_rounds: int = 25
     max_budget_tokens: int | None = None
     enable_auto_compact: bool = True
@@ -53,11 +55,13 @@ class QueryConfig:
 #  Dependency Injection
 # =======================================
 
+
 @dataclass
 class QueryDeps:
     """Injectable dependencies for the engine.
     Enables unit testing with mock implementations.
     """
+
     call_llm: Callable[..., Any] | None = None
     microcompact: Callable[..., Any] | None = None
     autocompact: Callable[..., Any] | None = None
@@ -69,14 +73,19 @@ class QueryDeps:
 #  Message Types
 # =======================================
 
+
 class Message:
     """A message in the conversation."""
 
-    def __init__(self, role: str, content: str,
-                 tool_calls: list[dict[str, Any]] | None = None,
-                 tool_call_id: str | None = None,
-                 name: str | None = None,
-                 timestamp: float | None = None):
+    def __init__(
+        self,
+        role: str,
+        content: str,
+        tool_calls: list[dict[str, Any]] | None = None,
+        tool_call_id: str | None = None,
+        name: str | None = None,
+        timestamp: float | None = None,
+    ):
         self.role = role  # "system", "user", "assistant", "tool"
         self.content = content
         self.tool_calls = tool_calls
@@ -114,6 +123,7 @@ class Message:
 #  Tool Call Parser
 # =======================================
 
+
 def parse_tool_calls(response_text: str) -> list[dict[str, Any]]:
     """Parse tool calls from LLM response text."""
     tool_calls = []
@@ -123,68 +133,75 @@ def parse_tool_calls(response_text: str) -> list[dict[str, Any]]:
         data = json.loads(response_text)
         if isinstance(data, dict):
             if "name" in data and "arguments" in data:
-                tool_calls.append({
-                    "id": f"call_{int(time.time()*1000)}",
-                    "type": "function",
-                    "function": {
-                        "name": data["name"],
-                        "arguments": json.dumps(data["arguments"])
-                        if isinstance(data["arguments"], dict)
-                        else data["arguments"],
+                tool_calls.append(
+                    {
+                        "id": f"call_{int(time.time() * 1000)}",
+                        "type": "function",
+                        "function": {
+                            "name": data["name"],
+                            "arguments": json.dumps(data["arguments"])
+                            if isinstance(data["arguments"], dict)
+                            else data["arguments"],
+                        },
                     }
-                })
+                )
                 return tool_calls
             if "tool_calls" in data:
                 return data["tool_calls"]  # type: ignore[no-any-return]
         if isinstance(data, list):
             for item in data:
                 if isinstance(item, dict) and "name" in item:
-                    tool_calls.append({
-                        "id": f"call_{int(time.time()*1000)}",
-                        "type": "function",
-                        "function": {
-                            "name": item["name"],
-                            "arguments": json.dumps(item.get("arguments", {})),
+                    tool_calls.append(
+                        {
+                            "id": f"call_{int(time.time() * 1000)}",
+                            "type": "function",
+                            "function": {
+                                "name": item["name"],
+                                "arguments": json.dumps(item.get("arguments", {})),
+                            },
                         }
-                    })
+                    )
             return tool_calls
     except (json.JSONDecodeError, TypeError):
         pass
 
     # Try XML format
     import re
+
     xml_calls = re.findall(
-        r'<(?:tool_call|invoke|use_tool)>'
-        r'\s*<(?:tool_name|name)>(.*?)</(?:tool_name|name)>'
-        r'\s*<(?:parameters|arguments|input)>(.*?)</(?:parameters|arguments|input)>'
-        r'\s*</(?:tool_call|invoke|use_tool)>',
-        response_text, re.DOTALL
+        r"<(?:tool_call|invoke|use_tool)>"
+        r"\s*<(?:tool_name|name)>(.*?)</(?:tool_name|name)>"
+        r"\s*<(?:parameters|arguments|input)>(.*?)</(?:parameters|arguments|input)>"
+        r"\s*</(?:tool_call|invoke|use_tool)>",
+        response_text,
+        re.DOTALL,
     )
     for name, args_text in xml_calls:
         try:
             args = json.loads(args_text.strip())
         except json.JSONDecodeError:
             args = {"raw": args_text.strip()}
-        tool_calls.append({
-            "id": f"call_{int(time.time()*1000)}",
-            "type": "function",
-            "function": {"name": name.strip(), "arguments": json.dumps(args)}
-        })
+        tool_calls.append(
+            {
+                "id": f"call_{int(time.time() * 1000)}",
+                "type": "function",
+                "function": {"name": name.strip(), "arguments": json.dumps(args)},
+            }
+        )
 
     if not tool_calls:
-        inline_calls = re.findall(
-            r'(?:Tool|tool):\s*(\w+)\s*\((.+?)\)\s*(?:\n|$)',
-            response_text
-        )
+        inline_calls = re.findall(r"(?:Tool|tool):\s*(\w+)\s*\((.+?)\)\s*(?:\n|$)", response_text)
         for name, args_str in inline_calls:
             args = {}
             for kv in re.findall(r'(\w+)\s*=\s*"([^"]*)"', args_str):
                 args[kv[0]] = kv[1]
-            tool_calls.append({
-                "id": f"call_{int(time.time()*1000)}",
-                "type": "function",
-                "function": {"name": name.strip(), "arguments": json.dumps(args)}
-            })
+            tool_calls.append(
+                {
+                    "id": f"call_{int(time.time() * 1000)}",
+                    "type": "function",
+                    "function": {"name": name.strip(), "arguments": json.dumps(args)},
+                }
+            )
 
     return tool_calls
 
@@ -193,9 +210,11 @@ def parse_tool_calls(response_text: str) -> list[dict[str, Any]]:
 #  Partition Tool Calls by Concurrency
 # =======================================
 
+
 @dataclass
 class ToolBatch:
     """A batch of tool calls to execute."""
+
     is_concurrency_safe: bool
     blocks: list[dict[str, Any]]
 
@@ -230,6 +249,7 @@ def partition_tool_calls(
 #  Tool Calling Engine (Phase 3)
 # =======================================
 
+
 class ToolCallingEngine:
     """The central LLM + tools loop — Phase 3 upgraded.
 
@@ -242,17 +262,18 @@ class ToolCallingEngine:
     - Immutable config snapshots
     """
 
-    def __init__(self,
-                 provider: str = "auto",
-                 model: str = "",
-                 registry: ToolRegistry | None = None,
-                 max_tool_rounds: int = 25,
-                 on_stream: Callable[[str], None] | None = None,
-                 on_tool_call: Callable[[str, dict[str, Any]], None] | None = None,
-                 on_tool_result: Callable[[str, Any], None] | None = None,
-                 deps: QueryDeps | None = None,
-                 config: QueryConfig | None = None,
-                 ):
+    def __init__(
+        self,
+        provider: str = "auto",
+        model: str = "",
+        registry: ToolRegistry | None = None,
+        max_tool_rounds: int = 25,
+        on_stream: Callable[[str], None] | None = None,
+        on_tool_call: Callable[[str, dict[str, Any]], None] | None = None,
+        on_tool_result: Callable[[str, Any], None] | None = None,
+        deps: QueryDeps | None = None,
+        config: QueryConfig | None = None,
+    ):
         self.provider = provider
         self.model = model
         self.registry = registry or get_registry()
@@ -299,15 +320,16 @@ class ToolCallingEngine:
         """Initialize budget tracker if token budget is enabled."""
         if self.config.enable_token_budget and self.deps.check_token_budget:
             from .engine.token_budget import BudgetTracker
+
             self._budget_tracker = BudgetTracker()
         elif self.config.enable_token_budget:
             from .engine.token_budget import BudgetTracker
+
             self._budget_tracker = BudgetTracker()
 
     # == Provider Methods =====================================
 
-    def _call_llm(self, messages: list[dict[str, Any]],
-                  tools: list[dict[str, Any]]) -> dict[str, Any]:
+    def _call_llm(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> dict[str, Any]:
         """Call LLM with model fallback support."""
         # Use injected deps first
         if self.deps.call_llm:
@@ -345,20 +367,26 @@ class ToolCallingEngine:
                 if msg["role"] == "system":
                     system_content = msg["content"]
                 elif msg["role"] == "tool":
-                    formatted.append({
-                        "role": "tool", "content": msg["content"],
-                        "tool_call_id": msg.get("tool_call_id", ""),
-                        "name": msg.get("name", ""),
-                    })
+                    formatted.append(
+                        {
+                            "role": "tool",
+                            "content": msg["content"],
+                            "tool_call_id": msg.get("tool_call_id", ""),
+                            "name": msg.get("name", ""),
+                        }
+                    )
                 else:
                     formatted.append({"role": msg["role"], "content": msg["content"]})
 
             if system_content:
                 tool_text = self._format_tools_for_prompt(tools)
-                formatted.insert(0, {
-                    "role": "system",
-                    "content": system_content + "\n\n" + tool_text,
-                })
+                formatted.insert(
+                    0,
+                    {
+                        "role": "system",
+                        "content": system_content + "\n\n" + tool_text,
+                    },
+                )
 
             # Call API with tool definitions for native function calling support
             api_fn = get_provider_api(route.provider)
@@ -389,20 +417,23 @@ class ToolCallingEngine:
 
         except ImportError:
             from src.utils.llm import generate_with_provider
+
             return self._call_llm_legacy(messages, tools, generate_with_provider)
 
-    def _call_with_fallback(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], router: Any) -> dict[str, Any]:
+    def _call_with_fallback(
+        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], router: Any
+    ) -> dict[str, Any]:
         """Try fallback providers when primary fails."""
         if not self.config.enable_model_fallback:
             from src.utils.llm import generate_with_provider
+
             return self._call_llm_legacy(messages, tools, generate_with_provider)
 
         # Build fallback chain
         if not self._fallback_providers:
             available = router.get_available_providers()
             self._fallback_providers = [
-                p.id for p in available
-                if p.id != self.provider and not p.is_local and p.requires_key
+                p.id for p in available if p.id != self.provider and not p.is_local and p.requires_key
             ]
             # Add local as last resort
             self._fallback_providers.append("ollama")
@@ -415,6 +446,7 @@ class ToolCallingEngine:
 
             try:
                 from .providers import get_provider_api
+
                 api_fn = get_provider_api(fb_provider)
 
                 formatted = []
@@ -422,11 +454,14 @@ class ToolCallingEngine:
                     if msg["role"] == "system":
                         continue
                     elif msg["role"] == "tool":
-                        formatted.append({
-                            "role": "tool", "content": msg["content"],
-                            "tool_call_id": msg.get("tool_call_id", ""),
-                            "name": msg.get("name", ""),
-                        })
+                        formatted.append(
+                            {
+                                "role": "tool",
+                                "content": msg["content"],
+                                "tool_call_id": msg.get("tool_call_id", ""),
+                                "name": msg.get("name", ""),
+                            }
+                        )
                     else:
                         formatted.append({"role": msg["role"], "content": msg["content"]})
 
@@ -455,9 +490,12 @@ class ToolCallingEngine:
 
         # All fallbacks failed
         from src.utils.llm import generate_with_provider
+
         return self._call_llm_legacy(messages, tools, generate_with_provider)
 
-    def _call_llm_legacy(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], generate_fn: Any) -> dict[str, Any]:
+    def _call_llm_legacy(
+        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], generate_fn: Any
+    ) -> dict[str, Any]:
         """Fallback using legacy system."""
         system_prompt = self._build_system_prompt(tools)
 
@@ -509,7 +547,9 @@ Think step by step about which tools to use and in what order."""
             for pname, pinfo in props.items():
                 required = pname in params.get("required", [])
                 req_mark = " (required)" if required else ""
-                param_lines.append(f"    {pname}: {pinfo.get('type', 'any')}{req_mark} - {pinfo.get('description', '')}")
+                param_lines.append(
+                    f"    {pname}: {pinfo.get('type', 'any')}{req_mark} - {pinfo.get('description', '')}"
+                )
             parts.append(f"  - {name}: {desc}")
             if param_lines:
                 parts.append("    Parameters:")
@@ -567,7 +607,6 @@ Think step by step about which tools to use and in what order."""
     def _execute_parallel_batch(self, blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Execute read-only tools in parallel."""
         self.stats["total_parallel_batches"] += 1
-        results: list[dict[str, Any]] = []
         results_map: dict[int, dict[str, Any]] = {}
         with ThreadPoolExecutor(max_workers=min(len(blocks), 10)) as executor:
             future_map: dict[Any, int] = {}
@@ -596,11 +635,13 @@ Think step by step about which tools to use and in what order."""
         for tc in blocks:
             result_content = self._execute_tool(tc)
             fn_info = tc.get("function", tc)
-            results.append({
-                "tool_call_id": tc.get("id", "call_unknown"),
-                "name": fn_info.get("name", "unknown"),
-                "content": result_content,
-            })
+            results.append(
+                {
+                    "tool_call_id": tc.get("id", "call_unknown"),
+                    "name": fn_info.get("name", "unknown"),
+                    "content": result_content,
+                }
+            )
         return results
 
     # == Compaction Integration ===============================
@@ -612,6 +653,7 @@ Think step by step about which tools to use and in what order."""
         try:
             msg_dicts = [m.to_dict() for m in self.messages]
             from .compact.micro_compact import microcompact_messages
+
             result = microcompact_messages(
                 msg_dicts,
                 time_gap_minutes=self.config.microcompact_gap_minutes,
@@ -625,7 +667,8 @@ Think step by step about which tools to use and in what order."""
                 self.messages = []
                 for d in result["messages"]:
                     msg = Message(
-                        role=d["role"], content=d["content"],
+                        role=d["role"],
+                        content=d["content"],
                         tool_call_id=d.get("tool_call_id"),
                         name=d.get("name"),
                         timestamp=d.get("timestamp"),
@@ -645,6 +688,7 @@ Think step by step about which tools to use and in what order."""
         try:
             msg_dicts = [m.to_dict() for m in self.messages]
             from .compact.auto_compact import _simple_compact, auto_compact_if_needed
+
             result = auto_compact_if_needed(
                 msg_dicts,
                 model_context_window=self.config.model_context_window,
@@ -657,7 +701,8 @@ Think step by step about which tools to use and in what order."""
                 self.messages = []
                 for d in result["messages"]:
                     msg = Message(
-                        role=d["role"], content=d["content"],
+                        role=d["role"],
+                        content=d["content"],
                         tool_call_id=d.get("tool_call_id"),
                         name=d.get("name"),
                         timestamp=d.get("timestamp"),
@@ -677,11 +722,14 @@ Think step by step about which tools to use and in what order."""
         try:
             msg_dicts = [m.to_dict() for m in self.messages]
             from .compact.reactive_compact import is_prompt_too_long_error, reactive_compact_if_needed
+
             if not is_prompt_too_long_error(response):
                 return None
             from .compact.auto_compact import _simple_compact
+
             result = reactive_compact_if_needed(
-                response, msg_dicts,
+                response,
+                msg_dicts,
                 compact_fn=_simple_compact,
             )
             if result.get("should_retry") and result.get("compacted_messages"):
@@ -689,7 +737,8 @@ Think step by step about which tools to use and in what order."""
                 self.messages = []
                 for d in result["compacted_messages"]:
                     msg = Message(
-                        role=d["role"], content=d["content"],
+                        role=d["role"],
+                        content=d["content"],
                         tool_call_id=d.get("tool_call_id"),
                         name=d.get("name"),
                         timestamp=d.get("timestamp"),
@@ -704,10 +753,9 @@ Think step by step about which tools to use and in what order."""
 
     # == Main Loop ============================================
 
-    def run(self, user_input: str,
-            system_prompt: str | None = None,
-            tools: list[Tool] | None = None,
-            stream: bool = False) -> str:
+    def run(
+        self, user_input: str, system_prompt: str | None = None, tools: list[Tool] | None = None, stream: bool = False
+    ) -> str:
         """
         Run the tool-calling loop with all Phase 3 upgrades.
 
@@ -744,10 +792,10 @@ Think step by step about which tools to use and in what order."""
             self.stats["total_rounds"] = round_num + 1
 
             # Step 1: Micro-compaction (pre-request)
-            micro_result = self._apply_micro_compact()
+            self._apply_micro_compact()
 
             # Step 2: Auto-compaction (pre-request)
-            auto_result = self._apply_auto_compact()
+            self._apply_auto_compact()
 
             # Build message list
             msg_dicts = [m.to_openai_dict() for m in self.messages]
@@ -784,8 +832,7 @@ Think step by step about which tools to use and in what order."""
                 break
 
             # == Execute tool calls with concurrency batching ==
-            self.messages.append(Message("assistant", response_text or "",
-                                          tool_calls=tool_calls))
+            self.messages.append(Message("assistant", response_text or "", tool_calls=tool_calls))
 
             # Partition into batches
             batches = partition_tool_calls(tool_calls, self.registry)
@@ -798,17 +845,20 @@ Think step by step about which tools to use and in what order."""
 
             # Add tool results to messages
             for tr in all_results:
-                self.messages.append(Message(
-                    role="tool",
-                    content=tr["content"],
-                    tool_call_id=tr["tool_call_id"],
-                    name=tr["name"],
-                ))
+                self.messages.append(
+                    Message(
+                        role="tool",
+                        content=tr["content"],
+                        tool_call_id=tr["tool_call_id"],
+                        name=tr["name"],
+                    )
+                )
 
             # == Token budget check (auto-continuation) ========
             if self._budget_tracker and round_num > 0:
                 try:
                     from .engine.token_budget import check_token_budget
+
                     decision = check_token_budget(
                         self._budget_tracker,
                         None,  # no agent_id
@@ -817,9 +867,7 @@ Think step by step about which tools to use and in what order."""
                     )
                     if decision.action == "continue":
                         # Inject continuation nudge
-                        self.messages.append(Message(
-                            "user", decision.nudge_message
-                        ))
+                        self.messages.append(Message("user", decision.nudge_message))
                         continue
                 except ImportError:
                     pass

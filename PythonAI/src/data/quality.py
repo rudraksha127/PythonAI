@@ -63,9 +63,9 @@ PII_PATTERNS = {
 }
 
 # Minimum text length thresholds
-TEXT_LENGTH_MIN = 50          # Absolute minimum chars to keep
+TEXT_LENGTH_MIN = 50  # Absolute minimum chars to keep
 TEXT_LENGTH_RECOMMENDED = 200  # Recommended minimum for training
-TEXT_LENGTH_IDEAL = 500        # Ideal minimum for quality
+TEXT_LENGTH_IDEAL = 500  # Ideal minimum for quality
 
 # Language detection confidence threshold
 LANG_CONFIDENCE_THRESHOLD = 0.5
@@ -74,6 +74,7 @@ LANG_CONFIDENCE_THRESHOLD = 0.5
 # ════════════════════════════════════════════
 # Stage 1: Text Length Filter
 # ════════════════════════════════════════════
+
 
 def check_text_length(text: str, min_length: int = TEXT_LENGTH_MIN) -> tuple[bool, int, float]:
     """Check if text meets minimum length. Returns (passed, length, score 0-1)."""
@@ -89,13 +90,18 @@ def check_text_length(text: str, min_length: int = TEXT_LENGTH_MIN) -> tuple[boo
 # Stage 2: Language Detection
 # ════════════════════════════════════════════
 
+
 def detect_language(text: str) -> tuple[str, float]:
     """Detect language using langdetect or fasttext. Returns (lang_code, confidence)."""
     # Try fasttext first (much faster)
     try:
         import fasttext
-        model = fasttext.load_model(str(Path(__file__).parent / "models" / "lid.176.bin")) \
-            if hasattr(fasttext, "load_model") else None
+
+        model = (
+            fasttext.load_model(str(Path(__file__).parent / "models" / "lid.176.bin"))
+            if hasattr(fasttext, "load_model")
+            else None
+        )
     except Exception:
         model = None
 
@@ -108,6 +114,7 @@ def detect_language(text: str) -> tuple[str, float]:
     # Fallback to langdetect
     try:
         from langdetect import DetectorFactory, detect
+
         DetectorFactory.seed = 42
         lang = detect(text[:1000])
         return lang, 0.8  # langdetect doesn't give confidence, use default
@@ -126,6 +133,7 @@ def filter_by_language(text: str, target_languages: set[str] | None = None) -> t
 # ════════════════════════════════════════════
 # Stage 3: PII Detection & Masking
 # ════════════════════════════════════════════
+
 
 def scan_pii(text: str) -> dict[str, int]:
     """Scan text for PII patterns. Returns dict of {pattern_name: count}."""
@@ -156,6 +164,7 @@ def check_pii(text: str, max_allowed: int = 0) -> tuple[bool, dict[str, int]]:
 # Stage 4: Exact Deduplication
 # ════════════════════════════════════════════
 
+
 def exact_dedup(records: list[dict[str, Any]], text_field: str = "text") -> tuple[list[dict[str, Any]], dict[str, int]]:
     """Remove exact duplicate records by text field."""
     seen: set[str] = set()
@@ -176,10 +185,11 @@ def exact_dedup(records: list[dict[str, Any]], text_field: str = "text") -> tupl
 # Stage 5: MinHash Near-Dedup
 # ════════════════════════════════════════════
 
+
 def _shingle(text: str, k: int = 5) -> set[str]:
     """Generate k-shingles from text."""
     text = re.sub(r"\s+", " ", text.strip().lower())
-    return set(text[i:i + k] for i in range(len(text) - k + 1))
+    return set(text[i : i + k] for i in range(len(text) - k + 1))
 
 
 def _minhash_signature(shingles: set[str], num_hashes: int = 128) -> list[int]:
@@ -197,8 +207,9 @@ def _jaccard_from_signatures(sig1: list[int], sig2: list[int]) -> float:
     return matches / len(sig1) if sig1 else 0.0
 
 
-def near_dedup(records: list[dict[str, Any]], text_field: str = "text",
-               threshold: float = 0.8, num_hashes: int = 64) -> tuple[list[dict[str, Any]], dict[str, int]]:
+def near_dedup(
+    records: list[dict[str, Any]], text_field: str = "text", threshold: float = 0.8, num_hashes: int = 64
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """Remove near-duplicates using MinHash approximation.
 
     Args:
@@ -242,6 +253,7 @@ def near_dedup(records: list[dict[str, Any]], text_field: str = "text",
 # Boilerplate / Low Quality Detection
 # ════════════════════════════════════════════
 
+
 def check_boilerplate(text: str) -> tuple[bool, float]:
     """Detect boilerplate-heavy text. Returns (clean, score 0-1)."""
     text_lower = text.lower()
@@ -263,7 +275,7 @@ def check_repetition(text: str) -> tuple[bool, float]:
     # Check for repeated 3-grams (trigrams)
     trigrams: list[str] = []
     for i in range(len(words) - 2):
-        trigrams.append(" ".join(words[i:i + 3]))
+        trigrams.append(" ".join(words[i : i + 3]))
 
     if not trigrams:
         return True, 1.0
@@ -279,6 +291,7 @@ def check_repetition(text: str) -> tuple[bool, float]:
 # ════════════════════════════════════════════
 # Full Quality Pipeline
 # ════════════════════════════════════════════
+
 
 class QualityPipeline:
     """
@@ -316,8 +329,7 @@ class QualityPipeline:
         self.language_field = language_field
         self.metadata = metadata_mgr
 
-    def run_records(self, records: list[dict[str, Any]],
-                    dataset_id: str | None = None) -> dict[str, Any]:
+    def run_records(self, records: list[dict[str, Any]], dataset_id: str | None = None) -> dict[str, Any]:
         """
         Run the full quality pipeline on a list of records.
 
@@ -343,7 +355,8 @@ class QualityPipeline:
                 rec["_length_score"] = score
                 length_passed.append(rec)
         stage_stats["length_filter"] = {
-            "input": total, "output": len(length_passed),
+            "input": total,
+            "output": len(length_passed),
             "removed": total - len(length_passed),
         }
 
@@ -365,7 +378,8 @@ class QualityPipeline:
             rec["_quality_score"] = rec.get("_quality_score", 0) + confidence * 0.15
             lang_passed.append(rec)
         stage_stats["language_filter"] = {
-            "input": len(length_passed), "output": len(lang_passed),
+            "input": len(length_passed),
+            "output": len(lang_passed),
             "removed": len(length_passed) - len(lang_passed),
         }
 
@@ -382,7 +396,8 @@ class QualityPipeline:
             rec["_quality_score"] = rec.get("_quality_score", 0) + (0.10 if clean else 0.05)
             pii_passed.append(rec)
         stage_stats["pii_scan"] = {
-            "input": len(lang_passed), "output": len(pii_passed),
+            "input": len(lang_passed),
+            "output": len(pii_passed),
             "flagged": sum(1 for r in pii_passed if r.get("_pii_findings")),
         }
 
@@ -407,7 +422,8 @@ class QualityPipeline:
             if final_score >= self.quality_threshold:
                 quality_passed.append(rec)
         stage_stats["quality_filter"] = {
-            "input": len(deduped), "output": len(quality_passed),
+            "input": len(deduped),
+            "output": len(quality_passed),
             "removed": len(deduped) - len(quality_passed),
         }
 
@@ -422,21 +438,19 @@ class QualityPipeline:
             "elapsed_seconds": round(elapsed, 2),
             "records_per_second": round(len(quality_passed) / elapsed, 1) if elapsed > 0 else 0,
         }
-        stats["avg_quality_score"] = round(
-            sum(r.get("_quality_score", 0) for r in quality_passed) / len(quality_passed), 3
-        ) if quality_passed else 0
+        stats["avg_quality_score"] = (
+            round(sum(r.get("_quality_score", 0) for r in quality_passed) / len(quality_passed), 3)
+            if quality_passed
+            else 0
+        )
 
         # Update metadata if manager provided
         if self.metadata and dataset_id:
-            all_checks_passed = quality_passed == len(records) or True  # Don't be too strict
-            self.metadata.update_quality(dataset_id, "text_length",
-                stage_stats["length_filter"]["output"] > 0)
-            self.metadata.update_quality(dataset_id, "language_detection",
-                stage_stats["language_filter"]["output"] > 0)
-            self.metadata.update_quality(dataset_id, "pii_scan",
-                stage_stats["pii_scan"]["flagged"] == 0)
-            self.metadata.update_quality(dataset_id, "dedup_exact",
-                stage_stats["exact_dedup"]["unique"] > 0)
+            quality_passed == len(records) or True  # Don't be too strict
+            self.metadata.update_quality(dataset_id, "text_length", stage_stats["length_filter"]["output"] > 0)
+            self.metadata.update_quality(dataset_id, "language_detection", stage_stats["language_filter"]["output"] > 0)
+            self.metadata.update_quality(dataset_id, "pii_scan", stage_stats["pii_scan"]["flagged"] == 0)
+            self.metadata.update_quality(dataset_id, "dedup_exact", stage_stats["exact_dedup"]["unique"] > 0)
             if quality_passed:
                 avg_score = sum(r.get("_quality_score", 0) for r in quality_passed) / len(quality_passed)
                 self.metadata.update_quality(dataset_id, "format_valid", True, avg_score)
@@ -464,8 +478,7 @@ class QualityPipeline:
 
         return self.run_records(records, dataset_id or path.stem)
 
-    def quality_distribution(self, records: list[dict[str, Any]],
-                             bins: int = 10) -> dict[str, Any]:
+    def quality_distribution(self, records: list[dict[str, Any]], bins: int = 10) -> dict[str, Any]:
         """Compute quality score distribution."""
         scores = [r.get("_quality_score", 0) for r in records if "_quality_score" in r]
         if not scores:

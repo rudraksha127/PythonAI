@@ -30,8 +30,9 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 # Fix Windows console encoding for Rich box-drawing characters
 import io
-if hasattr(sys.stdout, 'buffer'):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 from rich.console import Console
 from rich.panel import Panel
@@ -44,10 +45,12 @@ console = Console()
 
 def step_1_ingestion(test_mode: bool = False) -> dict[str, Any]:
     """Step 1: ZIP doc extraction and chunking."""
-    console.print(Panel.fit(
-        "[bold cyan]Step 1: ZIP Doc Ingestion[/bold cyan]\n"
-        "Extracting Python 2.7–3.16 docs, parsing HTML/text, chunking → JSONL"
-    ))
+    console.print(
+        Panel.fit(
+            "[bold cyan]Step 1: ZIP Doc Ingestion[/bold cyan]\n"
+            "Extracting Python 2.7–3.16 docs, parsing HTML/text, chunking → JSONL"
+        )
+    )
 
     from scripts.zip_doc_ingestor import main as ingest_main, OUTPUT_FILE
 
@@ -73,10 +76,12 @@ def step_2_amplification(
     use_ollama: bool = False,
 ) -> dict[str, Any]:
     """Step 2: Data amplification (100x)."""
-    console.print(Panel.fit(
-        "[bold cyan]Step 2: Data Amplification[/bold cyan]\n"
-        "Generating Q&A pairs, keyword tasks, code tasks from doc chunks"
-    ))
+    console.print(
+        Panel.fit(
+            "[bold cyan]Step 2: Data Amplification[/bold cyan]\n"
+            "Generating Q&A pairs, keyword tasks, code tasks from doc chunks"
+        )
+    )
 
     from scripts.data_amplifier import (
         process_amplification,
@@ -101,10 +106,12 @@ def step_2_amplification(
 
 def step_3_pypi_knowledge(test_mode: bool = False) -> dict[str, Any]:
     """Step 3: PyPI knowledge base building."""
-    console.print(Panel.fit(
-        "[bold cyan]Step 3: PyPI Knowledge Base[/bold cyan]\n"
-        "Fetching metadata for 950K+ PyPI libraries → knowledge cards"
-    ))
+    console.print(
+        Panel.fit(
+            "[bold cyan]Step 3: PyPI Knowledge Base[/bold cyan]\n"
+            "Fetching metadata for 950K+ PyPI libraries → knowledge cards"
+        )
+    )
 
     from scripts.data_amplifier import process_pypi_knowledge, OUTPUT_PYPI
 
@@ -122,10 +129,9 @@ def step_3_pypi_knowledge(test_mode: bool = False) -> dict[str, Any]:
 
 def step_4_verify() -> dict[str, Any]:
     """Step 4: Verify all output files."""
-    console.print(Panel.fit(
-        "[bold cyan]Step 4: Verification[/bold cyan]\n"
-        "Checking output files for correctness and completeness"
-    ))
+    console.print(
+        Panel.fit("[bold cyan]Step 4: Verification[/bold cyan]\nChecking output files for correctness and completeness")
+    )
 
     RAW_DIR = PROJECT_ROOT / "data" / "raw"
     TRAIN_DIR = PROJECT_ROOT / "data" / "training"
@@ -193,10 +199,12 @@ def step_4_verify() -> dict[str, Any]:
 
 def step_5_walkthrough() -> None:
     """Step 5: Print a walkthrough of the complete pipeline."""
-    console.print(Panel.fit(
-        "[bold green]Step 5: Pipeline Walkthrough[/bold green]\n"
-        "Complete overview of the ZIP Ingestion & Amplification Pipeline"
-    ))
+    console.print(
+        Panel.fit(
+            "[bold green]Step 5: Pipeline Walkthrough[/bold green]\n"
+            "Complete overview of the ZIP Ingestion & Amplification Pipeline"
+        )
+    )
 
     walkthrough = """
 ╔══════════════════════════════════════════════════════════════════════╗
@@ -377,12 +385,14 @@ def main(
     walkthrough_only: bool = False,
 ) -> None:
     """Run the ingestion and amplification pipeline."""
-    console.print(Panel.fit(
-        "[bold yellow]╔══════════════════════════════════════════════╗\n"
-        "║  ZIP INGESTION & 950K+ PyPI AMPLIFICATION  ║\n"
-        "║  Python Docs v2.7 → v3.16                    ║\n"
-        "╚══════════════════════════════════════════════╝[/bold yellow]"
-    ))
+    console.print(
+        Panel.fit(
+            "[bold yellow]╔══════════════════════════════════════════════╗\n"
+            "║  ZIP INGESTION & 950K+ PyPI AMPLIFICATION  ║\n"
+            "║  Python Docs v2.7 → v3.16                    ║\n"
+            "╚══════════════════════════════════════════════╝[/bold yellow]"
+        )
+    )
 
     if test_mode:
         console.print("[yellow]Running in TEST MODE (limited scope)[/yellow]\n")
@@ -430,34 +440,29 @@ def main(
     total_elapsed = time.time() - start_time
 
     # Final summary
-    console.print(Panel.fit(
-        "[bold green]═══ PIPELINE COMPLETE ═══[/bold green]\n\n"
-        f"Total time: {total_elapsed:.1f}s\n"
-        f"Ingestion:  {all_results.get('ingestion', {}).get('chunks', 0):,} chunks\n"
-        f"Amplified:  {all_results.get('amplification', {}).get('output_pairs', 0):,} pairs\n"
-        f"PyPI cards: {all_results.get('pypi', {}).get('total_cards', 0):,}\n"
-        f"All files valid: {verify_result.get('all_ok', False)}\n\n"
-        f"Next: python scripts/forge_pipeline/forge_step2_process.py"
-    ))
+    console.print(
+        Panel.fit(
+            "[bold green]═══ PIPELINE COMPLETE ═══[/bold green]\n\n"
+            f"Total time: {total_elapsed:.1f}s\n"
+            f"Ingestion:  {all_results.get('ingestion', {}).get('chunks', 0):,} chunks\n"
+            f"Amplified:  {all_results.get('amplification', {}).get('output_pairs', 0):,} pairs\n"
+            f"PyPI cards: {all_results.get('pypi', {}).get('total_cards', 0):,}\n"
+            f"All files valid: {verify_result.get('all_ok', False)}\n\n"
+            f"Next: python scripts/forge_pipeline/forge_step2_process.py"
+        )
+    )
 
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(
-        description="ZIP Ingestion & PyPI Amplification Pipeline"
-    )
-    parser.add_argument("--test", action="store_true",
-                        help="Test mode (1 ZIP, 100 chunks, 20 PyPI libs)")
-    parser.add_argument("--ingest-only", action="store_true",
-                        help="Only run ingestion step")
-    parser.add_argument("--amplify-only", action="store_true",
-                        help="Only run amplification step")
-    parser.add_argument("--pypi-only", action="store_true",
-                        help="Only run PyPI knowledge base step")
-    parser.add_argument("--verify", action="store_true",
-                        help="Verify output files and exit")
-    parser.add_argument("--walkthrough", action="store_true",
-                        help="Show pipeline walkthrough and exit")
+
+    parser = argparse.ArgumentParser(description="ZIP Ingestion & PyPI Amplification Pipeline")
+    parser.add_argument("--test", action="store_true", help="Test mode (1 ZIP, 100 chunks, 20 PyPI libs)")
+    parser.add_argument("--ingest-only", action="store_true", help="Only run ingestion step")
+    parser.add_argument("--amplify-only", action="store_true", help="Only run amplification step")
+    parser.add_argument("--pypi-only", action="store_true", help="Only run PyPI knowledge base step")
+    parser.add_argument("--verify", action="store_true", help="Verify output files and exit")
+    parser.add_argument("--walkthrough", action="store_true", help="Show pipeline walkthrough and exit")
     args = parser.parse_args()
 
     main(

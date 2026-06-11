@@ -27,8 +27,10 @@ def orch(registry):
     # Ensure no MCP tools are in the registry for baseline tests
     # (MCP tools could be registered by other tests sharing the singleton)
     stream_log: list[str] = []
+
     def stream(msg: str) -> None:
         stream_log.append(msg)
+
     o = AgentOrchestrator(
         registry=registry,
         on_stream=stream,
@@ -42,6 +44,7 @@ def clean_registry():
     """Create a completely fresh, isolated registry (no shared state)."""
     from src.core.registry import ToolRegistry
     from src.core.tools import register_all_tools as register
+
     fresh = ToolRegistry()
     register(fresh)
     return fresh
@@ -84,16 +87,21 @@ class TestInitDefaultAgents:
         class MockMCPTool(Tool):
             def __init__(self):
                 super().__init__(name="mcp__test__tool", description="MCP test tool")
+
             def input_schema(self):
                 from src.core.tool import InputSchema
+
                 return InputSchema()
+
             def call(self, input_data, context):
                 from src.core.tool import ToolResult
+
                 return ToolResult(data="ok")
 
         # Use a fresh registry to avoid polluting the shared singleton
         fresh_registry = ToolRegistry()
         from src.core.tools import register_all_tools
+
         register_all_tools(fresh_registry)
         fresh_registry.register_mcp(MockMCPTool())
 
@@ -256,7 +264,9 @@ class TestSummary:
             PlanStep(id="step_0", agent_name="coder", task="Write code", depends_on=[], priority=1),
         ]
         o.results = {
-            "coder": SubAgentResult("coder", "coding", False, "", error="Something broke", tool_calls_used=0, rounds=1, elapsed=0.5),
+            "coder": SubAgentResult(
+                "coder", "coding", False, "", error="Something broke", tool_calls_used=0, rounds=1, elapsed=0.5
+            ),
         }
         o.plan[0].status = "failed"
 
@@ -382,7 +392,7 @@ class TestRunPipeline:
         for agent in o._swarm.agents.values():
             agent.call_llm_fn = lambda m, t: {"content": "Mock.", "tool_calls": []}
 
-        result = o.run("hello")
+        o.run("hello")
         # The synthesis phase should have been entered
         assert any("Synthesizing" in msg for msg in log)
 
@@ -485,6 +495,6 @@ class TestLLMPlanningEdgeCases:
     def test_empty_list_returned(self, orch):
         """An empty list should return an empty plan."""
         o, _ = orch
-        o._call_planning_llm = MagicMock(return_value='[]')
+        o._call_planning_llm = MagicMock(return_value="[]")
         result = o._plan_task_llm("task")
         assert result == []

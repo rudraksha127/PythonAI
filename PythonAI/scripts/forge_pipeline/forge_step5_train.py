@@ -16,8 +16,8 @@ import time
 from pathlib import Path
 
 # Fix Windows console encoding
-if hasattr(sys.stdout, 'buffer'):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 import torch
 from loguru import logger
@@ -38,6 +38,7 @@ try:
     )
     from peft import LoraConfig, get_peft_model, TaskType, PeftModel
     from trl import SFTTrainer
+
     HAS_TRAIN_DEPS = True
 except ImportError as _import_err:
     HAS_TRAIN_DEPS = False
@@ -79,9 +80,7 @@ def load_raw_records(cfg: ForgeConfig, test_mode: bool = False) -> list[dict]:
         if train_file.exists():
             all_file = train_file
         else:
-            raise FileNotFoundError(
-                f"No training data found in {train_dir}. Run forge_step4_assemble.py first."
-            )
+            raise FileNotFoundError(f"No training data found in {train_dir}. Run forge_step4_assemble.py first.")
 
     logger.info(f"Loading training data from: {all_file}")
 
@@ -98,7 +97,7 @@ def load_raw_records(cfg: ForgeConfig, test_mode: bool = False) -> list[dict]:
         raise ValueError("No valid training examples found!")
 
     logger.success(f"Loaded {len(records):,} training records")
-    
+
     if test_mode:
         records = records[:10]
         logger.info(f"TEST MODE: using {len(records)} records")
@@ -114,27 +113,24 @@ def tokenize_record(record: dict, tokenizer, max_length: int) -> dict | None:
         if "messages" in record:
             msgs = record["messages"]
             # Build full conversation text
-            full_text = "\n".join([
-                f"{m.get('role', 'user').upper()}: {m.get('content', '')}"
-                for m in msgs
-            ])
+            full_text = "\n".join([f"{m.get('role', 'user').upper()}: {m.get('content', '')}" for m in msgs])
             response_idx = len(msgs) - 1
             # Find where assistant response starts
-            prompt_text = "\n".join([
-                f"{m.get('role', 'user').upper()}: {m.get('content', '')}"
-                for m in msgs[:-1]
-            ]) + "\nASSISTANT:"
+            prompt_text = (
+                "\n".join([f"{m.get('role', 'user').upper()}: {m.get('content', '')}" for m in msgs[:-1]])
+                + "\nASSISTANT:"
+            )
         elif "text" in record and len(record["text"]) > 50:
             full_text = record["text"]
-            prompt_text = full_text[:len(full_text)//2]  # Heuristic split
+            prompt_text = full_text[: len(full_text) // 2]  # Heuristic split
         else:
             return None
 
         # Tokenize
         full_ids = tokenizer(full_text, add_special_tokens=False)["input_ids"]
         prompt_ids = tokenizer(prompt_text, add_special_tokens=False)["input_ids"]
-        
-        response_ids = full_ids[len(prompt_ids):]
+
+        response_ids = full_ids[len(prompt_ids) :]
         if not response_ids:
             return None
 
@@ -177,6 +173,7 @@ def tokenize_record(record: dict, tokenizer, max_length: int) -> dict | None:
 _HAS_UNSLOTH = False
 try:
     from unsloth import FastLanguageModel, is_bfloat16_supported
+
     _HAS_UNSLOTH = True
 except ImportError:
     pass
@@ -233,6 +230,7 @@ def train_with_unsloth(cfg: ForgeConfig, test_mode: bool = False):
         raise ValueError("No records survived tokenization!")
 
     import random
+
     random.shuffle(tokenized)
     split_idx = int(len(tokenized) * 0.98)
     train_data = Dataset.from_list(tokenized[:split_idx])
@@ -298,19 +296,19 @@ def train_with_unsloth(cfg: ForgeConfig, test_mode: bool = False):
     effective_batch = hw["batch"] * hw["accum"]
     total_steps = (len(train_data) // effective_batch) * num_epochs
     logger.info(f"""
-{'='*60}
+{"=" * 60}
 ⚡ UNSLOTH TRAINING START
   Model:      {cfg.base_model}
   Train rows: {len(train_data):,}
   Eval rows:  {len(eval_data):,}
   Epochs:     {num_epochs}
-  Batch:      {hw['batch']} x {hw['accum']} = {effective_batch}
+  Batch:      {hw["batch"]} x {hw["accum"]} = {effective_batch}
   Est steps:  {total_steps:,}
-  Precision:  {'bf16' if use_bf16 else 'fp16'}
+  Precision:  {"bf16" if use_bf16 else "fp16"}
   Seq len:    {max_length}
   LoRA rank:  {cfg.lora_rank}
   Output:     {output_dir}
-{'='*60}
+{"=" * 60}
 """)
 
     trainer.train(resume_from_checkpoint=last_checkpoint)
@@ -345,13 +343,13 @@ def train_with_unsloth(cfg: ForgeConfig, test_mode: bool = False):
     (final_dir / "training_metrics.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False))
 
     logger.success(f"""
-{'='*60}
+{"=" * 60}
 ✅ UNSLOTH TRAINING COMPLETE
-  Final train loss: {final_loss or 'N/A'}
-  Final eval loss:  {final_eval_loss or 'N/A'}
+  Final train loss: {final_loss or "N/A"}
+  Final eval loss:  {final_eval_loss or "N/A"}
   Total steps:      {trainer.state.global_step:,}
   Model saved:      {final_dir}
-{'='*60}
+{"=" * 60}
 """)
     return final_dir
 
@@ -394,6 +392,7 @@ def train(cfg: ForgeConfig, test_mode: bool = False):
 
     # Shuffle and split into train/eval
     import random
+
     random.shuffle(tokenized)
     split_idx = int(len(tokenized) * 0.98)
     train_data = Dataset.from_list(tokenized[:split_idx])
@@ -414,7 +413,9 @@ def train(cfg: ForgeConfig, test_mode: bool = False):
     # ── MODEL ──────────────────────────────────────────────────────────────
     model_kwargs = {
         "trust_remote_code": True,
-        "torch_dtype": torch.float16 if hw["dtype"] == "fp16" else (torch.bfloat16 if hw["dtype"] == "bf16" else torch.float32),
+        "torch_dtype": torch.float16
+        if hw["dtype"] == "fp16"
+        else (torch.bfloat16 if hw["dtype"] == "bf16" else torch.float32),
     }
     if bnb_config:
         model_kwargs["quantization_config"] = bnb_config
@@ -427,6 +428,7 @@ def train(cfg: ForgeConfig, test_mode: bool = False):
     # ⚡ Apply torchao INT8 quantization for CPU speedup (2-4x faster)
     try:
         from torchao.quantization import quantize_, int8_dynamic_activation_int8_weight
+
         quantize_(model, int8_dynamic_activation_int8_weight())
         logger.info("⚡ Applied torchao INT8 dynamic quantization")
     except Exception as e:
@@ -467,7 +469,7 @@ def train(cfg: ForgeConfig, test_mode: bool = False):
     # ── TRAINING ARGUMENTS ─────────────────────────────────────────────────
     output_dir = str(Path(cfg.checkpoint_dir) / f"forge_{time.strftime('%Y%m%d_%H%M')}")
     max_steps = 2 if test_mode else -1
-    
+
     # For CPU: use 1 epoch for first real run (tunable later)
     num_epochs = 1 if not torch.cuda.is_available() and not test_mode else (cfg.num_epochs or 1)
 
@@ -524,20 +526,20 @@ def train(cfg: ForgeConfig, test_mode: bool = False):
     effective_batch = hw["batch"] * hw["accum"]
     total_steps = (len(train_data) // effective_batch) * num_epochs
     logger.info(f"""
-{'='*60}
+{"=" * 60}
 TRAINING START
   Model:      {cfg.base_model}
   Train rows: {len(train_data):,}
   Eval rows:  {len(eval_data):,}
   Epochs:     {num_epochs}
-  Batch:      {hw['batch']} × {hw['accum']} = {effective_batch} effective
+  Batch:      {hw["batch"]} × {hw["accum"]} = {effective_batch} effective
   Est steps:  {total_steps:,}
-  Precision:  {hw['dtype']}
-  4-bit:      {hw['use_4bit']}
+  Precision:  {hw["dtype"]}
+  4-bit:      {hw["use_4bit"]}
   Seq len:    {max_length}
   LoRA rank:  {cfg.lora_rank}
   Output:     {output_dir}
-{'='*60}
+{"=" * 60}
 """)
 
     trainer.train(resume_from_checkpoint=last_checkpoint)
@@ -561,7 +563,7 @@ TRAINING START
         "train_loss": final_loss,
         "eval_loss": final_eval_loss,
         "total_steps": trainer.state.global_step,
-        "epoch": trainer.state.epoch if hasattr(trainer.state, 'epoch') else None,
+        "epoch": trainer.state.epoch if hasattr(trainer.state, "epoch") else None,
         "base_model": cfg.base_model,
         "lora_rank": cfg.lora_rank,
         "batch_size": hw["batch"],
@@ -573,18 +575,16 @@ TRAINING START
         "eval_records": len(eval_data),
         "hardware": {"tier": cfg.hardware_profile.get("tier", "unknown")},
     }
-    (final_dir / "training_metrics.json").write_text(
-        json.dumps(summary, indent=2, ensure_ascii=False)
-    )
+    (final_dir / "training_metrics.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False))
 
     logger.success(f"""
-{'='*60}
+{"=" * 60}
 TRAINING COMPLETE
-  Final train loss: {final_loss or 'N/A'}
-  Final eval loss:  {final_eval_loss or 'N/A'}
+  Final train loss: {final_loss or "N/A"}
+  Final eval loss:  {final_eval_loss or "N/A"}
   Total steps:      {trainer.state.global_step:,}
   Model saved:      {final_dir}
-{'='*60}
+{"=" * 60}
 """)
 
     return final_dir
@@ -614,15 +614,18 @@ def run_training(cfg: ForgeConfig, test_mode: bool = False, use_unsloth: bool = 
     except Exception as e:
         console.print(f"\n[bold red]Training failed: {e}[/bold red]")
         import traceback
+
         console.print(traceback.format_exc())
 
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", action="store_true", help="Test mode (2 steps)")
-    parser.add_argument("--unsloth", action="store_true",
-                        help="Use Unsloth for 2x faster training (requires pip install unsloth)")
+    parser.add_argument(
+        "--unsloth", action="store_true", help="Use Unsloth for 2x faster training (requires pip install unsloth)"
+    )
     args = parser.parse_args()
 
     cfg = ForgeConfig.load()

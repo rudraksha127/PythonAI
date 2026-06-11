@@ -26,6 +26,7 @@ from typing import Any
 # Enums
 # ════════════════════════════════════════════
 
+
 class DownloadProtocol(Enum):
     HUGGINGFACE = "hf"
     HTTP = "http"
@@ -90,21 +91,22 @@ class QualityCheck(Enum):
 # DatasetRecord — the atomic unit of the collection plan
 # ════════════════════════════════════════════
 
+
 @dataclass
 class DatasetRecord:
     """Complete metadata record for one dataset in the collection pipeline."""
 
     # Identity
-    id: str                              # Unique identifier, e.g. "fineweb_edu_en"
-    name: str                            # Human-readable name, e.g. "FineWeb-Edu (English)"
-    source_url: str = ""                 # Origin URL / HF path
+    id: str  # Unique identifier, e.g. "fineweb_edu_en"
+    name: str  # Human-readable name, e.g. "FineWeb-Edu (English)"
+    source_url: str = ""  # Origin URL / HF path
     protocol: DownloadProtocol = DownloadProtocol.HUGGINGFACE
 
     # Classification
-    phase: int = 1                       # 1-4
-    week: int = 1                        # 1-4 within phase
+    phase: int = 1  # 1-4
+    week: int = 1  # 1-4 within phase
     domain: DataDomain = DataDomain.FOUNDATION_TEXT
-    category: str = ""                   # Fine-grained category
+    category: str = ""  # Fine-grained category
     languages: list[str] = field(default_factory=lambda: ["en"])
     license: str = "unknown"
 
@@ -115,15 +117,15 @@ class DatasetRecord:
     actual_size_bytes: int = 0
 
     # Configuration
-    hf_config: str | None = None         # HuggingFace config name (if applicable)
+    hf_config: str | None = None  # HuggingFace config name (if applicable)
     hf_split: str = "train"
     download_params: dict[str, Any] = field(default_factory=dict)
-    output_subdir: str = ""              # Relative path under D:/PythonAI_Data/
+    output_subdir: str = ""  # Relative path under D:/PythonAI_Data/
 
     # Pipeline state
     status: DownloadStatus = DownloadStatus.PENDING
     quality_checks: dict[str, bool] = field(default_factory=dict)
-    quality_score: float = 0.0           # 0.0 - 1.0
+    quality_score: float = 0.0  # 0.0 - 1.0
     started_at: float | None = None
     completed_at: float | None = None
     error_message: str = ""
@@ -133,8 +135,8 @@ class DatasetRecord:
     tags: list[str] = field(default_factory=list)
 
     # Training path
-    training_weight: float = 1.0         # How much to weight this in training mix
-    training_phase: int = 1              # Which training phase uses this
+    training_weight: float = 1.0  # How much to weight this in training mix
+    training_phase: int = 1  # Which training phase uses this
 
     def __post_init__(self):
         if isinstance(self.protocol, str):
@@ -158,8 +160,12 @@ class DatasetRecord:
 
     @property
     def is_ready(self) -> bool:
-        return self.status in (DownloadStatus.READY, DownloadStatus.DEDUPLICATED,
-                                DownloadStatus.QUALITY_PASSED, DownloadStatus.VALIDATED)
+        return self.status in (
+            DownloadStatus.READY,
+            DownloadStatus.DEDUPLICATED,
+            DownloadStatus.QUALITY_PASSED,
+            DownloadStatus.VALIDATED,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -177,10 +183,11 @@ class DatasetRecord:
 # MetadataManager — persistent registry
 # ════════════════════════════════════════════
 
+
 class MetadataManager:
     """
     Persistent metadata registry for the entire data collection pipeline.
-    
+
     Features:
     - Register, update, query datasets
     - Persistent JSON storage
@@ -242,8 +249,7 @@ class MetadataManager:
     def get(self, dataset_id: str) -> DatasetRecord | None:
         return self._datasets.get(dataset_id)
 
-    def update_status(self, dataset_id: str, status: DownloadStatus,
-                      error_message: str = "") -> DatasetRecord | None:
+    def update_status(self, dataset_id: str, status: DownloadStatus, error_message: str = "") -> DatasetRecord | None:
         record = self._datasets.get(dataset_id)
         if not record:
             return None
@@ -257,8 +263,9 @@ class MetadataManager:
         self.save()
         return record
 
-    def update_quality(self, dataset_id: str, check: QualityCheck | str,
-                       passed: bool, score: float | None = None) -> DatasetRecord | None:
+    def update_quality(
+        self, dataset_id: str, check: QualityCheck | str, passed: bool, score: float | None = None
+    ) -> DatasetRecord | None:
         record = self._datasets.get(dataset_id)
         if not record:
             return None
@@ -309,17 +316,16 @@ class MetadataManager:
         return [d for d in self._datasets.values() if d.is_ready]
 
     def list_pending(self) -> list[DatasetRecord]:
-        return [d for d in self._datasets.values()
-                if d.status == DownloadStatus.PENDING]
+        return [d for d in self._datasets.values() if d.status == DownloadStatus.PENDING]
 
     def list_errors(self) -> list[DatasetRecord]:
-        return [d for d in self._datasets.values()
-                if d.status == DownloadStatus.ERROR]
+        return [d for d in self._datasets.values() if d.status == DownloadStatus.ERROR]
 
     def search(self, query: str) -> list[DatasetRecord]:
         q = query.lower()
-        return [d for d in self._datasets.values()
-                if q in d.name.lower() or q in d.id.lower() or q in d.category.lower()]
+        return [
+            d for d in self._datasets.values() if q in d.name.lower() or q in d.id.lower() or q in d.category.lower()
+        ]
 
     def all(self) -> list[DatasetRecord]:
         return list(self._datasets.values())
@@ -350,8 +356,11 @@ class MetadataManager:
             "actual_records": total_actual,
             "ready_records": ready_records,
             "ready_gb": round(ready_bytes / (1024**3), 2),
-            "errors": [{"id": d.id, "error": d.error_message}
-                       for d in self._datasets.values() if d.status == DownloadStatus.ERROR],
+            "errors": [
+                {"id": d.id, "error": d.error_message}
+                for d in self._datasets.values()
+                if d.status == DownloadStatus.ERROR
+            ],
         }
 
     def week_progress(self, phase: int, week: int) -> dict[str, Any]:

@@ -14,6 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
+
 def run_cmd(cmd: list[str]) -> bool:
     """Run a command and print output."""
     print(f"\n[{time.strftime('%H:%M:%S')}] RUNNING: {' '.join(cmd)}")
@@ -23,6 +24,7 @@ def run_cmd(cmd: list[str]) -> bool:
     except subprocess.CalledProcessError as e:
         print(f"Error running command: {e}")
         return False
+
 
 def main():
     parser = argparse.ArgumentParser(description="PythonAI Learning Daemon")
@@ -52,17 +54,30 @@ def main():
 
             # 4. Sync Advanced StackOverflow Tags
             print("\n[DAEMON] Syncing trending StackOverflow Q&A...")
-            run_cmd([python_exe, "-c", "from src.learning.so_sync import sync_stackoverflow; print(sync_stackoverflow(pages=1))"])
+            run_cmd(
+                [
+                    python_exe,
+                    "-c",
+                    "from src.learning.so_sync import sync_stackoverflow; print(sync_stackoverflow(pages=1))",
+                ]
+            )
 
             # 5. Run RAG Self-Evaluation
             print("\n[DAEMON] Running RAG Self-Evaluation...")
-            run_cmd([python_exe, "-c", "from src.learning.self_eval import run_self_evaluation; print(run_self_evaluation(sample_size=10))"])
+            run_cmd(
+                [
+                    python_exe,
+                    "-c",
+                    "from src.learning.self_eval import run_self_evaluation; print(run_self_evaluation(sample_size=10))",
+                ]
+            )
 
             print(f"\n[DAEMON] Cycle complete. Sleeping for {args.interval} hours...")
             time.sleep(args.interval * 3600)
 
     except KeyboardInterrupt:
         print("\n[DAEMON] Stopped by user.")
+
 
 if __name__ == "__main__":
     main()

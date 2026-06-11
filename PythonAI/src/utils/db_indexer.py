@@ -11,6 +11,7 @@ class SQLiteIndexer:
     Indexes collected metadata (JSONL) into a fast SQLite database
     for instant querying and retrieval.
     """
+
     def __init__(self, db_path: str = "python_brain_godmode/metadata_index.db"):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -20,7 +21,7 @@ class SQLiteIndexer:
     def _init_db(self):
         c = self.conn.cursor()
         # Create a generic metadata table
-        c.execute('''
+        c.execute("""
             CREATE TABLE IF NOT EXISTS documents (
                 id TEXT PRIMARY KEY,
                 source TEXT,
@@ -29,9 +30,9 @@ class SQLiteIndexer:
                 url TEXT,
                 metadata JSON
             )
-        ''')
+        """)
         # Create indexes for fast lookup
-        c.execute('CREATE INDEX IF NOT EXISTS idx_source ON documents(source)')
+        c.execute("CREATE INDEX IF NOT EXISTS idx_source ON documents(source)")
         self.conn.commit()
 
     def index_batch(self, documents: list[dict[str, Any]]):
@@ -41,19 +42,22 @@ class SQLiteIndexer:
         c = self.conn.cursor()
         rows = []
         for doc in documents:
-            doc_id = doc.get('id') or doc.get('url') or str(hash(json.dumps(doc, sort_keys=True)))
-            source = doc.get('source', 'unknown')
-            title = doc.get('title', '')
-            preview = (doc.get('abstract') or doc.get('text') or '')[:500]
-            url = doc.get('pdf_url') or doc.get('open_access_url') or doc.get('url') or ''
+            doc_id = doc.get("id") or doc.get("url") or str(hash(json.dumps(doc, sort_keys=True)))
+            source = doc.get("source", "unknown")
+            title = doc.get("title", "")
+            preview = (doc.get("abstract") or doc.get("text") or "")[:500]
+            url = doc.get("pdf_url") or doc.get("open_access_url") or doc.get("url") or ""
 
             rows.append((doc_id, source, title, preview, url, json.dumps(doc)))
 
         try:
-            c.executemany('''
+            c.executemany(
+                """
                 INSERT OR REPLACE INTO documents (id, source, title, content_preview, url, metadata)
                 VALUES (?, ?, ?, ?, ?, ?)
-            ''', rows)
+            """,
+                rows,
+            )
             self.conn.commit()
             logger.info(f"Indexed {len(rows)} documents to SQLite")
         except Exception as e:
@@ -61,22 +65,19 @@ class SQLiteIndexer:
 
     def search(self, query: str, limit: int = 10) -> list[dict]:
         c = self.conn.cursor()
-        c.execute('''
-            SELECT id, source, title, content_preview, url 
-            FROM documents 
+        c.execute(
+            """
+            SELECT id, source, title, content_preview, url
+            FROM documents
             WHERE title LIKE ? OR content_preview LIKE ?
             LIMIT ?
-        ''', (f"%{query}%", f"%{query}%", limit))
+        """,
+            (f"%{query}%", f"%{query}%", limit),
+        )
 
         results = []
         for row in c.fetchall():
-            results.append({
-                "id": row[0],
-                "source": row[1],
-                "title": row[2],
-                "preview": row[3],
-                "url": row[4]
-            })
+            results.append({"id": row[0], "source": row[1], "title": row[2], "preview": row[3], "url": row[4]})
         return results
 
     def close(self):

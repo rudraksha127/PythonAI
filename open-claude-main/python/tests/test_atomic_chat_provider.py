@@ -17,7 +17,9 @@ async def test_atomic_chat_running_true():
     mock_response = MagicMock()
     mock_response.status_code = 200
     with patch("atomic_chat_provider.httpx.AsyncClient") as MockClient:
-        MockClient.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
+        MockClient.return_value.__aenter__.return_value.get = AsyncMock(
+            return_value=mock_response
+        )
         result = await check_atomic_chat_running()
     assert result is True
 
@@ -25,7 +27,9 @@ async def test_atomic_chat_running_true():
 @pytest.mark.asyncio
 async def test_atomic_chat_running_false_on_exception():
     with patch("atomic_chat_provider.httpx.AsyncClient") as MockClient:
-        MockClient.return_value.__aenter__.return_value.get = AsyncMock(side_effect=Exception("refused"))
+        MockClient.return_value.__aenter__.return_value.get = AsyncMock(
+            side_effect=Exception("refused")
+        )
         result = await check_atomic_chat_running()
     assert result is False
 
@@ -39,7 +43,9 @@ async def test_list_models_returns_ids():
     }
     mock_response.raise_for_status = MagicMock()
     with patch("atomic_chat_provider.httpx.AsyncClient") as MockClient:
-        MockClient.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
+        MockClient.return_value.__aenter__.return_value.get = AsyncMock(
+            return_value=mock_response
+        )
         models = await list_atomic_chat_models()
     assert "llama-3.1-8b" in models
     assert "mistral-7b" in models
@@ -48,7 +54,9 @@ async def test_list_models_returns_ids():
 @pytest.mark.asyncio
 async def test_list_models_empty_on_failure():
     with patch("atomic_chat_provider.httpx.AsyncClient") as MockClient:
-        MockClient.return_value.__aenter__.return_value.get = AsyncMock(side_effect=Exception("down"))
+        MockClient.return_value.__aenter__.return_value.get = AsyncMock(
+            side_effect=Exception("down")
+        )
         models = await list_atomic_chat_models()
     assert models == []
 
@@ -63,7 +71,9 @@ async def test_atomic_chat_returns_anthropic_format():
         "usage": {"prompt_tokens": 10, "completion_tokens": 8},
     }
     with patch("atomic_chat_provider.httpx.AsyncClient") as MockClient:
-        MockClient.return_value.__aenter__.return_value.post = AsyncMock(return_value=mock_response)
+        MockClient.return_value.__aenter__.return_value.post = AsyncMock(
+            return_value=mock_response
+        )
         result = await atomic_chat(
             model="llama-3.1-8b",
             messages=[{"role": "user", "content": "What is 6*7?"}],

@@ -33,9 +33,9 @@ def _retry_with_backoff(fn, max_retries=3, base_delay=1.0, max_delay=30.0):
             if attempt == max_retries - 1:
                 raise
             is_rate = "429" in str(e) or "rate limit" in str(e).lower()
-            delay = min(base_delay * (2 ** attempt) + random.uniform(0, 0.5), max_delay)
+            delay = min(base_delay * (2**attempt) + random.uniform(0, 0.5), max_delay)
             if is_rate:
-                logger.warning(f"Rate limited ({attempt+1}/{max_retries}), retry in {delay:.0f}s...")
+                logger.warning(f"Rate limited ({attempt + 1}/{max_retries}), retry in {delay:.0f}s...")
                 time.sleep(delay)
             else:
                 raise
@@ -48,69 +48,69 @@ def _retry_with_backoff(fn, max_retries=3, base_delay=1.0, max_delay=30.0):
 
 DATASET_MANIFEST = {
     "critical": [
-        {"name": "HuggingFaceFW/fineweb-edu",     "config": "sample-10BT",   "tag": "text_edu"},
-        {"name": "HuggingFaceFW/fineweb",          "config": "sample-10BT",   "tag": "text_web"},
-        {"name": "wikimedia/wikipedia",             "config": "20231101.en",   "tag": "wiki"},
-        {"name": "wikimedia/wikipedia",             "config": "20231101.hi",   "tag": "wiki_hi"},
-        {"name": "wikimedia/wikipedia",             "config": "20231101.bn",   "tag": "wiki_bn"},
-        {"name": "teknium/OpenHermes-2.5",          "config": "default",       "tag": "instruct"},
-        {"name": "HuggingFaceTB/smoltalk",          "config": "all",           "tag": "instruct"},
-        {"name": "ai4bharat/sangraha",              "config": "verified",      "tag": "indic"},
-        {"name": "CohereForAI/aya_dataset",         "config": "default",       "tag": "multilingual"},
+        {"name": "HuggingFaceFW/fineweb-edu", "config": "sample-10BT", "tag": "text_edu"},
+        {"name": "HuggingFaceFW/fineweb", "config": "sample-10BT", "tag": "text_web"},
+        {"name": "wikimedia/wikipedia", "config": "20231101.en", "tag": "wiki"},
+        {"name": "wikimedia/wikipedia", "config": "20231101.hi", "tag": "wiki_hi"},
+        {"name": "wikimedia/wikipedia", "config": "20231101.bn", "tag": "wiki_bn"},
+        {"name": "teknium/OpenHermes-2.5", "config": "default", "tag": "instruct"},
+        {"name": "HuggingFaceTB/smoltalk", "config": "all", "tag": "instruct"},
+        {"name": "ai4bharat/sangraha", "config": "verified", "tag": "indic"},
+        {"name": "CohereForAI/aya_dataset", "config": "default", "tag": "multilingual"},
     ],
     "high": [
-        {"name": "Open-Orca/OpenOrca",             "config": "default",       "tag": "instruct"},
-        {"name": "HuggingFaceH4/ultrachat_200k",   "config": "default",       "tag": "chat"},
-        {"name": "meta-math/MetaMathQA",           "config": "default",       "tag": "math"},
-        {"name": "allenai/peS2o",                  "config": "default",       "tag": "science"},
-        {"name": "bigcode/the-stack-dedup",        "config": "data",          "tag": "code"},
-        {"name": "OpenAssistant/oasst2",           "config": "default",       "tag": "chat"},
-        {"name": "databricks/databricks-dolly-15k","config": "default",       "tag": "instruct"},
-        {"name": "google/fleurs",                  "config": "hi_in",         "tag": "audio_hi"},
-        {"name": "lighteval/MATH",                 "config": "default",       "tag": "math"},
-        {"name": "openai/gsm8k",                   "config": "main",          "tag": "math"},
-        {"name": "yahma/alpaca-cleaned",           "config": "default",       "tag": "instruct_alpaca"},
-        {"name": "sahil2801/CodeAlpaca-20k",       "config": "default",       "tag": "code"},
+        {"name": "Open-Orca/OpenOrca", "config": "default", "tag": "instruct"},
+        {"name": "HuggingFaceH4/ultrachat_200k", "config": "default", "tag": "chat"},
+        {"name": "meta-math/MetaMathQA", "config": "default", "tag": "math"},
+        {"name": "allenai/peS2o", "config": "default", "tag": "science"},
+        {"name": "bigcode/the-stack-dedup", "config": "data", "tag": "code"},
+        {"name": "OpenAssistant/oasst2", "config": "default", "tag": "chat"},
+        {"name": "databricks/databricks-dolly-15k", "config": "default", "tag": "instruct"},
+        {"name": "google/fleurs", "config": "hi_in", "tag": "audio_hi"},
+        {"name": "lighteval/MATH", "config": "default", "tag": "math"},
+        {"name": "openai/gsm8k", "config": "main", "tag": "math"},
+        {"name": "yahma/alpaca-cleaned", "config": "default", "tag": "instruct_alpaca"},
+        {"name": "sahil2801/CodeAlpaca-20k", "config": "default", "tag": "code"},
     ],
     "medium": [
-        {"name": "tatsu-lab/alpaca",               "config": "default",       "tag": "instruct"},
-        {"name": "codeparrot/github-code",         "config": "default",       "tag": "code"},
-        {"name": "ai4bharat/IndicNLPSuite",        "config": "default",       "tag": "indic"},
-        {"name": "facebook/natural_questions",     "config": "default",       "tag": "qa"},
-        {"name": "HuggingFaceFW/fineweb-2",        "config": "hi",            "tag": "hi_web"},
-        {"name": "uonlp/CulturaX",                 "config": "hi",            "tag": "hi"},
-        {"name": "uonlp/CulturaX",                 "config": "en",            "tag": "en"},
-        {"name": "nvidia/HelpSteer2",             "config": "default",       "tag": "instruct"},
-        {"name": "Intel/orca_dpo_pairs",           "config": "default",       "tag": "dpo"},
+        {"name": "tatsu-lab/alpaca", "config": "default", "tag": "instruct"},
+        {"name": "codeparrot/github-code", "config": "default", "tag": "code"},
+        {"name": "ai4bharat/IndicNLPSuite", "config": "default", "tag": "indic"},
+        {"name": "facebook/natural_questions", "config": "default", "tag": "qa"},
+        {"name": "HuggingFaceFW/fineweb-2", "config": "hi", "tag": "hi_web"},
+        {"name": "uonlp/CulturaX", "config": "hi", "tag": "hi"},
+        {"name": "uonlp/CulturaX", "config": "en", "tag": "en"},
+        {"name": "nvidia/HelpSteer2", "config": "default", "tag": "instruct"},
+        {"name": "Intel/orca_dpo_pairs", "config": "default", "tag": "dpo"},
         {"name": "nlphuji/mscoco_2014_5k_test_image_text_retrieval", "config": "default", "tag": "vision"},
     ],
     "optional": [
-        {"name": "oscar-corpus/OSCAR-2301",        "config": "hi",            "tag": "hi"},
-        {"name": "HuggingFaceH4/math_qa",          "config": "default",       "tag": "math"},
-        {"name": "wikimedia/wikipedia",             "config": "20231101.te",   "tag": "wiki_te"},
-        {"name": "wikimedia/wikipedia",             "config": "20231101.ta",   "tag": "wiki_ta"},
-        {"name": "wikimedia/wikipedia",             "config": "20231101.mr",   "tag": "wiki_mr"},
-        {"name": "wikimedia/wikipedia",             "config": "20231101.gu",   "tag": "wiki_gu"},
-        {"name": "wikimedia/wikipedia",             "config": "20231101.kn",   "tag": "wiki_kn"},
-        {"name": "wikimedia/wikipedia",             "config": "20231101.ml",   "tag": "wiki_ml"},
-        {"name": "wikimedia/wikipedia",             "config": "20231101.pa",   "tag": "wiki_pa"},
+        {"name": "oscar-corpus/OSCAR-2301", "config": "hi", "tag": "hi"},
+        {"name": "HuggingFaceH4/math_qa", "config": "default", "tag": "math"},
+        {"name": "wikimedia/wikipedia", "config": "20231101.te", "tag": "wiki_te"},
+        {"name": "wikimedia/wikipedia", "config": "20231101.ta", "tag": "wiki_ta"},
+        {"name": "wikimedia/wikipedia", "config": "20231101.mr", "tag": "wiki_mr"},
+        {"name": "wikimedia/wikipedia", "config": "20231101.gu", "tag": "wiki_gu"},
+        {"name": "wikimedia/wikipedia", "config": "20231101.kn", "tag": "wiki_kn"},
+        {"name": "wikimedia/wikipedia", "config": "20231101.ml", "tag": "wiki_ml"},
+        {"name": "wikimedia/wikipedia", "config": "20231101.pa", "tag": "wiki_pa"},
     ],
     "community": [
-        {"name": "gbharti/finance-alpaca",         "config": "default",       "tag": "finance"},
-        {"name": "medical_meadow_medical_flashcards", "config": "default",    "tag": "medical"},
+        {"name": "gbharti/finance-alpaca", "config": "default", "tag": "finance"},
+        {"name": "medical_meadow_medical_flashcards", "config": "default", "tag": "medical"},
         {"name": "medalpaca/medical_meadow_medical_meadow_medical_flashcards", "config": "default", "tag": "medical"},
-        {"name": "Anthropic/model-written-evals",  "config": "default",       "tag": "evals"},
+        {"name": "Anthropic/model-written-evals", "config": "default", "tag": "evals"},
         {"name": "Dahoas/synthetic-instruct-gptj-pairwise", "config": "default", "tag": "instruct"},
         {"name": "hello5753/indian_languages_translation_data", "config": "default", "tag": "translation"},
-        {"name": "mrsharma21/indian-news-articles", "config": "default",       "tag": "news"},
+        {"name": "mrsharma21/indian-news-articles", "config": "default", "tag": "news"},
         {"name": "Vishnunaini/hindi-english-multilingual", "config": "default", "tag": "hindi_en"},
-        {"name": "bigscience-data/roots_en_c4_100m", "config": "default",      "tag": "text_web"},
+        {"name": "bigscience-data/roots_en_c4_100m", "config": "default", "tag": "text_web"},
     ],
     "indian_languages": [
-        {"name": "ai4bharat/IndicParagraphSelection", "config": "default",     "tag": "indic_qa"},
-        {"name": "ai4bharat/IndicSentiment",       "config": "default",       "tag": "indic_sentiment"},
-        {"name": "cfilt/iitb-english-hindi",       "config": "default",       "tag": "translation_enhi"},
-        {"name": "tapaswi/INLT",                   "config": "default",       "tag": "nlp"},
+        {"name": "ai4bharat/IndicParagraphSelection", "config": "default", "tag": "indic_qa"},
+        {"name": "ai4bharat/IndicSentiment", "config": "default", "tag": "indic_sentiment"},
+        {"name": "cfilt/iitb-english-hindi", "config": "default", "tag": "translation_enhi"},
+        {"name": "tapaswi/INLT", "config": "default", "tag": "nlp"},
     ],
 }
 
@@ -123,7 +123,7 @@ class ForgeDataCollector:
         self.checkpoint_file = Path(cfg.workspace_dir) / "download_checkpoint.json"
         self.completed = self._load_checkpoint()
         self.stats = {"success": 0, "failed": 0, "skipped": 0, "total_rows": 0}
-        self._lock = __import__('threading').Lock()
+        self._lock = __import__("threading").Lock()
 
     def _load_checkpoint(self) -> dict:
         if self.checkpoint_file.exists():
@@ -167,14 +167,17 @@ class ForgeDataCollector:
 
             # TIER 1: Streaming download
             try:
+
                 def _load():
                     return load_dataset(
-                        name, config_str,
+                        name,
+                        config_str,
                         split="train",
                         streaming=True,
                         token=self.cfg.hf_token or None,
                         trust_remote_code=True,
                     )
+
                 ds = _retry_with_backoff(_load, max_retries=2)
                 count = 0
                 with open(out_file, "w", encoding="utf-8") as f:
@@ -223,9 +226,7 @@ class ForgeDataCollector:
                         f"&split=train&offset={total}&length={batch_size}"
                     )
                     try:
-                        resp = _retry_with_backoff(
-                            lambda u=url: requests.get(u, timeout=20), max_retries=2
-                        )
+                        resp = _retry_with_backoff(lambda u=url: requests.get(u, timeout=20), max_retries=2)
                     except Exception:
                         break
                     if resp.status_code != 200:
@@ -320,12 +321,17 @@ class ForgeDataCollector:
                             params = {"verb": "ListRecords", "resumptionToken": token}
                         resp = requests.get("https://export.arxiv.org/oai2", params=params, timeout=30)
                         from xml.etree import ElementTree
+
                         root = ElementTree.fromstring(resp.text)
                         ns = {"oai": "http://www.openarchives.org/OAI/2.0/", "ar": "http://arxiv.org/OAI/arXiv/"}
                         for record in root.findall(".//ar:arXiv", ns):
                             title = (record.findtext("ar:title", namespaces=ns) or "").strip()
                             abstract = (record.findtext("ar:abstract", namespaces=ns) or "").strip()
-                            paper = {"text": f"Title: {title}\n\nAbstract: {abstract}", "title": title, "source": "arxiv"}
+                            paper = {
+                                "text": f"Title: {title}\n\nAbstract: {abstract}",
+                                "title": title,
+                                "source": "arxiv",
+                            }
                             f.write(json.dumps(paper, ensure_ascii=False) + "\n")
                             total += 1
                             if total >= max_per_category:
@@ -358,7 +364,11 @@ class ForgeDataCollector:
                             try:
                                 resp = requests.get(url, timeout=15)
                                 if resp.status_code == 200:
-                                    record = {"text": resp.text[:50000], "title": book.get("title", ""), "source": "gutenberg"}
+                                    record = {
+                                        "text": resp.text[:50000],
+                                        "title": book.get("title", ""),
+                                        "source": "gutenberg",
+                                    }
                                     f.write(json.dumps(record, ensure_ascii=False) + "\n")
                                     count += 1
                             except Exception:

@@ -2,6 +2,7 @@
 Push training notebook to Kaggle and trigger execution with P100 GPU.
 Run: python scripts/kaggle_push_training.py
 """
+
 import json
 import os
 import shutil
@@ -17,6 +18,7 @@ os.environ["KAGGLE_API_TOKEN"] = "ee6c5dbf5817d6f1fe842b709cd4fabe"
 KAGGLE_EXE = r"C:\Users\lucky_vv7fub\AppData\Roaming\Python\Python314\Scripts\kaggle.exe"
 ROOT = Path(r"C:\Users\lucky_vv7fub\OneDrive\Desktop\PythonAI")
 
+
 def run_cmd(cmd: list[str]) -> subprocess.CompletedProcess:
     print(f"\n$ {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, env={**os.environ})
@@ -26,6 +28,7 @@ def run_cmd(cmd: list[str]) -> subprocess.CompletedProcess:
         print("STDERR:", result.stderr[:2000])
     print(f"Exit: {result.returncode}")
     return result
+
 
 def step1_create_dataset():
     """Push dataset to Kaggle"""
@@ -45,18 +48,20 @@ def step1_create_dataset():
         "title": "PythonAI Training Data",
         "id": "rudraksha1/pythonai-training-data",
         "licenses": [{"name": "MIT"}],
-        "description": "Python Q&A training dataset for fine-tuning Qwen2.5-Coder. 11,962 instruction-output pairs."
+        "description": "Python Q&A training dataset for fine-tuning Qwen2.5-Coder. 11,962 instruction-output pairs.",
     }
     with open(str(dataset_dir / "dataset-metadata.json"), "w") as f:
         json.dump(metadata, f, indent=2)
 
     # Create via Kaggle CLI
     result = run_cmd([KAGGLE_EXE, "datasets", "create", "-p", str(dataset_dir), "--dir-mode", "zip"])
-    
+
     if result.returncode == 0 or "already exists" in result.stderr.lower():
         print("Dataset ready!")
         # Try update instead
-        run_cmd([KAGGLE_EXE, "datasets", "version", "-p", str(dataset_dir), "-m", "Updated dataset", "--dir-mode", "zip"])
+        run_cmd(
+            [KAGGLE_EXE, "datasets", "version", "-p", str(dataset_dir), "-m", "Updated dataset", "--dir-mode", "zip"]
+        )
         return True
     return False
 
@@ -70,8 +75,9 @@ def step2_push_notebook():
     folder = Path(tempfile.mkdtemp())
 
     # Copy notebook
-    shutil.copy2(str(ROOT / "colab_export" / "finetune_qwen14b_unsloth.ipynb"),
-                 str(folder / "finetune_qwen14b_unsloth.ipynb"))
+    shutil.copy2(
+        str(ROOT / "colab_export" / "finetune_qwen14b_unsloth.ipynb"), str(folder / "finetune_qwen14b_unsloth.ipynb")
+    )
 
     # Create kernel-metadata.json
     kmeta = {
@@ -87,7 +93,7 @@ def step2_push_notebook():
         "dataset_sources": ["rudraksha1/pythonai-training-data"],
         "competition_sources": [],
         "kernel_sources": [],
-        "model_sources": []
+        "model_sources": [],
     }
     with open(str(folder / "kernel-metadata.json"), "w") as f:
         json.dump(kmeta, f, indent=2)

@@ -118,7 +118,7 @@ def reactive_compact_if_needed(
             "retry_count": retry_count,
         }
 
-    compacted = messages[:drop_idx] + messages[drop_idx + 1:]
+    compacted = messages[:drop_idx] + messages[drop_idx + 1 :]
 
     return {
         "should_retry": True,

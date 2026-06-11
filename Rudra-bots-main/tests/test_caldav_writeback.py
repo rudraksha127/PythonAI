@@ -51,9 +51,15 @@ class FakeCalendar:
 
 def _ev(**over):
     base = dict(
-        uid="evt-1", summary="Dentist", description="bring x-rays",
-        location="Clinic", dtstart=datetime(2026, 6, 10, 14, 0),
-        dtend=datetime(2026, 6, 10, 15, 0), all_day=False, is_utc=True, rrule="",
+        uid="evt-1",
+        summary="Dentist",
+        description="bring x-rays",
+        location="Clinic",
+        dtstart=datetime(2026, 6, 10, 14, 0),
+        dtend=datetime(2026, 6, 10, 15, 0),
+        all_day=False,
+        is_utc=True,
+        rrule="",
     )
     base.update(over)
     return base
@@ -151,8 +157,9 @@ def test_writeback_validates_saved_url_before_remote_call(monkeypatch):
         captured["validated_url"] = url
         return "https://dav.example.com/calendars/home"
 
-    def fake_writeback_blocking(local_cal_id, ev, delete, url, username, password,
-                                owner="", account_id=""):
+    def fake_writeback_blocking(
+        local_cal_id, ev, delete, url, username, password, owner="", account_id=""
+    ):
         captured.update(
             {
                 "local_cal_id": local_cal_id,
@@ -208,8 +215,9 @@ def test_writeback_rejects_unsafe_saved_url_before_remote_call(monkeypatch):
     def fake_validate(_url):
         raise ValueError("CalDAV URL host is not allowed")
 
-    def fake_writeback_blocking(local_cal_id, ev, delete, url, username, password,
-                                owner="", account_id=""):
+    def fake_writeback_blocking(
+        local_cal_id, ev, delete, url, username, password, owner="", account_id=""
+    ):
         nonlocal called
         called = True
         return {"ok": True}

@@ -1,4 +1,5 @@
 """Import SKILL.md bundles from public GitHub (or skills.sh → GitHub) URLs."""
+
 from __future__ import annotations
 
 import logging
@@ -18,13 +19,30 @@ MAX_FILES = 64
 MAX_TOTAL_BYTES = 2_000_000
 MAX_FILE_BYTES = 400_000
 ALLOWED_SUFFIXES = (
-    ".md", ".txt", ".json", ".yaml", ".yml", ".py", ".sh", ".toml",
-    ".js", ".ts", ".css", ".html", ".xml", ".csv",
+    ".md",
+    ".txt",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".py",
+    ".sh",
+    ".toml",
+    ".js",
+    ".ts",
+    ".css",
+    ".html",
+    ".xml",
+    ".csv",
 )
 TEXT_NAMES = {"skill.md", "license", "license.md", "readme.md"}
-_GITHUB_HOSTS = frozenset({
-    "github.com", "www.github.com", "api.github.com", "raw.githubusercontent.com",
-})
+_GITHUB_HOSTS = frozenset(
+    {
+        "github.com",
+        "www.github.com",
+        "api.github.com",
+        "raw.githubusercontent.com",
+    }
+)
 
 
 def _github_host(url: str) -> str:
@@ -122,7 +140,9 @@ def parse_skill_source(url: str) -> ResolvedSource:
     elif len(bits) == 2:
         path = ""
     else:
-        raise SkillImportError("GitHub URL must include /tree/<branch>/... or /blob/<branch>/...")
+        raise SkillImportError(
+            "GitHub URL must include /tree/<branch>/... or /blob/<branch>/..."
+        )
 
     return ResolvedSource(owner=owner, repo=repo, ref=ref, path=path)
 
@@ -186,7 +206,9 @@ def _fetch_text(url: str) -> str:
         raise SkillImportError(f"non-text file: {url}") from e
 
 
-def _list_github_dir(src: ResolvedSource, rel_dir: str, out: Dict[str, str], *, depth: int = 0) -> None:
+def _list_github_dir(
+    src: ResolvedSource, rel_dir: str, out: Dict[str, str], *, depth: int = 0
+) -> None:
     if depth > 4 or len(out) >= MAX_FILES:
         return
     url = _api_contents_url(src, rel_dir)

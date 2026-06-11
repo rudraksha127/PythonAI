@@ -32,13 +32,14 @@ RETRY_JITTER = 0.5
 """Jitter factor for retry delay (±50%). Adds randomness to prevent thundering herd
 when multiple sub-agents retry simultaneously. E.g., a 2.0s delay becomes 1.0-3.0s."""
 
-from ..registry import ToolRegistry, get_registry
-from ..tool import Tool, ToolUseContext
+from ..registry import ToolRegistry, get_registry  # noqa: E402
+from ..tool import Tool, ToolUseContext  # noqa: E402
 
 
 @dataclass
 class SubAgentResult:
     """Result from a SubAgent execution."""
+
     agent_name: str
     role: str
     success: bool
@@ -86,15 +87,9 @@ class SubAgent:
 
         # Build tool pool
         if tool_names:
-            self.tools = [
-                t for t in self.registry.list_all()
-                if t.name in tool_names
-            ]
+            self.tools = [t for t in self.registry.list_all() if t.name in tool_names]
         elif tool_categories:
-            self.tools = [
-                t for t in self.registry.list_all()
-                if any(cat in t.name for cat in tool_categories)
-            ]
+            self.tools = [t for t in self.registry.list_all() if any(cat in t.name for cat in tool_categories)]
         else:
             self.tools = self.registry.list_builtin()
 
@@ -135,8 +130,14 @@ Explain your reasoning briefly before each tool use.
 IMPORTANT: After 2-3 tool calls (read, write, test), stop and provide
 your final answer. Do NOT continue making tool calls indefinitely.""",
             ),
-            tool_names=kwargs.get("tool_names") or [
-                "read", "write", "edit", "bash", "glob", "grep",
+            tool_names=kwargs.get("tool_names")
+            or [
+                "read",
+                "write",
+                "edit",
+                "bash",
+                "glob",
+                "grep",
             ],
             registry=registry,
             call_llm_fn=kwargs.get("call_llm_fn"),
@@ -165,8 +166,13 @@ Compile your findings into a clear summary. Do NOT modify any files.
 IMPORTANT: After 2-3 tool calls, stop and provide your final summary.
 Do NOT continue searching once you have sufficient information.""",
             ),
-            tool_names=kwargs.get("tool_names") or [
-                "read", "glob", "grep", "web_fetch", "web_search",
+            tool_names=kwargs.get("tool_names")
+            or [
+                "read",
+                "glob",
+                "grep",
+                "web_fetch",
+                "web_search",
             ],
             registry=registry,
             call_llm_fn=kwargs.get("call_llm_fn"),
@@ -271,8 +277,11 @@ Do NOT keep reading more files once you have enough context.""",
                 elapsed = time.time() - start_time
                 error_msg = self._last_llm_error or "LLM call returned empty (no error details)"
                 return SubAgentResult(
-                    agent_name=self.name, role=self.role,
-                    success=False, output="", error=error_msg,
+                    agent_name=self.name,
+                    role=self.role,
+                    success=False,
+                    output="",
+                    error=error_msg,
                     tool_calls_used=self.stats["tool_calls"],
                     rounds=self.stats["rounds"],
                     tokens_used=self.stats["tokens"],
@@ -283,27 +292,32 @@ Do NOT keep reading more files once you have enough context.""",
 
             # Parse tool calls
             from ..executor import parse_tool_calls
+
             tool_calls = response.get("tool_calls", [])
             parsed = parse_tool_calls(response_text) if not tool_calls and response_text else []
 
             if tool_calls or parsed:
                 tool_calls = tool_calls or parsed
-                self.messages.append({
-                    "role": "assistant",
-                    "content": response_text or "",
-                    "tool_calls": tool_calls,
-                })
+                self.messages.append(
+                    {
+                        "role": "assistant",
+                        "content": response_text or "",
+                        "tool_calls": tool_calls,
+                    }
+                )
 
                 # Execute each tool call
                 for tc in tool_calls:
                     result_content = self._execute_tool(tc)
                     fn_info = tc.get("function", tc)
-                    self.messages.append({
-                        "role": "tool",
-                        "content": result_content,
-                        "tool_call_id": tc.get("id", "call_unknown"),
-                        "name": fn_info.get("name", "unknown"),
-                    })
+                    self.messages.append(
+                        {
+                            "role": "tool",
+                            "content": result_content,
+                            "tool_call_id": tc.get("id", "call_unknown"),
+                            "name": fn_info.get("name", "unknown"),
+                        }
+                    )
                     self.stats["tool_calls"] += 1
 
                     if self.on_stream:
@@ -319,8 +333,10 @@ Do NOT keep reading more files once you have enough context.""",
                         final_text = final_response.get("content", "")
                         if final_text:
                             return SubAgentResult(
-                                agent_name=self.name, role=self.role,
-                                success=True, output=final_text,
+                                agent_name=self.name,
+                                role=self.role,
+                                success=True,
+                                output=final_text,
                                 tool_calls_used=self.stats["tool_calls"],
                                 rounds=self.stats["rounds"],
                                 tokens_used=self.stats["tokens"],
@@ -462,7 +478,9 @@ once you have enough information."""
                     else:
                         self._last_llm_error = f"No available providers: {route.error}"
                         if attempt < self.max_retries:
-                            delay = RETRY_DELAY_SECONDS * (2 ** attempt) * (1 + random.uniform(-RETRY_JITTER, RETRY_JITTER))
+                            delay = (
+                                RETRY_DELAY_SECONDS * (2**attempt) * (1 + random.uniform(-RETRY_JITTER, RETRY_JITTER))
+                            )
                             if self.on_stream:
                                 self.on_stream(
                                     f"\n  [{self.name}] Provider unavailable, retrying in {delay:.0f}s "
@@ -479,12 +497,14 @@ once you have enough information."""
                     if msg["role"] == "system":
                         system_content = msg["content"]
                     elif msg["role"] == "tool":
-                        formatted.append({
-                            "role": "tool",
-                            "content": msg["content"],
-                            "tool_call_id": msg.get("tool_call_id", ""),
-                            "name": msg.get("name", ""),
-                        })
+                        formatted.append(
+                            {
+                                "role": "tool",
+                                "content": msg["content"],
+                                "tool_call_id": msg.get("tool_call_id", ""),
+                                "name": msg.get("name", ""),
+                            }
+                        )
                     else:
                         entry: dict[str, Any] = {"role": msg["role"], "content": msg["content"]}
                         if msg.get("tool_calls"):
@@ -516,7 +536,7 @@ once you have enough information."""
                     if detail:
                         self._last_llm_error += f" | Detail: {detail[:200]}"
                     if attempt < self.max_retries:
-                        delay = RETRY_DELAY_SECONDS * (2 ** attempt) * (1 + random.uniform(-RETRY_JITTER, RETRY_JITTER))
+                        delay = RETRY_DELAY_SECONDS * (2**attempt) * (1 + random.uniform(-RETRY_JITTER, RETRY_JITTER))
                         if self.on_stream:
                             err_msg = self._last_llm_error[:120]
                             self.on_stream(
@@ -538,7 +558,7 @@ once you have enough information."""
             except Exception as e:
                 self._last_llm_error = str(e)
                 if attempt < self.max_retries:
-                    delay = RETRY_DELAY_SECONDS * (2 ** attempt) * (1 + random.uniform(-RETRY_JITTER, RETRY_JITTER))
+                    delay = RETRY_DELAY_SECONDS * (2**attempt) * (1 + random.uniform(-RETRY_JITTER, RETRY_JITTER))
                     if self.on_stream:
                         self.on_stream(
                             f"\n  [{self.name}] LLM error: {e!s:.80}, "

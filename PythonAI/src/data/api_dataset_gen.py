@@ -19,6 +19,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import os
@@ -54,13 +55,13 @@ SO_API_BASE = "https://api.stackexchange.com/2.3"
 GH_API_BASE = "https://api.github.com"
 
 # Quality thresholds
-MIN_SO_SCORE = 10          # Minimum SO answer score
-MIN_GH_STARS = 100         # Minimum repo stars
-QUALITY_MIN = 60           # Minimum pair quality score
-MAX_SO_PER_TOPIC = 5       # Max SO questions per topic
-MAX_GH_PER_TOPIC = 3       # Max GitHub snippets per topic
+MIN_SO_SCORE = 10  # Minimum SO answer score
+MIN_GH_STARS = 100  # Minimum repo stars
+QUALITY_MIN = 60  # Minimum pair quality score
+MAX_SO_PER_TOPIC = 5  # Max SO questions per topic
+MAX_GH_PER_TOPIC = 3  # Max GitHub snippets per topic
 
-SAVE_EVERY = 100           # Checkpoint every N chunks
+SAVE_EVERY = 100  # Checkpoint every N chunks
 
 
 # ═══════════════════════════════════════
@@ -68,17 +69,79 @@ SAVE_EVERY = 100           # Checkpoint every N chunks
 # ═══════════════════════════════════════
 
 # Common Python keywords to ignore during extraction
-_STOP_WORDS = frozenset({
-    "the", "and", "for", "this", "that", "with", "from", "are", "was",
-    "has", "have", "been", "will", "can", "not", "but", "all", "also",
-    "more", "most", "some", "any", "each", "every", "other", "such",
-    "only", "very", "just", "about", "into", "over", "after", "before",
-    "between", "through", "during", "without", "python", "module", "class",
-    "function", "method", "object", "type", "value", "none", "true", "false",
-    "example", "using", "used", "use", "note", "see", "new", "like",
-    "return", "returns", "given", "provides", "available", "following",
-    "deprecated", "since", "version", "changed", "added", "removed",
-})
+_STOP_WORDS = frozenset(
+    {
+        "the",
+        "and",
+        "for",
+        "this",
+        "that",
+        "with",
+        "from",
+        "are",
+        "was",
+        "has",
+        "have",
+        "been",
+        "will",
+        "can",
+        "not",
+        "but",
+        "all",
+        "also",
+        "more",
+        "most",
+        "some",
+        "any",
+        "each",
+        "every",
+        "other",
+        "such",
+        "only",
+        "very",
+        "just",
+        "about",
+        "into",
+        "over",
+        "after",
+        "before",
+        "between",
+        "through",
+        "during",
+        "without",
+        "python",
+        "module",
+        "class",
+        "function",
+        "method",
+        "object",
+        "type",
+        "value",
+        "none",
+        "true",
+        "false",
+        "example",
+        "using",
+        "used",
+        "use",
+        "note",
+        "see",
+        "new",
+        "like",
+        "return",
+        "returns",
+        "given",
+        "provides",
+        "available",
+        "following",
+        "deprecated",
+        "since",
+        "version",
+        "changed",
+        "added",
+        "removed",
+    }
+)
 
 # Patterns that indicate important Python entities
 _FUNC_PATTERN = re.compile(r"(\w+)\s*\(", re.ASCII)
@@ -91,6 +154,7 @@ _DUNDER_PATTERN = re.compile(r"(__\w+__)", re.ASCII)
 @dataclass
 class ChunkKeywords:
     """Keywords extracted from a knowledge chunk."""
+
     primary_topic: str
     function_names: list[str]
     class_names: list[str]
@@ -108,7 +172,7 @@ def extract_keywords(chunk: dict[str, Any]) -> ChunkKeywords:
     text = chunk.get("text", "")[:3000]
     codes = chunk.get("codes", [])
     version = chunk.get("version", "")
-    category = chunk.get("category", "")
+    chunk.get("category", "")
 
     code_text = "\n".join(str(c)[:500] for c in codes[:3]) if codes else ""
     all_text = f"{title}\n{text}\n{code_text}"
@@ -155,6 +219,7 @@ def extract_keywords(chunk: dict[str, Any]) -> ChunkKeywords:
 # STACK OVERFLOW CLIENT
 # ═══════════════════════════════════════
 
+
 class StackOverflowClient:
     """Query Stack Overflow API for real developer Q&As."""
 
@@ -195,6 +260,7 @@ class StackOverflowClient:
 
         try:
             import requests
+
             params: dict[str, Any] = {
                 "order": "desc",
                 "sort": "votes",
@@ -231,8 +297,7 @@ class StackOverflowClient:
                         "body": _strip_html(item.get("body", ""))[:2000],
                     }
                     for item in items
-                    if item.get("score", 0) >= MIN_SO_SCORE
-                    and item.get("is_answered", False)
+                    if item.get("score", 0) >= MIN_SO_SCORE and item.get("is_answered", False)
                 ][:max_results]
 
                 with self._lock:
@@ -265,6 +330,7 @@ class StackOverflowClient:
 
         try:
             import requests
+
             params: dict[str, Any] = {
                 "order": "desc",
                 "sort": "votes",
@@ -318,6 +384,7 @@ class StackOverflowClient:
 # GITHUB CODE CLIENT
 # ═══════════════════════════════════════
 
+
 class GitHubCodeClient:
     """Search GitHub for real production Python code."""
 
@@ -354,6 +421,7 @@ class GitHubCodeClient:
 
         try:
             import requests
+
             headers: dict[str, str] = {"Accept": "application/vnd.github+json"}
             if self.token:
                 headers["Authorization"] = f"Bearer {self.token}"
@@ -416,6 +484,7 @@ class GitHubCodeClient:
 
         try:
             import requests
+
             headers: dict[str, str] = {"Accept": "application/vnd.github.raw+json"}
             if self.token:
                 headers["Authorization"] = f"Bearer {self.token}"
@@ -443,6 +512,7 @@ class GitHubCodeClient:
 # HTML STRIPPING
 # ═══════════════════════════════════════
 
+
 def _strip_html(html: str) -> str:
     """Strip HTML tags and decode entities."""
     text = re.sub(r"<code>(.*?)</code>", r"```\1```", html, flags=re.DOTALL)
@@ -461,6 +531,7 @@ def _strip_html(html: str) -> str:
 # AST VALIDATION
 # ═══════════════════════════════════════
 
+
 def validate_code_ast(code: str) -> bool:
     """Check if a code string is valid Python via AST parsing."""
     try:
@@ -473,6 +544,7 @@ def validate_code_ast(code: str) -> bool:
 # ═══════════════════════════════════════
 # QUALITY SCORING (enhanced)
 # ═══════════════════════════════════════
+
 
 def score_enriched_pair(pair: dict[str, Any]) -> tuple[int, list[str]]:
     """Score an enriched training pair on multiple dimensions."""
@@ -534,6 +606,7 @@ def score_enriched_pair(pair: dict[str, Any]) -> tuple[int, list[str]]:
 # ═══════════════════════════════════════
 # LLM ENRICHMENT (reuse existing infra)
 # ═══════════════════════════════════════
+
 
 def build_enrichment_prompt(
     chunk: dict[str, Any],
@@ -673,6 +746,7 @@ def load_checkpoint() -> tuple[int, dict[str, int]]:
 # MAIN PIPELINE
 # ═══════════════════════════════════════
 
+
 def process_chunk(
     chunk: dict[str, Any],
     so_client: StackOverflowClient,
@@ -725,6 +799,7 @@ def process_chunk(
         # Try LLM enrichment via existing provider rotation
         try:
             from src.data.generator import call_api, safe_json
+
             prompt = build_enrichment_prompt(chunk, so_data, gh_data)
             raw_text, api_name = call_api(prompt, max_tokens=1200)
             raw_pairs = safe_json(raw_text)
@@ -805,6 +880,7 @@ def main(
         try:
             from src.data.generator import active
             from src.data.generator import setup as setup_apis
+
             if not active:
                 setup_apis()
             print(f"[OK] LLM APIs: {len(active)} active")
@@ -844,8 +920,7 @@ def main(
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {
             executor.submit(
-                process_chunk, chunk, so_client, gh_client,
-                use_llm=use_llm, so_only=so_only, gh_only=gh_only
+                process_chunk, chunk, so_client, gh_client, use_llm=use_llm, so_only=so_only, gh_only=gh_only
             ): i
             for i, chunk in enumerate(tasks_to_run, start=start_idx)
         }
@@ -874,10 +949,12 @@ def main(
                 so_client.save()
                 gh_client.save()
 
-            pbar.set_postfix({
-                "pairs": f"{len(all_pairs):,}",
-                "quota": so_client.quota,
-            })
+            pbar.set_postfix(
+                {
+                    "pairs": f"{len(all_pairs):,}",
+                    "quota": so_client.quota,
+                }
+            )
 
             # Stop if quota exhausted
             if so_client.quota <= 2 and not gh_only:

@@ -22,9 +22,11 @@ from urllib.request import Request, urlopen
 #  Ollama Discovery
 # ═══════════════════════════════════════
 
+
 @dataclass
 class OllamaModelInfo:
     """Information about an installed Ollama model."""
+
     name: str
     size_bytes: int = 0
     parameter_size: str = ""
@@ -44,7 +46,9 @@ def discover_ollama_models(ollama_host: str = "http://localhost:11434") -> list[
     try:
         result = subprocess.run(
             ["ollama", "list"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode == 0:
             lines = result.stdout.strip().split("\n")
@@ -53,11 +57,13 @@ def discover_ollama_models(ollama_host: str = "http://localhost:11434") -> list[
                 if parts:
                     name = parts[0]
                     size_str = parts[-1] if len(parts) > 1 else ""
-                    models.append({
-                        "name": name,
-                        "size": size_str,
-                        "source": "ollama_cli",
-                    })
+                    models.append(
+                        {
+                            "name": name,
+                            "size": size_str,
+                            "source": "ollama_cli",
+                        }
+                    )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         pass
 
@@ -68,13 +74,15 @@ def discover_ollama_models(ollama_host: str = "http://localhost:11434") -> list[
             resp = urlopen(req, timeout=5)
             data = json.loads(resp.read().decode())
             for m in data.get("models", []):
-                models.append({
-                    "name": m.get("name", "unknown"),
-                    "size_bytes": m.get("size", 0),
-                    "parameter_size": m.get("details", {}).get("parameter_size", ""),
-                    "quantization": m.get("details", {}).get("quantization_level", ""),
-                    "source": "ollama_api",
-                })
+                models.append(
+                    {
+                        "name": m.get("name", "unknown"),
+                        "size_bytes": m.get("size", 0),
+                        "parameter_size": m.get("details", {}).get("parameter_size", ""),
+                        "quantization": m.get("details", {}).get("quantization_level", ""),
+                        "source": "ollama_api",
+                    }
+                )
         except (URLError, json.JSONDecodeError, OSError):
             pass
 
@@ -85,9 +93,11 @@ def discover_ollama_models(ollama_host: str = "http://localhost:11434") -> list[
 #  OpenAI-Compatible Endpoint Discovery
 # ═══════════════════════════════════════
 
+
 @dataclass
 class OpenAICompatibleEndpoint:
     """Information about an OpenAI-compatible endpoint."""
+
     base_url: str
     label: str
     source: str  # "env", "lm_studio", "ollama", "localai", "vllm", "custom"
@@ -124,11 +134,13 @@ def discover_openai_compatible_models(
 
         models = []
         for m in data.get("data", []):
-            models.append({
-                "id": m.get("id", "unknown"),
-                "object": m.get("object", "model"),
-                "owned_by": m.get("owned_by", ""),
-            })
+            models.append(
+                {
+                    "id": m.get("id", "unknown"),
+                    "object": m.get("object", "model"),
+                    "owned_by": m.get("owned_by", ""),
+                }
+            )
         return models
 
     except (URLError, json.JSONDecodeError, OSError, ValueError):
@@ -138,6 +150,7 @@ def discover_openai_compatible_models(
 # ═══════════════════════════════════════
 #  Combined Discovery
 # ═══════════════════════════════════════
+
 
 def discover_all_local() -> dict[str, list[dict[str, Any]]]:
     """
@@ -172,10 +185,12 @@ def discover_all_local() -> dict[str, list[dict[str, Any]]]:
 #  Local provider labels (from OpenClaude)
 # ═══════════════════════════════════════
 
+
 def get_local_provider_label(base_url: str) -> str:
     """Identify local provider by base URL (inspired by OpenClaude's getLocalOpenAICompatibleProviderLabel)."""
     try:
         from urllib.parse import urlparse
+
         parsed = urlparse(base_url)
         host = parsed.hostname or ""
         port = parsed.port
@@ -241,11 +256,13 @@ class ProviderDiscovery:
                 req.add_header("Content-Type", "application/json")
                 resp = urlopen(req, timeout=2)
                 if resp.status == 200:
-                    endpoints.append({
-                        "base_url": base_url,
-                        "label": label,
-                        "reachable": True,
-                    })
+                    endpoints.append(
+                        {
+                            "base_url": base_url,
+                            "label": label,
+                            "reachable": True,
+                        }
+                    )
             except (URLError, OSError):
                 continue
 

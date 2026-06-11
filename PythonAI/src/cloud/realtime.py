@@ -136,15 +136,18 @@ async def broadcast_training_progress(
     try:
         from datetime import datetime, timezone
 
-        service.table("training_runs").upsert({
-            "run_id": run_id,
-            "user_id": user_id,
-            "status": "running",
-            "progress": progress,
-            "loss": loss,
-            "step": step,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }, on_conflict="run_id").execute()
+        service.table("training_runs").upsert(
+            {
+                "run_id": run_id,
+                "user_id": user_id,
+                "status": "running",
+                "progress": progress,
+                "loss": loss,
+                "step": step,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            on_conflict="run_id",
+        ).execute()
         return True
     except Exception as e:
         logger.warning(f"Failed to broadcast training progress: {e}")
@@ -165,13 +168,15 @@ async def broadcast_signal_event(
     try:
         from datetime import datetime, timezone
 
-        service.table("capture_signals").insert({
-            "id": signal_id,
-            "user_id": user_id,
-            "signal_type": signal_type,
-            "metadata": json.dumps(metadata or {}),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }).execute()
+        service.table("capture_signals").insert(
+            {
+                "id": signal_id,
+                "user_id": user_id,
+                "signal_type": signal_type,
+                "metadata": json.dumps(metadata or {}),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        ).execute()
         return True
     except Exception as e:
         logger.warning(f"Failed to broadcast signal event: {e}")

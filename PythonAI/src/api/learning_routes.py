@@ -10,6 +10,7 @@ from src.learning.self_eval import SelfEvaluator
 
 router = APIRouter(prefix="/learning", tags=["Learning & Statistics"])
 
+
 @router.get("/stats")
 def get_learning_stats() -> dict[str, Any]:
     """
@@ -52,20 +53,24 @@ def get_learning_stats() -> dict[str, Any]:
             "error_patterns": error_stats,
             "conversations": conv_stats,
             "self_evaluation_trend": eval_trend,
-            "doc_watcher": doc_state
-        }
+            "doc_watcher": doc_state,
+        },
     }
+
 
 @router.post("/trigger/sync-so")
 def trigger_sync_so() -> dict[str, Any]:
     """Manually trigger a StackOverflow sync job via the API."""
     from src.learning.so_sync import sync_stackoverflow
+
     stats = sync_stackoverflow(pages=1)
     return {"status": "success", "stats": stats}
+
 
 @router.post("/trigger/eval")
 def trigger_eval() -> dict[str, Any]:
     """Manually trigger a RAG self-evaluation job via the API."""
     from src.learning.self_eval import run_self_evaluation
+
     stats = run_self_evaluation(sample_size=10)
     return {"status": "success", "report": stats}

@@ -7,6 +7,7 @@ Usage:
     python -m src.data.d_drive_collector --source so
     python -m src.data.d_drive_collector --source github
 """
+
 from __future__ import annotations
 
 import json
@@ -77,8 +78,9 @@ def collect_stackoverflow(tag: str = "python", pages: int = 5, pagesize: int = 1
             req = urllib.request.Request(url, headers={"Accept-Encoding": "gzip"})
 
             import gzip
+
             with urllib.request.urlopen(req, timeout=15) as resp:
-                if resp.info().get('Content-Encoding') == 'gzip':
+                if resp.info().get("Content-Encoding") == "gzip":
                     data = json.loads(gzip.decompress(resp.read()).decode("utf-8"))
                 else:
                     data = json.loads(resp.read().decode("utf-8"))
@@ -132,7 +134,7 @@ def collect_so_answers(question_ids: list[int]) -> int:
 
     # Process in batches of 30
     for i in range(0, len(question_ids), 30):
-        batch_ids = question_ids[i:i+30]
+        batch_ids = question_ids[i : i + 30]
         ids_str = ";".join(str(qid) for qid in batch_ids)
 
         url = (
@@ -142,9 +144,10 @@ def collect_so_answers(question_ids: list[int]) -> int:
 
         try:
             import gzip
+
             req = urllib.request.Request(url, headers={"Accept-Encoding": "gzip"})
             with urllib.request.urlopen(req, timeout=15) as resp:
-                if resp.info().get('Content-Encoding') == 'gzip':
+                if resp.info().get("Content-Encoding") == "gzip":
                     data = json.loads(gzip.decompress(resp.read()).decode("utf-8"))
                 else:
                     data = json.loads(resp.read().decode("utf-8"))
@@ -161,10 +164,10 @@ def collect_so_answers(question_ids: list[int]) -> int:
                 }
                 batch.append(entry)
 
-            batch_file = output_dir / f"so_answers_batch_{i//30}.json"
+            batch_file = output_dir / f"so_answers_batch_{i // 30}.json"
             batch_file.write_text(json.dumps(batch, indent=2, ensure_ascii=False), encoding="utf-8")
             total += len(batch)
-            print(f"  [Batch {i//30}] {len(batch)} answers collected")
+            print(f"  [Batch {i // 30}] {len(batch)} answers collected")
 
             time.sleep(1)
         except Exception as e:
@@ -234,6 +237,7 @@ def copy_existing_data() -> dict[str, int]:
     if src_training.exists():
         dst = DIRS["training"] / "training_dataset.json"
         import shutil
+
         shutil.copy2(src_training, dst)
         size_mb = dst.stat().st_size / (1024 * 1024)
         stats["training_dataset"] = int(dst.stat().st_size)
@@ -244,6 +248,7 @@ def copy_existing_data() -> dict[str, int]:
     if src_chunks.exists():
         dst = DIRS["raw"] / "raw_chunks_godmode.json"
         import shutil
+
         shutil.copy2(src_chunks, dst)
         size_mb = dst.stat().st_size / (1024 * 1024)
         stats["raw_chunks"] = int(dst.stat().st_size)
@@ -254,6 +259,7 @@ def copy_existing_data() -> dict[str, int]:
     if src_aug.exists():
         dst = DIRS["training"] / "training_dataset_augmented.json"
         import shutil
+
         shutil.copy2(src_aug, dst)
         size_mb = dst.stat().st_size / (1024 * 1024)
         stats["augmented_data"] = int(dst.stat().st_size)
@@ -264,6 +270,7 @@ def copy_existing_data() -> dict[str, int]:
     if src_mistral.exists():
         dst = DIRS["training"] / "mistral_training_data.jsonl"
         import shutil
+
         shutil.copy2(src_mistral, dst)
         stats["mistral_data"] = int(dst.stat().st_size)
         print("  [OK] Mistral finetune data")
@@ -273,13 +280,14 @@ def copy_existing_data() -> dict[str, int]:
     if src_cleaned.exists():
         dst = DIRS["processed"] / "cleaned_chunks.json"
         import shutil
+
         shutil.copy2(src_cleaned, dst)
         size_mb = dst.stat().st_size / (1024 * 1024)
         stats["cleaned_chunks"] = int(dst.stat().st_size)
         print(f"  [OK] Cleaned chunks: {size_mb:.1f} MB")
 
     total_bytes = sum(stats.values())
-    print(f"\n  [OK] Total synced: {total_bytes / (1024*1024):.1f} MB")
+    print(f"\n  [OK] Total synced: {total_bytes / (1024 * 1024):.1f} MB")
     return stats
 
 
@@ -318,6 +326,7 @@ def generate_collection_report() -> dict[str, Any]:
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="D: Drive Data Collector for PythonAI")
     parser.add_argument("--all", action="store_true", help="Run all collection tasks")
     parser.add_argument("--setup", action="store_true", help="Setup D: drive directories only")
@@ -337,7 +346,7 @@ def main():
         return
 
     if args.source == "so" or args.all:
-        so_count = collect_stackoverflow(pages=args.so_pages)
+        collect_stackoverflow(pages=args.so_pages)
 
         # Also collect answers for top questions
         so_dir = DIRS["so_data"]
@@ -369,9 +378,9 @@ def main():
             if info["files"] > 0:
                 print(f"    {name}: {info['files']} files ({info['mb']} MB)")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  [DONE] All data stored at: {D_DRIVE_BASE}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":

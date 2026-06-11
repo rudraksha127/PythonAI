@@ -1,6 +1,7 @@
 """
 Thin wrapper — delegates to src/cli.py
 """
+
 import sys
 from pathlib import Path
 
@@ -11,4 +12,5 @@ if str(ROOT) not in sys.path:
 
 if __name__ == "__main__":
     from src.cli import main
+
     main()

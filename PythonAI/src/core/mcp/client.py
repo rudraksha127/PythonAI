@@ -40,6 +40,7 @@ logger = logging.getLogger("pythonai.mcp")
 #  MCP Client
 # ═══════════════════════════════════════
 
+
 class MCPClient:
     """Client for connecting to and communicating with MCP servers.
 
@@ -148,16 +149,22 @@ class MCPClient:
 
         try:
             # Step 1: Send initialize request
-            init_result = self._send_request(transport, "initialize", {
-                "protocolVersion": "2025-03-26",
-                "capabilities": {},
-                "clientInfo": self.client_info,
-            })
+            init_result = self._send_request(
+                transport,
+                "initialize",
+                {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {},
+                    "clientInfo": self.client_info,
+                },
+            )
 
             if not init_result:
                 return ServerConnection(
-                    name=server_name, state=ConnectionState.FAILED,
-                    config=config, error="Initialize failed: no response",
+                    name=server_name,
+                    state=ConnectionState.FAILED,
+                    config=config,
+                    error="Initialize failed: no response",
                 )
 
             self._capabilities = init_result.get("capabilities", {})
@@ -204,12 +211,14 @@ class MCPClient:
 
             tools = []
             for t in result["tools"]:
-                tools.append(MCPToolInfo(
-                    name=t.get("name", ""),
-                    description=t.get("description", ""),
-                    input_schema=t.get("inputSchema", {}),
-                    annotations=t.get("annotations", {}),
-                ))
+                tools.append(
+                    MCPToolInfo(
+                        name=t.get("name", ""),
+                        description=t.get("description", ""),
+                        input_schema=t.get("inputSchema", {}),
+                        annotations=t.get("annotations", {}),
+                    )
+                )
             return tools
         except Exception as e:
             logger.debug(f"Failed to fetch tools: {e}")
@@ -224,12 +233,14 @@ class MCPClient:
 
             resources = []
             for r in result["resources"]:
-                resources.append(MCPResourceInfo(
-                    uri=r.get("uri", ""),
-                    name=r.get("name", ""),
-                    description=r.get("description", ""),
-                    mime_type=r.get("mimeType", ""),
-                ))
+                resources.append(
+                    MCPResourceInfo(
+                        uri=r.get("uri", ""),
+                        name=r.get("name", ""),
+                        description=r.get("description", ""),
+                        mime_type=r.get("mimeType", ""),
+                    )
+                )
             return resources
         except Exception as e:
             logger.debug(f"Failed to fetch resources: {e}")
@@ -314,6 +325,7 @@ class MCPClient:
 # ═══════════════════════════════════════
 #  Transport Implementations
 # ═══════════════════════════════════════
+
 
 class _StdioTransport:
     """JSON-RPC transport over stdio subprocess."""
@@ -546,6 +558,7 @@ class _SSETransport:
         if not self.message_url:
             return
         import urllib.request
+
         try:
             data_bytes = text.encode("utf-8")
             req = urllib.request.Request(
@@ -618,6 +631,7 @@ class _HTTPTransport:
 # ═══════════════════════════════════════
 #  Convenience Functions
 # ═══════════════════════════════════════
+
 
 def connect_stdio(config: StdioConfig) -> ServerConnection:
     """Quick-connect to a stdio MCP server."""

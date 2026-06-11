@@ -28,6 +28,7 @@ HF_CACHE_DIR = ROOT / "extra_data" / "hf_datasets"
 #  Cache helpers
 # ═════════════════════════════════════════
 
+
 def load_cache() -> dict[str, float]:
     if CACHE_FILE.exists():
         try:
@@ -103,6 +104,7 @@ def describe_source(dataset_key: str) -> str:
 #  Dataset converters
 # ═════════════════════════════════════════
 
+
 def convert_glaive_row(row: dict[str, Any], idx: int) -> dict[str, Any] | None:
     """Convert a glaive-code-assistant row to chunk format."""
     question = str(row.get("question", "")).strip()
@@ -171,6 +173,7 @@ def convert_instructional_row(row: dict[str, Any], idx: int) -> dict[str, Any] |
 #  Download & convert pipeline
 # ═════════════════════════════════════════
 
+
 def download_dataset(dataset_key: str, max_rows: int | None = None) -> list[dict[str, Any]]:
     """
     Download a HuggingFace dataset and convert rows to chunk format.
@@ -230,6 +233,7 @@ def download_dataset(dataset_key: str, max_rows: int | None = None) -> list[dict
 #  Main runner
 # ═════════════════════════════════════════
 
+
 def run(
     datasets: list[str] | None = None,
     max_rows: int = 25000,
@@ -263,7 +267,7 @@ def run(
             print(f"  [WARN] Unknown dataset: {ds_key}")
             continue
 
-        info = HF_DATASETS[ds_key]
+        HF_DATASETS[ds_key]
         print(f"\n[{ds_key}]")
         print(f"  {describe_source(ds_key)}")
 
@@ -288,28 +292,24 @@ def run(
 
         # Save per-dataset cache
         HF_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        (HF_CACHE_DIR / f"{ds_key}.json").write_text(
-            json.dumps(chunks, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        (HF_CACHE_DIR / f"{ds_key}.json").write_text(json.dumps(chunks, ensure_ascii=False, indent=2), encoding="utf-8")
 
     save_cache(cache)
 
     # Save combined output
     output_path = ROOT / (output or "data/raw/raw_chunks_hf.json")
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(all_chunks, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    output_path.write_text(json.dumps(all_chunks, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("COMPLETE!")
     print(f"Total chunks: {len(all_chunks):,}")
     print(f"Output file : {output_path}")
     print("\nPer dataset:")
     for ds, count in stats.items():
-        label = HF_DATASETS[ds]['path']
+        label = HF_DATASETS[ds]["path"]
         print(f"  {label:50s}: {count:>8,}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     return {"total": len(all_chunks), **stats}
 
@@ -346,10 +346,8 @@ if __name__ == "__main__":
     parser.add_argument("--datasets", nargs="*", help="Datasets to download (default: all)")
     parser.add_argument("--max-rows", type=int, default=None, help="Max rows per dataset")
     parser.add_argument("--output", default="data/raw/raw_chunks_hf.json", help="Output path")
-    parser.add_argument("--stats", action="store_true",
-                        help="Show statistics about previously collected data")
-    parser.add_argument("--force", action="store_true",
-                        help="Force re-download even if cached")
+    parser.add_argument("--stats", action="store_true", help="Show statistics about previously collected data")
+    parser.add_argument("--force", action="store_true", help="Force re-download even if cached")
     args = parser.parse_args()
 
     if args.stats:
@@ -357,7 +355,7 @@ if __name__ == "__main__":
     elif args.force:
         # Clear cache timestamp to force refresh
         cache = load_cache()
-        for ds in (args.datasets or HF_DATASETS.keys()):
+        for ds in args.datasets or HF_DATASETS.keys():
             cache.pop(ds, None)
         save_cache(cache)
         run(datasets=args.datasets, max_rows=args.max_rows, output=args.output)

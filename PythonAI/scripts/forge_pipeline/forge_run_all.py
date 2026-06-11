@@ -101,9 +101,9 @@ def run_step(step: dict, cfg: ForgeConfig, test_mode: bool = False):
     if test_mode and num == 5:
         kwargs["test_mode"] = True
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  STEP {num}: {name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     start = time.time()
 
@@ -112,12 +112,13 @@ def run_step(step: dict, cfg: ForgeConfig, test_mode: bool = False):
         func = getattr(mod, func_name)
         result = func(cfg, **kwargs) if kwargs else func(cfg)
         elapsed = time.time() - start
-        print(f"  [OK] Step {num} complete ({elapsed/60:.1f} min)")
+        print(f"  [OK] Step {num} complete ({elapsed / 60:.1f} min)")
         return True
     except Exception as e:
         elapsed = time.time() - start
-        print(f"  [FAIL] Step {num} FAILED after {elapsed/60:.1f} min: {e}")
+        print(f"  [FAIL] Step {num} FAILED after {elapsed / 60:.1f} min: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 

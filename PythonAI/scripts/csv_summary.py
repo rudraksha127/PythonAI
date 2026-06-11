@@ -29,11 +29,11 @@ def print_section_header(title: str, level: int = 1) -> None:
 
 def print_numeric_stats(df: pd.DataFrame, col: str) -> None:
     """Print statistics for numeric columns."""
-    stats = df[col].describe(percentiles=[.25, .5, .75])
+    stats = df[col].describe(percentiles=[0.25, 0.5, 0.75])
     null_count = df[col].isna().sum()
     null_pct = (null_count / len(df)) * 100
     unique_count = df[col].nunique()
-    
+
     print_section_header(f"Numeric Column: {col}")
     print(f"{'Count:':<20} {len(df[col]):>10}")
     print(f"{'Null Values:':<20} {null_count:>10} ({null_pct:.2f}%)")
@@ -52,15 +52,15 @@ def print_categorical_stats(df: pd.DataFrame, col: str) -> None:
     null_count = df[col].isna().sum()
     null_pct = (null_count / len(df)) * 100
     unique_count = df[col].nunique()
-    
+
     # Get top 10 most frequent values
     top_values = df[col].value_counts().head(10)
-    
+
     print_section_header(f"Categorical Column: {col}")
     print(f"{'Count:':<20} {len(df[col]):>10}")
     print(f"{'Null Values:':<20} {null_count:>10} ({null_pct:.2f}%)")
     print(f"{'Unique Values:':<20} {unique_count:>10}")
-    
+
     if not top_values.empty:
         print("\nTop 10 Most Frequent Values:")
         print("-" * 40)
@@ -75,25 +75,25 @@ def print_boolean_stats(df: pd.DataFrame, col: str) -> None:
     null_pct = (null_count / len(df)) * 100
     true_count = df[col].sum()
     false_count = len(df) - true_count - null_count
-    
+
     print_section_header(f"Boolean Column: {col}")
     print(f"{'Count:':<20} {len(df[col]):>10}")
     print(f"{'Null Values:':<20} {null_count:>10} ({null_pct:.2f}%)")
-    print(f"{'True Values:':<20} {true_count:>10} ({true_count/len(df)*100:.2f}%)")
-    print(f"{'False Values:':<20} {false_count:>10} ({false_count/len(df)*100:.2f}%)")
+    print(f"{'True Values:':<20} {true_count:>10} ({true_count / len(df) * 100:.2f}%)")
+    print(f"{'False Values:':<20} {false_count:>10} ({false_count / len(df) * 100:.2f}%)")
 
 
 def print_datetime_stats(df: pd.DataFrame, col: str) -> None:
     """Print statistics for datetime columns."""
     null_count = df[col].isna().sum()
     null_pct = (null_count / len(df)) * 100
-    
+
     # Convert to datetime if not already
     if not pd.api.types.is_datetime64_any_dtype(df[col]):
-        df[col] = pd.to_datetime(df[col], errors='coerce')
-    
+        df[col] = pd.to_datetime(df[col], errors="coerce")
+
     non_null = df[col].dropna()
-    
+
     print_section_header(f"Datetime Column: {col}")
     print(f"{'Count:':<20} {len(df[col]):>10}")
     print(f"{'Null Values:':<20} {null_count:>10} ({null_pct:.2f}%)")
@@ -105,29 +105,29 @@ def print_datetime_stats(df: pd.DataFrame, col: str) -> None:
 def generate_csv_summary(file_path: Path) -> None:
     """
     Generate and print summary statistics for a CSV file.
-    
+
     Args:
         file_path: Path to the CSV file
     """
     try:
         # Read CSV file
         df = pd.read_csv(file_path)
-        
+
         if df.empty:
             print(f"Error: The file '{file_path}' is empty.")
             return
-        
+
         print_section_header(f"CSV Summary Statistics: {file_path.name}")
         print(f"{'File Path:':<20} {file_path.resolve()}")
         print(f"{'Total Rows:':<20} {len(df):>10}")
         print(f"{'Total Columns:':<20} {len(df.columns):>10}")
         print(f"{'File Size:':<20} {file_path.stat().st_size / 1024:.2f} KB")
         print(f"{'Last Modified:':<20} {datetime.fromtimestamp(file_path.stat().st_mtime)}")
-        
+
         # Analyze each column
         for col in df.columns:
             col_type = df[col].dtype
-            
+
             # Determine column type
             if pd.api.types.is_numeric_dtype(col_type):
                 print_numeric_stats(df, col)
@@ -138,7 +138,7 @@ def generate_csv_summary(file_path: Path) -> None:
             else:
                 # Treat as categorical/text
                 print_categorical_stats(df, col)
-        
+
     except FileNotFoundError:
         print(f"Error: File not found: {file_path}")
         sys.exit(1)
@@ -156,27 +156,22 @@ def generate_csv_summary(file_path: Path) -> None:
 def main():
     """Parse command line arguments and generate summary."""
     parser = argparse.ArgumentParser(
-        description="Generate summary statistics for CSV files.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        description="Generate summary statistics for CSV files.", formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument(
-        "file_path",
-        type=Path,
-        help="Path to the CSV file"
-    )
-    
+    parser.add_argument("file_path", type=Path, help="Path to the CSV file")
+
     args = parser.parse_args()
-    
+
     # Validate file exists
     if not args.file_path.exists():
         print(f"Error: File not found: {args.file_path}")
         sys.exit(1)
-    
+
     # Validate it's a file
     if not args.file_path.is_file():
         print(f"Error: '{args.file_path}' is not a file.")
         sys.exit(1)
-    
+
     # Generate summary
     generate_csv_summary(args.file_path)
 

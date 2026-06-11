@@ -19,8 +19,8 @@ from functools import partial
 from pathlib import Path
 
 # Fix Windows console encoding
-if hasattr(sys.stdout, 'buffer'):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 import ftfy
 from loguru import logger
@@ -30,6 +30,7 @@ from forge_config import ForgeConfig
 
 try:
     from langdetect import detect
+
     HAS_LANGDETECT = True
 except ImportError:
     HAS_LANGDETECT = False
@@ -43,15 +44,15 @@ N_WORKERS = min(multiprocessing.cpu_count(), 16)  # Use all cores
 # TEXT QUALITY FILTERS (pure functions for multiprocessing)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def clean_text(text: str) -> str:
     if not text:
         return ""
     text = ftfy.fix_text(text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    text = re.sub(r'(.)\1{5,}', r'\1\1\1', text)
-    lines = [l for l in text.split('\n')
-             if len(re.sub(r'[^a-zA-Z\u0900-\u097F0-9]', '', l)) > 3]
-    return '\n'.join(lines)
+    text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"(.)\1{5,}", r"\1\1\1", text)
+    lines = [l for l in text.split("\n") if len(re.sub(r"[^a-zA-Z\u0900-\u097F0-9]", "", l)) > 3]
+    return "\n".join(lines)
 
 
 def passes_quality(text: str, min_len: int, max_len: int) -> bool:
@@ -104,15 +105,19 @@ def normalize_record(raw: dict) -> dict | None:
     if not text:
         if "instruction" in raw and "output" in raw:
             inp = raw.get("input", "") or raw.get("context", "")
-            text = f"### Instruction:\n{raw['instruction']}\n\n### Response:\n{raw['output']}" if not inp else f"### Instruction:\n{raw['instruction']}\n\n### Input:\n{inp}\n\n### Response:\n{raw['output']}"
+            text = (
+                f"### Instruction:\n{raw['instruction']}\n\n### Response:\n{raw['output']}"
+                if not inp
+                else f"### Instruction:\n{raw['instruction']}\n\n### Input:\n{inp}\n\n### Response:\n{raw['output']}"
+            )
         elif "question" in raw and "answer" in raw:
             text = f"Question: {raw['question']}\n\nAnswer: {raw['answer']}"
         elif "prompt" in raw and "completion" in raw:
             text = f"{raw['prompt']}{raw['completion']}"
         elif "messages" in raw:
             msgs = raw["messages"]
-            parts = [f"{m.get('role', 'user').upper()}: {m.get('content', '')}" for m in msgs if m.get('content')]
-            text = '\n\n'.join(parts)
+            parts = [f"{m.get('role', 'user').upper()}: {m.get('content', '')}" for m in msgs if m.get("content")]
+            text = "\n\n".join(parts)
         elif "title" in raw and "abstract" in raw:
             text = f"{raw['title']}\n\n{raw['abstract']}"
         elif "problem" in raw and "solution" in raw:
@@ -125,7 +130,12 @@ def normalize_record(raw: dict) -> dict | None:
             lang = detect(text[:500])
         except Exception:
             pass
-    return {"text": text, "source": raw.get("source", raw.get("_source", "unknown")), "lang": lang, "domain": raw.get("domain", raw.get("tag", "general"))}
+    return {
+        "text": text,
+        "source": raw.get("source", raw.get("_source", "unknown")),
+        "lang": lang,
+        "domain": raw.get("domain", raw.get("tag", "general")),
+    }
 
 
 def process_chunk(chunk: list) -> list:
@@ -204,7 +214,7 @@ def run_parallel_processing(cfg: ForgeConfig) -> Path:
         # run text cleaning, language detection, and quality filtering.
         if is_amplified:
             chunk_size = max(1, len(lines) // N_WORKERS)
-            chunks = [lines[i:i+chunk_size] for i in range(0, len(lines), chunk_size)]
+            chunks = [lines[i : i + chunk_size] for i in range(0, len(lines), chunk_size)]
 
             with multiprocessing.Pool(N_WORKERS) as pool:
                 batch_results = pool.map(process_chunk, chunks)
@@ -226,7 +236,7 @@ def run_parallel_processing(cfg: ForgeConfig) -> Path:
 
         # ── REGULAR DATA ──
         chunk_size = max(1, len(lines) // N_WORKERS)
-        chunks = [lines[i:i+chunk_size] for i in range(0, len(lines), chunk_size)]
+        chunks = [lines[i : i + chunk_size] for i in range(0, len(lines), chunk_size)]
 
         # Process in PARALLEL across all CPU cores
         with multiprocessing.Pool(N_WORKERS) as pool:

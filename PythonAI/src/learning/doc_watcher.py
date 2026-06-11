@@ -123,13 +123,15 @@ class DocWatcher:
                 version_match = re.search(r"Python\s+([\d.]+\w*)", name)
                 if version_match:
                     version = version_match.group(1)
-                    releases.append({
-                        "version": version,
-                        "name": name,
-                        "release_date": release.get("release_date", ""),
-                        "is_published": release.get("is_published", True),
-                        "url": release.get("resource_uri", ""),
-                    })
+                    releases.append(
+                        {
+                            "version": version,
+                            "name": name,
+                            "release_date": release.get("release_date", ""),
+                            "is_published": release.get("is_published", True),
+                            "url": release.get("resource_uri", ""),
+                        }
+                    )
         except (json.JSONDecodeError, KeyError) as e:
             logger.warning("Failed to parse Python API response: %s", e)
 
@@ -148,9 +150,6 @@ class DocWatcher:
             root = ElementTree.fromstring(content)
 
             # Handle both RSS and Atom namespaces
-            namespaces = {
-                "atom": "http://www.w3.org/2005/Atom",
-            }
 
             # Try RSS format
             for item in root.iter("item"):
@@ -158,12 +157,14 @@ class DocWatcher:
                 if "release" in title.lower() or "python" in title.lower():
                     version_match = re.search(r"Python\s+([\d.]+\w*)", title)
                     if version_match:
-                        releases.append({
-                            "version": version_match.group(1),
-                            "name": title,
-                            "release_date": item.findtext("pubDate", ""),
-                            "url": item.findtext("link", ""),
-                        })
+                        releases.append(
+                            {
+                                "version": version_match.group(1),
+                                "name": title,
+                                "release_date": item.findtext("pubDate", ""),
+                                "url": item.findtext("link", ""),
+                            }
+                        )
 
             # Try Atom format
             for entry in root.iter("{http://www.w3.org/2005/Atom}entry"):
@@ -171,14 +172,14 @@ class DocWatcher:
                 if "release" in title.lower() or "python" in title.lower():
                     version_match = re.search(r"Python\s+([\d.]+\w*)", title)
                     if version_match:
-                        releases.append({
-                            "version": version_match.group(1),
-                            "name": title,
-                            "release_date": entry.findtext(
-                                "{http://www.w3.org/2005/Atom}published", ""
-                            ),
-                            "url": "",
-                        })
+                        releases.append(
+                            {
+                                "version": version_match.group(1),
+                                "name": title,
+                                "release_date": entry.findtext("{http://www.w3.org/2005/Atom}published", ""),
+                                "url": "",
+                            }
+                        )
 
         except ElementTree.ParseError as e:
             logger.warning("Failed to parse RSS feed: %s", e)
@@ -231,9 +232,7 @@ class DocWatcher:
 
         # Find new releases
         known_versions = set(self._state.get("known_versions", []))
-        last_known_tuple = _parse_version(
-            self._state.get("last_known_version", "3.12.0")
-        )
+        last_known_tuple = _parse_version(self._state.get("last_known_version", "3.12.0"))
 
         new_releases: list[dict[str, Any]] = []
         latest_version = self._state.get("last_known_version", "3.12.0")
@@ -269,7 +268,8 @@ class DocWatcher:
         if new_releases:
             logger.info(
                 "Found %d new Python releases! Latest: %s",
-                len(new_releases), latest_version,
+                len(new_releases),
+                latest_version,
             )
         else:
             logger.info("No new Python releases. Latest known: %s", latest_version)

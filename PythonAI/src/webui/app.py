@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.data.apikeys import (
+from src.data.apikeys import (  # noqa: E402
     ALL_PROVIDERS,
     PROVIDER_LABELS,
     active_providers,
@@ -31,13 +31,13 @@ from src.data.apikeys import (
     list_keys,
     set_key,
 )
-from src.rag.models import (
+from src.rag.models import (  # noqa: E402
     DEFAULT_MODEL,
     get_model_info,
     list_configured_models,
     list_ollama_models,
 )
-from src.rag.rag_engine import (
+from src.rag.rag_engine import (  # noqa: E402
     DB_PATH,
     get_answer,
     load_or_build_db,
@@ -182,6 +182,7 @@ for key, val in {**_RAG_DEFAULTS, **_GEN_DEFAULTS, **_UI_DEFAULTS}.items():
 # CACHED DB RESOURCE (RAG)
 # ════════════════════════════════════════
 
+
 @st.cache_resource(show_spinner="[OK] Loading RAG database...")
 def init_db(force_rebuild: bool = False) -> tuple[Any, Any, Any, list[str], Path]:
     return load_or_build_db(force_rebuild=force_rebuild)
@@ -190,6 +191,7 @@ def init_db(force_rebuild: bool = False) -> tuple[Any, Any, Any, list[str], Path
 # ════════════════════════════════════════
 # GENERATOR WORKER
 # ════════════════════════════════════════
+
 
 def _run_generation(max_chunks: int, data_types: list[str], output_name: str) -> dict[str, Any]:
     """Run dataset generation via a subprocess and return results.
@@ -208,6 +210,7 @@ def _run_generation(max_chunks: int, data_types: list[str], output_name: str) ->
     try:
         _log("Checking API keys...")
         from src.data.apikeys import resolve_all
+
         resolved = resolve_all()
         if not resolved:
             _log("[FAIL] No API keys found. Set keys via CLI or Web UI first.")
@@ -242,7 +245,9 @@ def _run_generation(max_chunks: int, data_types: list[str], output_name: str) ->
         result = subprocess.run(
             ["python", "-c", script],
             cwd=str(ROOT.parent if ROOT.name == "PythonAI" else ROOT),
-            capture_output=True, text=True, timeout=3600,
+            capture_output=True,
+            text=True,
+            timeout=3600,
         )
 
         # Parse the last JSON line from stdout
@@ -281,6 +286,7 @@ def _run_generation(max_chunks: int, data_types: list[str], output_name: str) ->
     except Exception as exc:
         _log(f"[FAIL] {exc}")
         import traceback
+
         _log(traceback.format_exc())
         return {"success": False, "error": str(exc), "log": log}
 
@@ -294,7 +300,16 @@ with st.sidebar:
     st.divider()
 
     # ── Navigation ──
-    pages = ["RAG Chat", "Agent Workspace", "Dataset Generation", "Dashboard Home", "Tool System", "Provider Routing", "MCP Servers", "ForgeAI Dashboard"]
+    pages = [
+        "RAG Chat",
+        "Agent Workspace",
+        "Dataset Generation",
+        "Dashboard Home",
+        "Tool System",
+        "Provider Routing",
+        "MCP Servers",
+        "ForgeAI Dashboard",
+    ]
     page = st.radio(
         "Navigation",
         pages,
@@ -343,20 +358,27 @@ with st.sidebar:
         st.markdown("### Settings")
 
         use_qe = st.checkbox(
-            "Query Expansion", value=False,
+            "Query Expansion",
+            value=False,
             help="Generate alternative phrasings for broader document retrieval.",
         )
         use_mmr = st.checkbox(
-            "MMR Diversity", value=False,
+            "MMR Diversity",
+            value=False,
             help="Maximum Marginal Relevance — avoid redundant results.",
         )
         mmr_lambda = st.slider(
-            "MMR Lambda", 0.0, 1.0, 0.7, 0.05,
+            "MMR Lambda",
+            0.0,
+            1.0,
+            0.7,
+            0.05,
             help="Higher = more relevance-focused; lower = more diversity-focused.",
             disabled=not use_mmr,
         )
         no_exec = st.checkbox(
-            "Skip Code Execution", value=False,
+            "Skip Code Execution",
+            value=False,
             help="Do not verify generated code examples.",
         )
         exec_timeout = st.number_input("Exec Timeout (s)", 1, 30, 5)
@@ -416,30 +438,35 @@ with st.sidebar:
 
 if page == "Dashboard Home":
     from src.webui.views.dashboard_home import render as render_home
+
     render_home()
 
 elif page == "Agent Workspace":
     from src.webui.views.agent_workspace import render as render_agent_workspace
+
     render_agent_workspace()
 
 elif page == "Tool System":
     from src.webui.views.tools_dashboard import render as render_tools
+
     render_tools()
 
 elif page == "Provider Routing":
     from src.webui.views.providers_dashboard import render as render_providers
+
     render_providers()
 
 elif page == "MCP Servers":
     from src.webui.views.mcp_dashboard import render as render_mcp
+
     render_mcp()
 
 elif page == "ForgeAI Dashboard":
     from src.webui.views.forge_dashboard import render as render_forge
+
     render_forge()
 
 elif page == "RAG Chat":
-
     st.markdown(
         '<div class="main-header">'
         "<h1>[PYTHON] PythonAI — RAG Assistant</h1>"
@@ -520,10 +547,7 @@ elif page == "RAG Chat":
             st.markdown(prompt)
         st.session_state.history.append({"role": "user", "content": prompt})
 
-        ctx_history = [
-            m for m in st.session_state.history[:-1]
-            if m["role"] in ("user", "assistant")
-        ][-20:]
+        ctx_history = [m for m in st.session_state.history[:-1] if m["role"] in ("user", "assistant")][-20:]
 
         with st.chat_message("assistant"):
             rag_model = st.session_state.get("rag_model", DEFAULT_MODEL)
@@ -562,14 +586,13 @@ elif page == "RAG Chat":
 
                     st.session_state.last_answer = answer
                     st.session_state.last_docs = docs
-                    st.session_state.history.append(
-                        {"role": "assistant", "content": answer, "docs": docs}
-                    )
+                    st.session_state.history.append({"role": "assistant", "content": answer, "docs": docs})
                     st.rerun()
 
                 except Exception as exc:
                     st.error(f"Error generating answer: {exc}")
                     import traceback
+
                     st.code(traceback.format_exc())
 
     # Welcome hint
@@ -588,11 +611,10 @@ elif page == "RAG Chat":
 # ════════════════════════════════════════
 
 elif page == "Dataset Generation":
-
     st.markdown(
         '<div class="main-header">'
         "<h1>[PYTHON] PythonAI — Dataset Generator</h1>"
-        "<p class=\"subtitle\">Generate SFT training data using 10+ API providers</p>"
+        '<p class="subtitle">Generate SFT training data using 10+ API providers</p>'
         "</div>",
         unsafe_allow_html=True,
     )
@@ -695,7 +717,10 @@ elif page == "Dataset Generation":
 
     with gen_col1:
         max_chunks = st.number_input(
-            "Max Chunks", min_value=1, max_value=10000, value=10,
+            "Max Chunks",
+            min_value=1,
+            max_value=10000,
+            value=10,
             help="Number of documentation chunks to process. Start with 10 for testing.",
         )
         output_name = st.text_input(
@@ -708,9 +733,16 @@ elif page == "Dataset Generation":
         data_types = st.multiselect(
             "Data Types",
             options=[
-                "basic", "reasoning", "error_fix", "expert",
-                "interview", "project", "version",
-                "security", "performance", "testing",
+                "basic",
+                "reasoning",
+                "error_fix",
+                "expert",
+                "interview",
+                "project",
+                "version",
+                "security",
+                "performance",
+                "testing",
             ],
             default=["basic", "reasoning", "expert"],
             help="Types of Q&A pairs to generate.",
@@ -773,10 +805,7 @@ elif page == "Dataset Generation":
         if st.session_state.gen_done:
             result = st.session_state.gen_results
             if isinstance(result, dict) and result.get("success"):
-                st.success(
-                    f"[OK] **{result['pairs']} pairs** generated in "
-                    f"**{result['elapsed_min']:.1f} min**"
-                )
+                st.success(f"[OK] **{result['pairs']} pairs** generated in **{result['elapsed_min']:.1f} min**")
                 st.markdown(f"**Output:** `{result['output']}`")
 
                 if result.get("type_stats"):

@@ -46,9 +46,10 @@ def status(args: argparse.Namespace) -> int:
     rag_db = ROOT / "python_brain_godmode" / "chroma.sqlite3"
 
     # Watch mode
-    watch = getattr(args, 'watch', False)
+    watch = getattr(args, "watch", False)
     if watch:
         import time
+
         try:
             while True:
                 print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] PythonAI Status (--watch, Ctrl+C to stop)")
@@ -64,18 +65,18 @@ def status(args: argparse.Namespace) -> int:
             return 0
 
     # JSON mode
-    if getattr(args, 'json_output', False):
+    if getattr(args, "json_output", False):
         info = {
             "python": str(python_exe),
-            "project_files": audit['total_files'],
-            "project_mb": audit['total_mb'],
-            "cleanup_targets": cleanup['candidate_count'],
-            "cleanup_mb": cleanup['recoverable_mb'],
-            "dataset_rows": dataset['rows'],
-            "dataset_avg_chars": dataset['length_avg'],
-            "cuda": hardware.get('cuda_available'),
-            "gpu": hardware.get('gpu_name'),
-            "ram_gb": hardware.get('ram_gb'),
+            "project_files": audit["total_files"],
+            "project_mb": audit["total_mb"],
+            "cleanup_targets": cleanup["candidate_count"],
+            "cleanup_mb": cleanup["recoverable_mb"],
+            "dataset_rows": dataset["rows"],
+            "dataset_avg_chars": dataset["length_avg"],
+            "cuda": hardware.get("cuda_available"),
+            "gpu": hardware.get("gpu_name"),
+            "ram_gb": hardware.get("ram_gb"),
             "ollama_models": ollama_models,
             "hf_models": hf_models,
             "qwen_candidates": qwen_hf,
@@ -91,12 +92,12 @@ def status(args: argparse.Namespace) -> int:
     print(f"Python       : {python_exe}")
     print(f"Project files: {audit['total_files']} ({audit['total_mb']} MB, excluding .venv/.git)")
 
-    if getattr(args, 'verbose', False):
+    if getattr(args, "verbose", False):
         print("  Largest files:")
-        for f in audit.get('largest_files', [])[:5]:
+        for f in audit.get("largest_files", [])[:5]:
             print(f"    {f['path']}: {f['bytes'] / 1024:.1f} KB")
         print("  By extension:")
-        for ext, info in list(audit.get('by_extension', {}).items())[:8]:
+        for ext, info in list(audit.get("by_extension", {}).items())[:8]:
             print(f"    {ext or '(none)':10s}: {info['files']:4d} files, {info['bytes'] / 1024:.1f} KB")
 
     print(f"Cleanup      : {cleanup['candidate_count']} targets, {cleanup['recoverable_mb']} MB")
@@ -150,15 +151,22 @@ def login_cmd(args: argparse.Namespace) -> int:
 def train(args: argparse.Namespace) -> int:
     cmd = [
         str(project_python()),
-        "-m", "src.training.run",
-        "--mode", args.mode,
-        "--max-steps", str(args.max_steps),
-        "--max-examples", str(args.max_examples),
-        "--max-length", str(args.max_length),
-        "--output-dir", args.output_dir,
-        "--dataset-path", args.dataset_path,
+        "-m",
+        "src.training.run",
+        "--mode",
+        args.mode,
+        "--max-steps",
+        str(args.max_steps),
+        "--max-examples",
+        str(args.max_examples),
+        "--max-length",
+        str(args.max_length),
+        "--output-dir",
+        args.output_dir,
+        "--dataset-path",
+        args.dataset_path,
     ]
-    if getattr(args, 'unsloth', False):
+    if getattr(args, "unsloth", False):
         cmd.append("--unsloth")
     if args.skip_train:
         cmd.append("--skip-train")
@@ -167,22 +175,33 @@ def train(args: argparse.Namespace) -> int:
 
 @requires_auth
 def evaluate(args: argparse.Namespace) -> int:
-    return run([
-        str(project_python()),
-        "-m", "src.training.evaluator",
-        "--adapter-path", args.adapter_path,
-        "--output-json", args.output_json,
-    ])
+    return run(
+        [
+            str(project_python()),
+            "-m",
+            "src.training.evaluator",
+            "--adapter-path",
+            args.adapter_path,
+            "--output-json",
+            args.output_json,
+        ]
+    )
 
 
 def probe(args: argparse.Namespace) -> int:
-    return run([
-        str(project_python()),
-        "-m", "src.rag.prober",
-        "--ollama-model", args.ollama_model,
-        "--num-ctx", str(args.num_ctx),
-        "--prompt", args.prompt,
-    ])
+    return run(
+        [
+            str(project_python()),
+            "-m",
+            "src.rag.prober",
+            "--ollama-model",
+            args.ollama_model,
+            "--num-ctx",
+            str(args.num_ctx),
+            "--prompt",
+            args.prompt,
+        ]
+    )
 
 
 @requires_auth
@@ -197,14 +216,14 @@ def ask(args: argparse.Namespace) -> int:
         results = execute_agents(args.question, swarm, ALL_AGENTS)
 
         print("\n[AI] SWARM RESULTS:")
-        print(f"{'='*55}")
+        print(f"{'=' * 55}")
         for agent_name, output in results.items():
             print(f"[{agent_name.upper()}]:\n{output}\n")
-        print(f"{'='*55}")
+        print(f"{'=' * 55}")
         return 0
 
     # == Phase 6: Agentic Orchestration mode (--orchestrate) ===
-    if getattr(args, 'orchestrate', False):
+    if getattr(args, "orchestrate", False):
         from src.core.agents import AgentOrchestrator
         from src.core.registry import get_registry
         from src.core.tools import register_all_tools
@@ -225,10 +244,10 @@ def ask(args: argparse.Namespace) -> int:
         )
 
         if args.question:
-            response = orchestrator.run(args.question)
-            print(f"\n{'='*55}")
+            orchestrator.run(args.question)
+            print(f"\n{'=' * 55}")
             print(orchestrator.summary())
-            print(f"{'='*55}\n")
+            print(f"{'=' * 55}\n")
         else:
             # Interactive mode
             print("Entering agentic orchestration mode. Type 'exit' to quit.\n")
@@ -244,12 +263,12 @@ def ask(args: argparse.Namespace) -> int:
                     for t in registry.list_all():
                         print(f"  - {t.name}: {t.description}")
                     continue
-                response = orchestrator.run(q)
+                orchestrator.run(q)
                 print(orchestrator.summary())
         return 0
 
     # == Tool-calling mode (--tools) ===========================
-    if getattr(args, 'tools', False):
+    if getattr(args, "tools", False):
         from src.core.executor import ToolCallingEngine
         from src.core.registry import get_registry
         from src.core.tools import register_all_tools
@@ -262,10 +281,10 @@ def ask(args: argparse.Namespace) -> int:
             pass  # Tools already registered
 
         print("\n[Tools] Tool-Calling Mode (engine ready)")
-        print(f"{'='*55}")
+        print(f"{'=' * 55}")
         print(f"  Provider  : {args.model or 'auto'}")
         print(f"  Tools     : {registry.total_count} registered")
-        print(f"{'='*55}\n")
+        print(f"{'=' * 55}\n")
 
         engine = ToolCallingEngine(
             provider="auto",
@@ -275,10 +294,10 @@ def ask(args: argparse.Namespace) -> int:
         )
 
         if args.question:
-            response = engine.run(args.question)
-            print(f"\n{'='*55}")
+            engine.run(args.question)
+            print(f"\n{'=' * 55}")
             print(f"[Stats] {engine.get_stats_report()}")
-            print(f"{'='*55}\n")
+            print(f"{'=' * 55}\n")
         else:
             # Interactive mode
             print("Entering interactive tool-calling mode. Type 'exit' to quit.\n")
@@ -302,7 +321,7 @@ def ask(args: argparse.Namespace) -> int:
                     print("[Reset] Conversation cleared!")
                     continue
 
-                response = engine.run(q)
+                engine.run(q)
                 print()
         return 0
 
@@ -331,12 +350,13 @@ def ask(args: argparse.Namespace) -> int:
         cmd.append("--list-models")
     return run(cmd)
 
+
 def tools_cmd(args: argparse.Namespace) -> int:
     from src.tools import ALL_TOOLS as MCP_TOOLS
 
     # Show both old MCP tools and new Core tools
     print("\n[Tools] Registered Tools")
-    print(f"{'='*55}")
+    print(f"{'=' * 55}")
 
     print(f"\n  MCP Tools ({len(MCP_TOOLS)}):")
     for t in MCP_TOOLS:
@@ -346,6 +366,7 @@ def tools_cmd(args: argparse.Namespace) -> int:
     try:
         from src.core.registry import get_registry
         from src.core.tools import register_all_tools
+
         registry = get_registry()
         try:
             register_all_tools(registry)
@@ -379,14 +400,22 @@ def dataset_info(args: argparse.Namespace) -> int:
 def augment(args: argparse.Namespace) -> int:
     command = [
         str(project_python()),
-        "-m", "src.data.augmenter",
-        "--model", args.model,
-        "--limit", str(args.limit),
-        "--offset", str(args.offset),
-        "--num-ctx", str(args.num_ctx),
-        "--num-predict", str(args.num_predict),
-        "--pairs-per-chunk", str(args.pairs_per_chunk),
-        "--output", args.output,
+        "-m",
+        "src.data.augmenter",
+        "--model",
+        args.model,
+        "--limit",
+        str(args.limit),
+        "--offset",
+        str(args.offset),
+        "--num-ctx",
+        str(args.num_ctx),
+        "--num-predict",
+        str(args.num_predict),
+        "--pairs-per-chunk",
+        str(args.pairs_per_chunk),
+        "--output",
+        args.output,
     ]
     if args.merge:
         command.append("--merge")
@@ -396,20 +425,28 @@ def augment(args: argparse.Namespace) -> int:
 
 
 def merge_data(args: argparse.Namespace) -> int:
-    return run([
-        str(project_python()),
-        "-m", "src.data.merger",
-        "--base", args.base,
-        "--add", args.add,
-        "--output", args.output,
-    ])
+    return run(
+        [
+            str(project_python()),
+            "-m",
+            "src.data.merger",
+            "--base",
+            args.base,
+            "--add",
+            args.add,
+            "--output",
+            args.output,
+        ]
+    )
 
 
 def generate_api(args: argparse.Namespace) -> int:
     cmd = [
         str(project_python()),
-        "-m", "src.data.api_dataset_gen",
-        "--workers", str(args.workers),
+        "-m",
+        "src.data.api_dataset_gen",
+        "--workers",
+        str(args.workers),
     ]
     if args.resume:
         cmd.append("--resume")
@@ -427,7 +464,8 @@ def generate_api(args: argparse.Namespace) -> int:
 def graph_cmd(args: argparse.Namespace) -> int:
     cmd = [
         str(project_python()),
-        "-m", "src.rag.knowledge_graph",
+        "-m",
+        "src.rag.knowledge_graph",
         args.action,
     ]
     if args.query_text:
@@ -460,7 +498,7 @@ def cast_cmd(args: argparse.Namespace) -> int:
             from sentence_transformers import SentenceTransformer
 
             from src.rag.cast_chunker import CastChunker
-            from src.rag.rag_engine import DB_PATH, ROOT
+            from src.rag.rag_engine import DB_PATH
 
             print(f"[cAST] Indexing {path} into code-aware RAG database...")
             chunker = CastChunker(language=args.language)
@@ -494,7 +532,7 @@ def cast_cmd(args: argparse.Namespace) -> int:
             batch_size = 50
             added = 0
             for i in range(0, len(raw_chunks), batch_size):
-                batch = raw_chunks[i:i + batch_size]
+                batch = raw_chunks[i : i + batch_size]
                 texts = [c.to_embedding_text() for c in batch]
                 ids = [f"cAST_{abs(hash(c.content)) % 10**12}" for c in batch]
                 metadatas = [
@@ -518,9 +556,9 @@ def cast_cmd(args: argparse.Namespace) -> int:
             print(f"[cAST] Indexed {added} chunks into RAG DB ({total:,} total)")
 
             if args.stats:
-                print(f"\n{'='*50}")
+                print(f"\n{'=' * 50}")
                 print("cAST Indexing Statistics")
-                print(f"{'='*50}")
+                print(f"{'=' * 50}")
                 print(f"Path          : {path}")
                 print(f"Language      : {args.language}")
                 print(f"Chunks        : {len(raw_chunks)}")
@@ -532,7 +570,7 @@ def cast_cmd(args: argparse.Namespace) -> int:
                     print(f"  {t}: {count}")
                 avg_len = sum(len(c.content) for c in raw_chunks) / len(raw_chunks) if raw_chunks else 0
                 print(f"Avg chunk len : {avg_len:.0f} chars")
-                print(f"{'='*50}\n")
+                print(f"{'=' * 50}\n")
 
         except ImportError as e:
             print(f"[Error] Missing dependency: {e}")
@@ -542,12 +580,18 @@ def cast_cmd(args: argparse.Namespace) -> int:
         return 0
 
     # Default mode: chunk only (CLI output)
-    return run([
-        str(project_python()),
-        "-m", "src.rag.cast_chunker",
-        str(path),
-        "--language", args.language,
-    ] + (["--output", args.output] if args.output else []) + (["--stats"] if args.stats else []))
+    return run(
+        [
+            str(project_python()),
+            "-m",
+            "src.rag.cast_chunker",
+            str(path),
+            "--language",
+            args.language,
+        ]
+        + (["--output", args.output] if args.output else [])
+        + (["--stats"] if args.stats else [])
+    )
 
 
 def apikeys_cmd(args: argparse.Namespace) -> int:
@@ -609,6 +653,7 @@ def webui_run(args: argparse.Namespace) -> int:
     """Launch the Streamlit Web UI."""
     if args.daemon:
         import subprocess as sp
+
         print(f"[Daemon] Starting Web UI on port {args.port} in background...")
         creationflags = 0
         if sys.platform == "win32":
@@ -622,22 +667,32 @@ def webui_run(args: argparse.Namespace) -> int:
                 return 0
         cmd = [
             str(project_python()),
-            "-m", "streamlit", "run",
+            "-m",
+            "streamlit",
+            "run",
             str(ROOT / "src" / "webui" / "app.py"),
-            "--server.port", str(args.port),
-            "--browser.gatherUsageStats", "false",
+            "--server.port",
+            str(args.port),
+            "--browser.gatherUsageStats",
+            "false",
         ]
         sp.Popen(cmd, creationflags=creationflags, stdout=sp.DEVNULL, stderr=sp.DEVNULL)
         print(f"[Daemon] Web UI started at http://localhost:{args.port}")
         return 0
 
-    return run([
-        str(project_python()),
-        "-m", "streamlit", "run",
-        str(ROOT / "src" / "webui" / "app.py"),
-        "--server.port", str(args.port),
-        "--browser.gatherUsageStats", "false",
-    ])
+    return run(
+        [
+            str(project_python()),
+            "-m",
+            "streamlit",
+            "run",
+            str(ROOT / "src" / "webui" / "app.py"),
+            "--server.port",
+            str(args.port),
+            "--browser.gatherUsageStats",
+            "false",
+        ]
+    )
 
 
 def conv_cmd(args: argparse.Namespace) -> int:
@@ -656,25 +711,25 @@ def conv_cmd(args: argparse.Namespace) -> int:
         print(f"[Conversations] ({len(convs)} saved)")
         print("=" * 60)
         for c in convs:
-            ts = c['timestamp']
+            ts = c["timestamp"]
             ts_display = f"{ts[:4]}-{ts[4:6]}-{ts[6:8]} {ts[9:11]}:{ts[11:13]}:{ts[13:15]}" if len(ts) >= 14 else ts
             print(f"  {c['file']}")
             print(f"      {ts_display}  |  {c['messages']} msgs  |  {c['size_kb']} KB")
-            print(f"      \"{c['summary'][:70] or '(empty)'}\"")
+            print(f'      "{c["summary"][:70] or "(empty)"}"')
             print()
         return 0
 
     if args.action == "search" and args.query:
         results = search_conversations(args.query, max_results=10)
         if not results:
-            print(f"[No results] No conversations matched \"{args.query}\"")
+            print(f'[No results] No conversations matched "{args.query}"')
             return 0
-        print(f"[Search] \"{args.query}\" — {len(results)} conversation(s) matched")
+        print(f'[Search] "{args.query}" — {len(results)} conversation(s) matched')
         print("=" * 60)
         for r in results:
             print(f"  [{r['timestamp']}] {r['file']}")
             print(f"      Matches: {r['matches']} | Summary: {r['summary'][:60] or '(empty)'}")
-            for s in r['snippets'][:2]:
+            for s in r["snippets"][:2]:
                 print(f"      -> {s[:130]}")
             print()
         return 0
@@ -747,7 +802,9 @@ def hf_collect(args: argparse.Namespace) -> int:
     result = hf_run(datasets=datasets, max_rows=args.max_rows, output=args.output)
     total = result.get("total", 0)
     if total == 0:
-        print("[WARN] No chunks were collected. Check your internet connection or try --list to see available datasets.")
+        print(
+            "[WARN] No chunks were collected. Check your internet connection or try --list to see available datasets."
+        )
         return 1
     print(f"Done. {total:,} chunks collected.")
     return 0
@@ -784,6 +841,7 @@ def serve_cmd(args: argparse.Namespace) -> int:
 def dashboard_cmd(args: argparse.Namespace) -> int:
     """Open the live OMNISCIENT AI dashboard."""
     import subprocess as sp
+
     dashboard_path = ROOT / "dashboard.html"
     if not dashboard_path.exists():
         print(f"[Error] Dashboard not found at: {dashboard_path}")
@@ -806,13 +864,14 @@ def forge_cmd(args: argparse.Namespace) -> int:
     from src.learning.forge_dashboard import generate_dashboard
 
     if args.action == "dashboard":
-        html = generate_dashboard(
+        generate_dashboard(
             output_path=args.output,
             weeks=args.weeks,
             demo=args.demo,
         )
         if args.open:
             import webbrowser
+
             path = Path(args.output).resolve()
             webbrowser.open(f"file:///{path}")
             print(f"[ForgeAI] Opened dashboard: {path}")
@@ -828,9 +887,11 @@ def forge_cmd(args: argparse.Namespace) -> int:
         if rates:
             print("\nLast 7 days acceptance rate:")
             print(f"  {'Date':14s} {'Rate':8s} {'Accept':8s} {'Reject':8s} {'Edit':8s}")
-            print(f"  {'-'*14} {'-'*8} {'-'*8} {'-'*8} {'-'*8}")
+            print(f"  {'-' * 14} {'-' * 8} {'-' * 8} {'-' * 8} {'-' * 8}")
             for r in rates:
-                print(f"  {r['date']:14s} {r['acceptance_rate']:6.1f}%  {r['accepts']:5d}   {r['rejects']:5d}   {r['edits']:5d}")
+                print(
+                    f"  {r['date']:14s} {r['acceptance_rate']:6.1f}%  {r['accepts']:5d}   {r['rejects']:5d}   {r['edits']:5d}"
+                )
         else:
             print("\n  No recent data. Use CaptureEngine to start collecting signals.")
         return 0
@@ -1003,15 +1064,17 @@ def grpo_cmd(args: argparse.Namespace) -> int:
             print("  Run 'python -m src.cli train --capture-db <path>' after some signal data is collected.")
             return 0
 
-        if getattr(args, 'json', False):
+        if getattr(args, "json", False):
             print(json.dumps(runs, indent=2, default=str))
             return 0
 
         # Table header
         print("\n[GRPO] Recent Training Runs")
-        print(f"{'='*80}")
-        print(f"  {'Run ID':12s} {'Date':14s} {'Model':20s} {'Signals':>8s} {'Loss':>8s} {'Rate Before':>12s} {'Rate After':>11s} {'Change':>6s}")
-        print(f"  {'-'*12} {'-'*14} {'-'*20} {'-'*8} {'-'*8} {'-'*12} {'-'*11} {'-'*6}")
+        print(f"{'=' * 80}")
+        print(
+            f"  {'Run ID':12s} {'Date':14s} {'Model':20s} {'Signals':>8s} {'Loss':>8s} {'Rate Before':>12s} {'Rate After':>11s} {'Change':>6s}"
+        )
+        print(f"  {'-' * 12} {'-' * 14} {'-' * 20} {'-' * 8} {'-' * 8} {'-' * 12} {'-' * 11} {'-' * 6}")
 
         for r in runs:
             ts = datetime.fromtimestamp(r["timestamp"]).strftime("%Y-%m-%d %H:%M")
@@ -1024,7 +1087,9 @@ def grpo_cmd(args: argparse.Namespace) -> int:
             # Color-like indicator: green for positive, red for negative
             delta_indicator = "[+]" if delta > 0 else ("[-]" if delta < 0 else "[=]")
 
-            print(f"  {r['run_id'][:10]:12s} {ts:14s} {model:20s} {r['signals_used']:8d} {loss:>8s} {rate_before:>12s} {rate_after:>11s} {delta_indicator} {delta_str:>4s}")
+            print(
+                f"  {r['run_id'][:10]:12s} {ts:14s} {model:20s} {r['signals_used']:8d} {loss:>8s} {rate_before:>12s} {rate_after:>11s} {delta_indicator} {delta_str:>4s}"
+            )
 
         # Summary
         total_runs = len(runs)
@@ -1080,17 +1145,19 @@ def grpo_cmd(args: argparse.Namespace) -> int:
             for pair in pairs:
                 f.write(json.dumps(pair.to_dict()) + "\n")
 
-        print(f"Created {len(pairs)} GRPO pairs from {len(accept_signals)} accepts, {len(reject_signals)} rejects, {len(edit_signals)} edits")
+        print(
+            f"Created {len(pairs)} GRPO pairs from {len(accept_signals)} accepts, {len(reject_signals)} rejects, {len(edit_signals)} edits"
+        )
         print(f"Output: {output_path}")
         return 0
 
     return 1
 
 
-
 # ============================================
 # Discovery Engine Commands
 # ============================================
+
 
 def discovery_cmd(args: argparse.Namespace) -> int:
     """Discovery Engine — automated dataset discovery."""
@@ -1171,7 +1238,7 @@ def discovery_cmd(args: argparse.Namespace) -> int:
         ranker = PriorityRanker()
         scored = ranker.score(records)
         print(f"[Discovery] Ranking {len(records)} registered datasets:\n")
-        print_ranking(scored[:args.top_n])
+        print_ranking(scored[: args.top_n])
 
         # Summary
         tiers = {}
@@ -1189,6 +1256,7 @@ def discovery_cmd(args: argparse.Namespace) -> int:
 # ============================================
 # Training Commands
 # ============================================
+
 
 def training_cmd(args: argparse.Namespace) -> int:
     """Enhanced training pipeline management."""
@@ -1223,6 +1291,7 @@ def training_cmd(args: argparse.Namespace) -> int:
 
         if args.json:
             import json
+
             print(json.dumps(cfg.to_dict(), ensure_ascii=False, indent=2))
             return 0
 
@@ -1231,6 +1300,7 @@ def training_cmd(args: argparse.Namespace) -> int:
         print(cfg.summary)
         if args.all:
             import json
+
             print("\nFull config (JSON):")
             print(json.dumps(cfg.to_dict(), ensure_ascii=False, indent=2))
         return 0
@@ -1304,6 +1374,7 @@ def training_cmd(args: argparse.Namespace) -> int:
 # Phase 1 Data Collection Commands
 # ============================================
 
+
 def phase1_cmd(args: argparse.Namespace) -> int:
     """Phase 1 data collection commands."""
     from src.data.downloader import BASE_DATA_DIR, DownloadOrchestrator
@@ -1336,25 +1407,25 @@ def phase1_cmd(args: argparse.Namespace) -> int:
         print("[Phase1] Collection Status")
         print(f"  Total datasets : {stats['total_datasets']}")
         print("  By status:")
-        for status, count in sorted(stats['by_status'].items()):
+        for status, count in sorted(stats["by_status"].items()):
             print(f"    {status:20s}: {count}")
         print("  By phase:")
-        for phase, count in sorted(stats['by_phase'].items()):
-            pp = pipeline['phases'].get(f'phase_{phase}', {})
-            ready = pp.get('ready', 0)
-            pct = pp.get('progress_pct', 0)
+        for phase, count in sorted(stats["by_phase"].items()):
+            pp = pipeline["phases"].get(f"phase_{phase}", {})
+            ready = pp.get("ready", 0)
+            pct = pp.get("progress_pct", 0)
             print(f"    Phase {phase}: {count} datasets ({ready} ready, {pct}%)")
         print(f"  Ready records  : {stats['ready_records']:,}")
         print(f"  Ready size     : {stats['ready_gb']} GB")
-        if stats.get('errors'):
+        if stats.get("errors"):
             print(f"  Errors ({len(stats['errors'])}):")
-            for err in stats['errors'][:5]:
+            for err in stats["errors"][:5]:
                 print(f"    - {err['id']}: {err['error'][:100]}")
         print()
         # Week-by-week breakdown
         for w in range(1, 5):
             wp = mgr.week_progress(1, w)
-            if wp['total'] > 0:
+            if wp["total"] > 0:
                 print(f"  Week {w}: {wp['done']}/{wp['total']} done ({wp['progress_pct']}%)")
         return 0
 
@@ -1366,11 +1437,11 @@ def phase1_cmd(args: argparse.Namespace) -> int:
         print(f"  Estimated size    : {stats['estimated_total_gb']} GB")
         print()
         print("  By Week:")
-        for w, c in sorted(stats['by_week'].items()):
+        for w, c in sorted(stats["by_week"].items()):
             print(f"    Week {w}: {c} datasets")
         print()
         print("  By Domain:")
-        for d, c in sorted(stats['by_domain'].items()):
+        for d, c in sorted(stats["by_domain"].items()):
             print(f"    {d}: {c} datasets")
         return 0
 
@@ -1382,22 +1453,24 @@ def phase1_cmd(args: argparse.Namespace) -> int:
             records = mgr.list_by_status(args.status)
         elif args.domain:
             from src.data.metadata import DataDomain
+
             records = mgr.list_by_domain(DataDomain(args.domain))
         else:
             records = mgr.list_by_phase(1)
 
         print(f"{'ID':40s} {'Status':16s} {'Lang':8s} {'Records':>12s} {'GB':>8s}")
-        print(f"{'='*40} {'='*16} {'='*8} {'='*12} {'='*8}")
+        print(f"{'=' * 40} {'=' * 16} {'=' * 8} {'=' * 12} {'=' * 8}")
         for r in records:
             lang_str = ",".join(r.languages)[:8]
             rec_str = f"{r.actual_record_count:,}" if r.actual_record_count > 0 else "-"
-            gb_str = f"{r.size_mb/1024:.1f}" if r.actual_size_bytes > 0 else "-"
+            gb_str = f"{r.size_mb / 1024:.1f}" if r.actual_size_bytes > 0 else "-"
             print(f"{r.id:40s} {r.status.value:16s} {lang_str:8s} {rec_str:>12s} {gb_str:>8s}")
         print(f"\nTotal: {len(records)} datasets")
         return 0
 
     if args.action == "download":
         import asyncio
+
         mgr = MetadataManager()
 
         orch = DownloadOrchestrator(
@@ -1435,6 +1508,7 @@ def phase1_cmd(args: argparse.Namespace) -> int:
 
     if args.action == "quality":
         from pathlib import Path
+
         mgr = MetadataManager()
         dataset_ids = args.datasets if args.datasets else [d.id for d in mgr.list_by_status("downloaded")]
 
@@ -1452,6 +1526,7 @@ def phase1_cmd(args: argparse.Namespace) -> int:
 
             if not args.input_dir:
                 import os as os_mod
+
                 data_dir = os_mod.environ.get("DATA_DIR", "D:/PythonAI_Data")
                 dataset_path = Path(data_dir) / record.output_subdir / f"{did}.jsonl"
             else:
@@ -1471,9 +1546,9 @@ def phase1_cmd(args: argparse.Namespace) -> int:
             print(f"  Output: {stats['total_output']:,} records")
             print(f"  Filtered: {stats['filtered_pct']}%")
             print(f"  Avg quality score: {stats.get('avg_quality_score', 'N/A')}")
-            for stage_name, stage_data in stats.get('stages', {}).items():
+            for stage_name, stage_data in stats.get("stages", {}).items():
                 if isinstance(stage_data, dict):
-                    removed = stage_data.get('removed', 0)
+                    removed = stage_data.get("removed", 0)
                     if removed:
                         print(f"    {stage_name}: removed {removed}")
             print(f"  Elapsed: {stats.get('elapsed_seconds', '?')}s")
@@ -1490,10 +1565,22 @@ def learn_cmd(args: argparse.Namespace) -> int:
         return run([str(project_python()), "-m", "src.learning.daemon", "--interval", str(args.interval)])
 
     if args.action == "sync-so":
-        return run([str(project_python()), "-c", "from src.learning.so_sync import sync_stackoverflow; print(sync_stackoverflow(pages=1))"])
+        return run(
+            [
+                str(project_python()),
+                "-c",
+                "from src.learning.so_sync import sync_stackoverflow; print(sync_stackoverflow(pages=1))",
+            ]
+        )
 
     if args.action == "eval":
-        return run([str(project_python()), "-c", "from src.learning.self_eval import run_self_evaluation; print(run_self_evaluation(sample_size=10))"])
+        return run(
+            [
+                str(project_python()),
+                "-c",
+                "from src.learning.self_eval import run_self_evaluation; print(run_self_evaluation(sample_size=10))",
+            ]
+        )
 
     return 1
 
@@ -1505,8 +1592,9 @@ def build_parser() -> argparse.ArgumentParser:
         epilog="Run 'python -m src.cli <command> --help' for command-specific help.",
     )
     parser.add_argument("--version", action="store_true", help="Show version and exit")
-    parser.add_argument("--completion", choices=["bash", "zsh", "fish"], default=None,
-                        help="Print shell tab-completion script and exit")
+    parser.add_argument(
+        "--completion", choices=["bash", "zsh", "fish"], default=None, help="Print shell tab-completion script and exit"
+    )
     sub = parser.add_subparsers(dest="command")
 
     status_parser = sub.add_parser("status", help="Show project, dataset, hardware, and model state.")
@@ -1523,16 +1611,26 @@ def build_parser() -> argparse.ArgumentParser:
     train_parser.add_argument("--max-length", type=int, default=384)
     train_parser.add_argument("--output-dir", default="checkpoints/local_auto_model")
     train_parser.add_argument("--dataset-path", default="data/training/training_dataset.json")
-    train_parser.add_argument("--unsloth", action="store_true",
-                              help="Use Unsloth for 2x faster QLoRA training (70%% less VRAM)")
+    train_parser.add_argument(
+        "--unsloth", action="store_true", help="Use Unsloth for 2x faster QLoRA training (70%% less VRAM)"
+    )
     train_parser.add_argument("--skip-train", action="store_true")
     train_parser.add_argument("--no-auth", action="store_true", help="Skip authentication check")
-    train_parser.add_argument("--viz", action="store_true", help="Save comprehensive training visualization (dashboard, LR, throughput, HTML, JSON)")
+    train_parser.add_argument(
+        "--viz",
+        action="store_true",
+        help="Save comprehensive training visualization (dashboard, LR, throughput, HTML, JSON)",
+    )
     train_parser.set_defaults(func=train)
 
     login_parser = sub.add_parser("login", help="Login, logout, or check auth status.")
-    login_parser.add_argument("action", nargs="?", choices=["login", "logout", "check"], default="login",
-                              help="Action to perform (default: login)")
+    login_parser.add_argument(
+        "action",
+        nargs="?",
+        choices=["login", "logout", "check"],
+        default="login",
+        help="Action to perform (default: login)",
+    )
     login_parser.set_defaults(func=login_cmd)
 
     eval_parser = sub.add_parser("eval", help="Evaluate saved PEFT adapter.")
@@ -1553,8 +1651,12 @@ def build_parser() -> argparse.ArgumentParser:
     ask_parser = sub.add_parser("ask", help="Ask the offline RAG assistant or use tool-calling mode.")
     ask_parser.add_argument("question", nargs="?", default="")
     ask_parser.add_argument("--agents", action="store_true", help="Enable multi-agent execution (legacy swarm)")
-    ask_parser.add_argument("--orchestrate", action="store_true", help="Enable Phase 6 agentic orchestration (plan, delegate, synthesize)")
-    ask_parser.add_argument("--tools", action="store_true", help="Use tool-calling mode (bash, read, write, edit, glob, grep, web)")
+    ask_parser.add_argument(
+        "--orchestrate", action="store_true", help="Enable Phase 6 agentic orchestration (plan, delegate, synthesize)"
+    )
+    ask_parser.add_argument(
+        "--tools", action="store_true", help="Use tool-calling mode (bash, read, write, edit, glob, grep, web)"
+    )
     ask_parser.add_argument("--no-auth", action="store_true", help="Skip authentication check")
     ask_parser.add_argument("--rebuild", action="store_true", help="Force rebuild database")
     ask_parser.add_argument("--stats", action="store_true", help="Show database statistics")
@@ -1563,10 +1665,10 @@ def build_parser() -> argparse.ArgumentParser:
     ask_parser.add_argument("--query-expansion", action="store_true", help="Enable query expansion")
     ask_parser.add_argument("--mmr", action="store_true", help="Enable MMR diversity re-ranking")
     ask_parser.add_argument("--version", default="", help="Filter by Python version (e.g., 3.10)")
-    ask_parser.add_argument("--model", default="",
-                            help="Model to use (default: auto). E.g. --model gpt-4o or --model qwen2.5-coder:14b")
-    ask_parser.add_argument("--list-models", action="store_true",
-                            help="List available Ollama models and exit")
+    ask_parser.add_argument(
+        "--model", default="", help="Model to use (default: auto). E.g. --model gpt-4o or --model qwen2.5-coder:14b"
+    )
+    ask_parser.add_argument("--list-models", action="store_true", help="List available Ollama models and exit")
     ask_parser.add_argument("--category", default="", help="Filter by category (e.g., library, howto)")
     ask_parser.set_defaults(func=ask)
 
@@ -1598,7 +1700,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     webui_parser = sub.add_parser("webui", help="Launch the Streamlit Web UI for the RAG assistant.")
     webui_parser.add_argument("--port", type=int, default=8501, help="Port to run the Web UI on (default: 8501)")
-    webui_parser.add_argument("--daemon", action="store_true", help="Run in daemon/background mode (Windows: start new window)")
+    webui_parser.add_argument(
+        "--daemon", action="store_true", help="Run in daemon/background mode (Windows: start new window)"
+    )
     webui_parser.set_defaults(func=webui_run)
 
     learn_parser = sub.add_parser("learn", help="Run learning module tasks (daemon, sync-so, eval).")
@@ -1607,8 +1711,8 @@ def build_parser() -> argparse.ArgumentParser:
     learn_daemon = learn_sub.add_parser("daemon", help="Run autonomous learning daemon in foreground.")
     learn_daemon.add_argument("--interval", type=int, default=24, help="Run interval in hours")
 
-    learn_sync = learn_sub.add_parser("sync-so", help="Sync trending StackOverflow Q&A manually.")
-    learn_eval = learn_sub.add_parser("eval", help="Run self-evaluation on RAG answers.")
+    learn_sub.add_parser("sync-so", help="Sync trending StackOverflow Q&A manually.")
+    learn_sub.add_parser("eval", help="Run self-evaluation on RAG answers.")
     learn_parser.set_defaults(func=learn_cmd)
 
     apikeys_parser = sub.add_parser("apikeys", help="Manage API keys for dataset generation.")
@@ -1632,16 +1736,18 @@ def build_parser() -> argparse.ArgumentParser:
     apikeys_export.set_defaults(func=apikeys_cmd)
 
     hf_parser = sub.add_parser("hf-collect", help="Download Python code datasets from HuggingFace.")
-    hf_parser.add_argument("--datasets", nargs="*",
-                           help="Datasets to download (default: all). Use --list to see options.")
-    hf_parser.add_argument("--max-rows", type=int, default=25000,
-                           help="Max rows per dataset (default: 25000). Use --max-rows -1 for all rows.")
-    hf_parser.add_argument("--output", default="data/raw/raw_chunks_hf.json",
-                           help="Output path for combined chunks")
-    hf_parser.add_argument("--list", action="store_true",
-                           help="List available HuggingFace datasets and exit")
-    hf_parser.add_argument("--stats", action="store_true",
-                           help="Show statistics about previously collected HF data")
+    hf_parser.add_argument(
+        "--datasets", nargs="*", help="Datasets to download (default: all). Use --list to see options."
+    )
+    hf_parser.add_argument(
+        "--max-rows",
+        type=int,
+        default=25000,
+        help="Max rows per dataset (default: 25000). Use --max-rows -1 for all rows.",
+    )
+    hf_parser.add_argument("--output", default="data/raw/raw_chunks_hf.json", help="Output path for combined chunks")
+    hf_parser.add_argument("--list", action="store_true", help="List available HuggingFace datasets and exit")
+    hf_parser.add_argument("--stats", action="store_true", help="Show statistics about previously collected HF data")
     hf_parser.set_defaults(func=hf_collect)
 
     conv_parser = sub.add_parser("conv", help="List, search, or export saved conversations.")
@@ -1662,10 +1768,12 @@ def build_parser() -> argparse.ArgumentParser:
     serve_parser.set_defaults(func=serve_cmd)
 
     export_parser = sub.add_parser("export", help="Export a trained adapter to GGUF or ONNX format.")
-    export_parser.add_argument("--adapter-path", default="checkpoints/local_auto_model",
-                               help="Path to adapter directory")
-    export_parser.add_argument("--format", choices=["gguf", "onnx"], default="gguf",
-                               help="Export format (default: gguf)")
+    export_parser.add_argument(
+        "--adapter-path", default="checkpoints/local_auto_model", help="Path to adapter directory"
+    )
+    export_parser.add_argument(
+        "--format", choices=["gguf", "onnx"], default="gguf", help="Export format (default: gguf)"
+    )
     export_parser.set_defaults(func=export_cmd)
 
     gen_api_parser = sub.add_parser("generate-api", help="Generate dataset from SO + GitHub APIs.")
@@ -1680,14 +1788,15 @@ def build_parser() -> argparse.ArgumentParser:
     # == cAST Chunking =========================================
     cast_parser = sub.add_parser("cast", help="cAST: AST-aware code chunking for RAG (EMNLP 2025).")
     cast_parser.add_argument("path", help="File or directory to chunk")
-    cast_parser.add_argument("--output", "-o", default="",
-                             help="Output JSON file (default: stdout)")
-    cast_parser.add_argument("--language", "-l", default="python",
-                             help="Language (default: python)")
-    cast_parser.add_argument("--stats", action="store_true",
-                             help="Print chunking statistics")
-    cast_parser.add_argument("--mode", choices=["chunk", "index"], default="chunk",
-                             help="'chunk' = just chunk code, 'index' = chunk + index into ChromaDB")
+    cast_parser.add_argument("--output", "-o", default="", help="Output JSON file (default: stdout)")
+    cast_parser.add_argument("--language", "-l", default="python", help="Language (default: python)")
+    cast_parser.add_argument("--stats", action="store_true", help="Print chunking statistics")
+    cast_parser.add_argument(
+        "--mode",
+        choices=["chunk", "index"],
+        default="chunk",
+        help="'chunk' = just chunk code, 'index' = chunk + index into ChromaDB",
+    )
     cast_parser.set_defaults(func=cast_cmd)
 
     graph_parser = sub.add_parser("graph", help="Manage the knowledge graph.")
@@ -1737,7 +1846,9 @@ def build_parser() -> argparse.ArgumentParser:
     grpo_create.add_argument("--output", "-o", default="grpo_pairs.jsonl", help="Output JSONL file")
     grpo_create.set_defaults(func=grpo_cmd)
 
-    grpo_stats = grpo_sub.add_parser("stats", help="Show training runs with acceptance rate deltas from CaptureEngine DB")
+    grpo_stats = grpo_sub.add_parser(
+        "stats", help="Show training runs with acceptance rate deltas from CaptureEngine DB"
+    )
     grpo_stats.add_argument("--db", default="~/.forgeai/signals.db", help="CaptureEngine DB path")
     grpo_stats.add_argument("--limit", "-n", type=int, default=10, help="Number of recent runs to show")
     grpo_stats.add_argument("--json", action="store_true", help="Output as JSON")
@@ -1788,7 +1899,12 @@ def build_parser() -> argparse.ArgumentParser:
     d_papers.set_defaults(func=discovery_cmd)
 
     d_gov = discovery_sub.add_parser("gov", help="Search government data portals")
-    d_gov.add_argument("--keywords", nargs="*", default=["machine learning", "AI", "education", "health", "agriculture"], help="Search keywords")
+    d_gov.add_argument(
+        "--keywords",
+        nargs="*",
+        default=["machine learning", "AI", "education", "health", "agriculture"],
+        help="Search keywords",
+    )
     d_gov.add_argument("--gov-limit", type=int, default=30, help="Max results")
     d_gov.set_defaults(func=discovery_cmd)
 
@@ -1806,7 +1922,12 @@ def build_parser() -> argparse.ArgumentParser:
     training_sub = training_parser.add_subparsers(dest="action", required=True)
 
     t_config = training_sub.add_parser("config", help="Show / generate / save training configs")
-    t_config.add_argument("--preset", choices=["default", "smoke", "quick", "qwen", "production", "custom"], default="default", help="Config preset")
+    t_config.add_argument(
+        "--preset",
+        choices=["default", "smoke", "quick", "qwen", "production", "custom"],
+        default="default",
+        help="Config preset",
+    )
     t_config.add_argument("--config-file", default="", help="Path to config file (for --preset custom)")
     t_config.add_argument("--json", action="store_true", help="Output as JSON")
     t_config.add_argument("--save", default="", help="Save config to file path")
@@ -1820,7 +1941,9 @@ def build_parser() -> argparse.ArgumentParser:
     t_ckpt.add_argument("--delete", dest="checkpoint_delete", default="", help="Delete a checkpoint")
     t_ckpt.add_argument("--best", dest="checkpoint_best", action="store_true", help="Show best checkpoint by eval loss")
     t_ckpt.add_argument("--clean", dest="checkpoint_clean", action="store_true", help="Clean old checkpoints")
-    t_ckpt.add_argument("--sort-by", choices=["created_at", "step", "eval_loss", "train_loss"], default="created_at", help="Sort field")
+    t_ckpt.add_argument(
+        "--sort-by", choices=["created_at", "step", "eval_loss", "train_loss"], default="created_at", help="Sort field"
+    )
     t_ckpt.add_argument("--ascending", action="store_true", help="Sort ascending")
     t_ckpt.add_argument("--limit", type=int, default=20, help="Max results")
     t_ckpt.add_argument("--model-filter", default="", help="Filter by base model name")
@@ -1879,8 +2002,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_switch.add_argument("provider", help="Provider ID (e.g., openai, deepseek, gemini, ollama)")
     p_switch.add_argument("--model", default="", help="Specific model to use")
     p_switch.add_argument("--base-url", default="", help="Custom base URL")
-    p_switch.add_argument("--strategy", choices=["auto", "fastest", "cheapest", "best_quality", "local_only"], default="auto", help="Routing strategy")
-    p_switch.add_argument("--goal", choices=["coding", "latency", "balanced"], default="coding", help="Optimization goal")
+    p_switch.add_argument(
+        "--strategy",
+        choices=["auto", "fastest", "cheapest", "best_quality", "local_only"],
+        default="auto",
+        help="Routing strategy",
+    )
+    p_switch.add_argument(
+        "--goal", choices=["coding", "latency", "balanced"], default="coding", help="Optimization goal"
+    )
     p_switch.set_defaults(func=provider_cmd)
 
     p_reset = provider_sub.add_parser("reset", help="Reset provider to auto-select")
@@ -1900,7 +2030,9 @@ def build_parser() -> argparse.ArgumentParser:
     mcp_add = mcp_sub.add_parser("add", help="Add an MCP server configuration")
     mcp_add.add_argument("name", help="Server name")
     mcp_add.add_argument("--command", default="", help="Stdio command (e.g., npx)")
-    mcp_add.add_argument("--args", default="", help="Command arguments as a single quoted string, e.g. --args \"-y @anthropic/mcp-fetch\"")
+    mcp_add.add_argument(
+        "--args", default="", help='Command arguments as a single quoted string, e.g. --args "-y @anthropic/mcp-fetch"'
+    )
     mcp_add.add_argument("--url", default="", help="SSE/HTTP URL (for remote servers)")
     mcp_add.add_argument("--type", choices=["stdio", "sse", "http"], default="stdio", help="Transport type")
     mcp_add.add_argument("--scope", choices=["project", "local", "user"], default="local", help="Config scope")
@@ -1939,6 +2071,7 @@ def parse_args() -> argparse.Namespace:
 # Provider Commands (Phase 2)
 # ============================================
 
+
 def provider_cmd(args: argparse.Namespace) -> int:
     """Manage provider selection and routing."""
     from src.core.providers import (
@@ -1953,9 +2086,9 @@ def provider_cmd(args: argparse.Namespace) -> int:
     if args.action == "list":
         statuses = router.get_provider_status()
         print("\n[Provider] Available Providers")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"  {'ID':14s} {'Status':10s} {'Default Model':30s}")
-        print(f"  {'='*14} {'='*10} {'='*30}")
+        print(f"  {'=' * 14} {'=' * 10} {'=' * 30}")
         for s in statuses:
             status_str = "[OK]" if s["available"] else "[--]"
             print(f"  {s['id']:14s} {status_str:10s} {s['default_model']:30s}")
@@ -1965,11 +2098,11 @@ def provider_cmd(args: argparse.Namespace) -> int:
     if args.action == "current":
         current = profile_mgr.get_current()
         print("\n[Provider] Current Selection")
-        print(f"{'='*50}")
+        print(f"{'=' * 50}")
         print(f"  Provider : {current['provider']}")
         print(f"  Model    : {current['model'] or '(default)'}")
         print(f"  Label    : {current['label']}")
-        if current.get('base_url'):
+        if current.get("base_url"):
             print(f"  Base URL : {current['base_url']}")
         print(f"  Strategy : {current.get('strategy', 'auto')}")
         print(f"  Saved    : {current.get('is_saved', False)}")
@@ -1977,8 +2110,8 @@ def provider_cmd(args: argparse.Namespace) -> int:
 
         # Show route result
         result = router.route(
-            provider=current['provider'],
-            model=current['model'],
+            provider=current["provider"],
+            model=current["model"],
         )
         if result.error:
             print(f"  [!] {result.error}")
@@ -2001,6 +2134,7 @@ def provider_cmd(args: argparse.Namespace) -> int:
         # Check provider exists
         provider_info = None
         from src.core.providers import get_registry
+
         provider_info = get_registry().get_provider(provider)
 
         if not provider_info:
@@ -2077,6 +2211,7 @@ def provider_cmd(args: argparse.Namespace) -> int:
 # MCP Commands (Phase 4)
 # ============================================
 
+
 def mcp_cmd(args: argparse.Namespace) -> int:
     """Manage MCP server connections, configs, and tools."""
     from src.core.mcp import (
@@ -2096,13 +2231,13 @@ def mcp_cmd(args: argparse.Namespace) -> int:
         summary = config_mgr.summary()
 
         print(f"\n[MCP] Configured Servers ({summary['total']})")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
-        if not summary['servers']:
+        if not summary["servers"]:
             print("  No MCP servers configured.")
             print("  Run 'python -m src.cli mcp add <name> --command <cmd>' to add one.")
         else:
-            for s in summary['servers']:
+            for s in summary["servers"]:
                 print(f"  {s['name']:25s} {s['type']:25s} [{s['scope']}]")
 
         # Show global config files
@@ -2116,7 +2251,7 @@ def mcp_cmd(args: argparse.Namespace) -> int:
 
     if args.action == "discover":
         print("\n[MCP] Discovery")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         # Config files
         json_files = find_mcp_json_files()
@@ -2130,10 +2265,11 @@ def mcp_cmd(args: argparse.Namespace) -> int:
 
         # Env vars
         import os
+
         env_servers = {}
         for key in os.environ:
             if key.startswith("PYTHONAI_MCP_") and key.endswith("_COMMAND"):
-                name = key[len("PYTHONAI_MCP_"):-len("_COMMAND")].lower()
+                name = key[len("PYTHONAI_MCP_") : -len("_COMMAND")].lower()
                 env_servers[name] = os.environ[key]
 
         if env_servers:
@@ -2215,6 +2351,7 @@ def mcp_cmd(args: argparse.Namespace) -> int:
             print(f"\n[MCP] Connecting to '{server_name}'...")
 
             from src.core.mcp import MCPClient
+
             client = MCPClient()
             connection = client.connect(config, server_name)
 
@@ -2226,13 +2363,14 @@ def mcp_cmd(args: argparse.Namespace) -> int:
 
                 if connection.tools:
                     print(f"  {'Tool Name':45s} {'Description'}")
-                    print(f"  {'='*45} {'='*40}")
+                    print(f"  {'=' * 45} {'=' * 40}")
                     for t in connection.tools:
                         desc = t.description[:50] + "..." if len(t.description) > 50 else t.description
                         print(f"  {t.name:45s} {desc}")
 
                 # Register tools in registry
                 from src.core.registry import get_registry
+
                 registry = get_registry()
                 count = registry.register_mcp_server(connection)
                 print(f"\n  Registered {count} MCP tools in PythonAI registry")
@@ -2252,6 +2390,7 @@ def mcp_cmd(args: argparse.Namespace) -> int:
                     total_tools += len(conn.tools)
                     # Register tools
                     from src.core.registry import get_registry
+
                     get_registry().register_mcp_server(conn)
                     print(f"  [OK] {name}: {len(conn.tools)} tools, {len(conn.resources)} resources")
                 else:
@@ -2324,15 +2463,18 @@ def models_cmd(args: argparse.Namespace) -> int:
             return 1
 
     print(f"\n[Models] Known Models ({len(models)})")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
     print(f"  {'Model ID':30s} {'Provider':12s} {'Context':10s} {'Capabilities'}")
-    print(f"  {'='*30} {'='*12} {'='*10} {'='*20}")
+    print(f"  {'=' * 30} {'=' * 12} {'=' * 10} {'=' * 20}")
 
     for m in models:
         caps = []
-        if m.capabilities.vision: caps.append("vision")
-        if m.capabilities.reasoning: caps.append("reasoning")
-        if "coding" in m.classification: caps.append("coding")
+        if m.capabilities.vision:
+            caps.append("vision")
+        if m.capabilities.reasoning:
+            caps.append("reasoning")
+        if "coding" in m.classification:
+            caps.append("coding")
         cap_str = ", ".join(caps) if caps else "chat"
 
         ctx = f"{m.context_window:,}"
@@ -2347,27 +2489,29 @@ def models_cmd(args: argparse.Namespace) -> int:
 
 def main() -> None:
     from src.utils.logging_config import setup_logging
+
     setup_logging()
 
     args = parse_args()
 
     # Handle --version
-    if getattr(args, 'version', False):
+    if getattr(args, "version", False):
         print(f"PythonAI v{VERSION}")
         print(f"Project: {ROOT}")
         print(f"Python: {sys.version.split()[0]}")
         print()
         from src.utils.models import hardware_profile, project_python
+
         hw = hardware_profile(project_python())
         print(f"CUDA: {hw.get('cuda_available')} ({hw.get('gpu_name')})")
         print(f"RAM: {hw.get('ram_gb')} GB")
         return
 
     # Handle --completion
-    if getattr(args, 'completion', None):
+    if getattr(args, "completion", None):
         shell = args.completion
         if shell == "bash":
-            print('''_PythonAICompletion()
+            print("""_PythonAICompletion()
 {
     local cur prev
     COMPREPLY=()
@@ -2380,7 +2524,7 @@ def main() -> None:
     return 0
 }
 complete -F _PythonAICompletion python -m src.cli
-complete -F _PythonAICompletion pythonai''')
+complete -F _PythonAICompletion pythonai""")
         elif shell == "zsh":
             print('''#compdef _pythonai python -m src.cli
 _pythonai() {
@@ -2407,10 +2551,12 @@ _pythonai() {
 }
 _pythonai "$@"''')
         elif shell == "fish":
-            print('''complete -c python -m src.cli -f -a "status train login eval probe ask clean dataset augment merge webui apikeys hf-collect conv serve export"''')
+            print(
+                '''complete -c python -m src.cli -f -a "status train login eval probe ask clean dataset augment merge webui apikeys hf-collect conv serve export"'''
+            )
         return
 
-    if not hasattr(args, 'func'):
+    if not hasattr(args, "func"):
         parser = build_parser()
         parser.print_help()
         return

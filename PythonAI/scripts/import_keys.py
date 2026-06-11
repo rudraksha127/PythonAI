@@ -2,6 +2,7 @@
 Import API keys from .env.example into the project's key storage (~/.pythonai/apikeys.json)
 and create a proper .env file.
 """
+
 import re
 import sys
 from pathlib import Path
@@ -42,7 +43,7 @@ for line in lines:
     # Parse KEY="VALUE" or KEY=VALUE
     match = re.match(r'^([A-Za-z_][A-Za-z_0-9]*)\s*=\s*"([^"]*)"\s*$', line)
     if not match:
-        match = re.match(r'^([A-Za-z_][A-Za-z_0-9]*)\s*=\s*([^\s]+)\s*$', line)
+        match = re.match(r"^([A-Za-z_][A-Za-z_0-9]*)\s*=\s*([^\s]+)\s*$", line)
     if not match:
         continue
 
@@ -64,7 +65,7 @@ for line in lines:
     else:
         unknown.append(f"  [?] {var_name:25s} = {value[:12]}... (not in provider list)")
 
-print(f"\n{'='*50}")
+print(f"\n{'=' * 50}")
 print(f"Imported: {imported} keys")
 print(f"Skipped: {skipped}")
 
@@ -82,5 +83,5 @@ else:
     print(f"  [FAIL] {result['error']}")
 
 # Show final status
-print(f"\n{'='*50}")
+print(f"\n{'=' * 50}")
 print("To verify:  python -m src.cli apikeys list")

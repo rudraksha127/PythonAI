@@ -21,6 +21,7 @@ logger = logging.getLogger("forgeai.cloud.auth")
 @dataclass
 class CloudUser:
     """Authenticated cloud user info."""
+
     id: str
     email: str
     username: str
@@ -42,6 +43,7 @@ class CloudUser:
 
 class CloudAuthError(Exception):
     """Raised when cloud authentication fails."""
+
     pass
 
 
@@ -59,21 +61,27 @@ async def sign_up(email: str, password: str, username: str) -> dict:
         raise CloudAuthError("Cloud backend not configured")
 
     try:
-        resp = await client.auth.sign_up({
-            "email": email,
-            "password": password,
-            "options": {"data": {"username": username}},
-        })
+        resp = await client.auth.sign_up(
+            {
+                "email": email,
+                "password": password,
+                "options": {"data": {"username": username}},
+            }
+        )
 
         user = resp.user
         if user is None:
             raise CloudAuthError("Sign-up returned no user")
 
         session = resp.session
-        session_data = {
-            "access_token": session.access_token if session else "",
-            "refresh_token": session.refresh_token if session else "",
-        } if session else {}
+        session_data = (
+            {
+                "access_token": session.access_token if session else "",
+                "refresh_token": session.refresh_token if session else "",
+            }
+            if session
+            else {}
+        )
 
         # Create profile in public.profiles
         await _ensure_profile_exists(user.id, email, username)
@@ -103,10 +111,12 @@ async def sign_in(email: str, password: str) -> dict:
         raise CloudAuthError("Cloud backend not configured")
 
     try:
-        resp = await client.auth.sign_in_with_password({
-            "email": email,
-            "password": password,
-        })
+        resp = await client.auth.sign_in_with_password(
+            {
+                "email": email,
+                "password": password,
+            }
+        )
 
         user = resp.user
         if user is None:
@@ -198,11 +208,7 @@ async def verify_token(access_token: str) -> CloudUser:
 
         try:
             profile = (
-                client.table("profiles")
-                .select("plan_tier, subscription_status")
-                .eq("id", user_id)
-                .single()
-                .execute()
+                client.table("profiles").select("plan_tier, subscription_status").eq("id", user_id).single().execute()
             )
             if profile.data:
                 plan_tier = profile.data.get("plan_tier", "free")
@@ -262,15 +268,17 @@ async def _ensure_profile_exists(user_id: str, email: str, username: str) -> Non
             return  # Already exists
 
         now = datetime.now(timezone.utc).isoformat()
-        service.table("profiles").insert({
-            "id": user_id,
-            "email": email,
-            "username": username,
-            "plan_tier": "free",
-            "subscription_status": "inactive",
-            "created_at": now,
-            "updated_at": now,
-        }).execute()
+        service.table("profiles").insert(
+            {
+                "id": user_id,
+                "email": email,
+                "username": username,
+                "plan_tier": "free",
+                "subscription_status": "inactive",
+                "created_at": now,
+                "updated_at": now,
+            }
+        ).execute()
         logger.info(f"Created profile for user {user_id}")
     except Exception as e:
         logger.warning(f"Failed to ensure profile for {user_id}: {e}")

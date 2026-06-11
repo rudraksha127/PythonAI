@@ -121,13 +121,9 @@ def merge(
     print(f"Output rows      : {len(merged)}")
 
     if conflicts > 0:
-        resolved = conflicts
         if not keep_old:
             # Count how many were actually replaced (had longer output)
-            replaced = sum(
-                1 for row in addition_rows
-                if valid_row(row, min_output_chars) and row_hash(row) in seen
-            )
+            replaced = sum(1 for row in addition_rows if valid_row(row, min_output_chars) and row_hash(row) in seen)
             print(f"Replaced (longer) : {replaced}")
 
     return merged

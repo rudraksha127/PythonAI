@@ -16,8 +16,8 @@ import time
 from pathlib import Path
 
 # Fix Windows console encoding
-if hasattr(sys.stdout, 'buffer'):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 import httpx
 from loguru import logger
@@ -32,44 +32,52 @@ console = Console()
 # ═══════════════════════════════════════════════════════════════════════════
 
 PROMPTS = {
-    "reasoning": lambda n: f"""Generate {n} complex multi-step reasoning problems.
+    "reasoning": lambda n: (
+        f"""Generate {n} complex multi-step reasoning problems.
 Domains: math, logic, physics, programming, common sense.
 Each requires 5-10 explicit reasoning steps.
 Return a JSON array, each: {{"instruction":"...","reasoning":"...","answer":"...","domain":"..."}}.
-ONLY JSON. No markdown.""",
-
-    "coding": lambda n: f"""Generate {n} programming tasks with complete solutions.
+ONLY JSON. No markdown."""
+    ),
+    "coding": lambda n: (
+        f"""Generate {n} programming tasks with complete solutions.
 Languages: Python, JavaScript, SQL, Bash (mix evenly).
 Include: imports, error handling, example usage, brief explanation.
 Return a JSON array, each: {{"instruction":"...","code":"...","language":"...","explanation":"..."}}.
-ONLY JSON. No markdown.""",
-
-    "hindi_qa": lambda n: f"""Generate {n} Q&A pairs in Hindi covering:
+ONLY JSON. No markdown."""
+    ),
+    "hindi_qa": lambda n: (
+        f"""Generate {n} Q&A pairs in Hindi covering:
 India GK, science, history, culture, government schemes, Ayurveda, farming.
 Return a JSON array, each: {{"sawal":"...","jawab":"...","vishay":"..."}}.
-ONLY JSON. Pure Hindi Devanagari. No markdown.""",
-
-    "hinglish": lambda n: f"""Generate {n} helpful instruction-response pairs in Hinglish
+ONLY JSON. Pure Hindi Devanagari. No markdown."""
+    ),
+    "hinglish": lambda n: (
+        f"""Generate {n} helpful instruction-response pairs in Hinglish
 (natural Hindi-English mix as spoken in India).
 Topics: tech help, daily problems, study, jobs, government services.
 Return a JSON array, each: {{"instruction":"...","response":"..."}}.
-ONLY JSON. No markdown.""",
-
-    "india_knowledge": lambda n: f"""Generate {n} detailed Q&A about India:
+ONLY JSON. No markdown."""
+    ),
+    "india_knowledge": lambda n: (
+        f"""Generate {n} detailed Q&A about India:
 Law, government schemes (PM-KISAN, Ayushman Bharat), history, geography,
 science & tech, culture, economy.
 Return a JSON array, each: {{"question":"...","answer":"...","topic":"..."}}.
-ONLY JSON. No markdown.""",
-
-    "science_expert": lambda n, domain=None: f"""Generate {n} PhD-level Q&A in domain: {domain or 'general'}.
+ONLY JSON. No markdown."""
+    ),
+    "science_expert": lambda n, domain=None: (
+        f"""Generate {n} PhD-level Q&A in domain: {domain or "general"}.
 Deep conceptual questions with detailed answers.
 Return a JSON array, each: {{"question":"...","answer":"...","concepts":["..."]}}.
-ONLY JSON. No markdown.""",
-
-    "chat_conversation": lambda n: f"""Generate {n} natural multi-turn conversations.
+ONLY JSON. No markdown."""
+    ),
+    "chat_conversation": lambda n: (
+        f"""Generate {n} natural multi-turn conversations.
 Mix: technical help, creative tasks, analysis, learning.
 Return a JSON array, each: {{"messages":[{{"role":"user","content":"..."}},{{"role":"assistant","content":"..."}}]}}.
-ONLY JSON. No markdown.""",
+ONLY JSON. No markdown."""
+    ),
 }
 
 SCIENCE_DOMAINS = ["machine learning", "physics", "biology", "chemistry", "mathematics", "economics", "medicine"]
@@ -77,12 +85,18 @@ SCIENCE_DOMAINS = ["machine learning", "physics", "biology", "chemistry", "mathe
 
 # Provider → API config (OpenAI-compatible endpoints)
 PROVIDER_ENDPOINTS = {
-    "groq":     {"url": "https://api.groq.com/openai/v1/chat/completions",       "model": "llama3-70b-8192"},
-    "cerebras": {"url": "https://api.cerebras.ai/v1/chat/completions",          "model": "llama3.1-70b"},
-    "sambanova": {"url": "https://api.sambanova.io/v1/chat/completions",       "model": "Meta-Llama-3.1-70B-Instruct"},
-    "openrouter": {"url": "https://openrouter.ai/api/v1/chat/completions",    "model": "meta-llama/llama-3.1-70b-instruct"},
-    "mistral": {"url": "https://api.mistral.ai/v1/chat/completions",           "model": "mistral-large-latest"},
-    "nvidia_llama": {"url": "https://integrate.api.nvidia.com/v1/chat/completions", "model": "meta/llama3-70b-instruct"},
+    "groq": {"url": "https://api.groq.com/openai/v1/chat/completions", "model": "llama3-70b-8192"},
+    "cerebras": {"url": "https://api.cerebras.ai/v1/chat/completions", "model": "llama3.1-70b"},
+    "sambanova": {"url": "https://api.sambanova.io/v1/chat/completions", "model": "Meta-Llama-3.1-70B-Instruct"},
+    "openrouter": {
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "model": "meta-llama/llama-3.1-70b-instruct",
+    },
+    "mistral": {"url": "https://api.mistral.ai/v1/chat/completions", "model": "mistral-large-latest"},
+    "nvidia_llama": {
+        "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+        "model": "meta/llama3-70b-instruct",
+    },
 }
 
 
@@ -96,6 +110,7 @@ class ForgeParallelSyntheticGen:
 
         # Resolve all available providers
         from src.data.apikeys import resolve_all
+
         self.all_keys = resolve_all()
         self.active_providers = [p for p in PROVIDER_ENDPOINTS if p in self.all_keys]
 
@@ -178,7 +193,7 @@ class ForgeParallelSyntheticGen:
             text = f"सवाल: {item['sawal']}\n\nजवाब: {item['jawab']}"
         elif "messages" in item:
             msgs = item["messages"]
-            text = '\n\n'.join([f"{m['role'].upper()}: {m['content']}" for m in msgs])
+            text = "\n\n".join([f"{m['role'].upper()}: {m['content']}" for m in msgs])
         elif "instruction" in item and "code" in item:
             text = f"Task: {item['instruction']}\n\n```{item.get('language', 'python')}\n{item['code']}\n```"
         elif "instruction" in item:

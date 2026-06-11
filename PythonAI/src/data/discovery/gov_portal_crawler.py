@@ -28,17 +28,38 @@ DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / ".gov_cache.json"
 
 # Keywords to identify high-value datasets for AI training
 HIGH_VALUE_KEYWORDS = [
-    "agriculture", "health", "education", "census", "economy",
-    "climate", "weather", "transport", "energy", "water",
-    "poverty", "employment", "trade", "industry", "finance",
-    "food", "nutrition", "disease", "population", "housing",
-    "crime", "justice", "election", "budget", "infrastructure",
+    "agriculture",
+    "health",
+    "education",
+    "census",
+    "economy",
+    "climate",
+    "weather",
+    "transport",
+    "energy",
+    "water",
+    "poverty",
+    "employment",
+    "trade",
+    "industry",
+    "finance",
+    "food",
+    "nutrition",
+    "disease",
+    "population",
+    "housing",
+    "crime",
+    "justice",
+    "election",
+    "budget",
+    "infrastructure",
 ]
 
 
 @dataclass
 class GovDataset:
     """A single dataset discovered from a government portal."""
+
     portal: str  # e.g., "data.gov.in", "data.gov", "data.europa.eu"
     dataset_id: str
     title: str
@@ -166,11 +187,13 @@ class GovPortalCrawler:
             info = self.PORTALS[portal]
             api_url = info["api_url"]
 
-            params = urllib.parse.urlencode({
-                "q": "",
-                "rows": min(50, max_results),
-                "sort": "metadata_modified desc",
-            })
+            params = urllib.parse.urlencode(
+                {
+                    "q": "",
+                    "rows": min(50, max_results),
+                    "sort": "metadata_modified desc",
+                }
+            )
             if portal == "data.gov.in":
                 url = f"{api_url}/list/records?{params}&format=json"
             elif portal == "data.gov":
@@ -178,10 +201,13 @@ class GovPortalCrawler:
             else:
                 url = f"{api_url}/search?{params}"
 
-            req = urllib.request.Request(url, headers={
-                "User-Agent": "PythonAI/2.0 (data-discovery)",
-                "Accept": "application/json",
-            })
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "PythonAI/2.0 (data-discovery)",
+                    "Accept": "application/json",
+                },
+            )
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 
@@ -212,31 +238,35 @@ class GovPortalCrawler:
         for item in items[:max_results]:
             if isinstance(item, str):
                 # Just a name — skip detailed parsing
-                datasets.append(GovDataset(
-                    portal=portal,
-                    dataset_id=item,
-                    title=item,
-                    description="",
-                    url=f"https://{portal}/dataset/{item}",
-                    is_new=True,
-                ))
+                datasets.append(
+                    GovDataset(
+                        portal=portal,
+                        dataset_id=item,
+                        title=item,
+                        description="",
+                        url=f"https://{portal}/dataset/{item}",
+                        is_new=True,
+                    )
+                )
                 continue
 
             title = item.get("title", item.get("name", ""))
             did = item.get("id", item.get("name", title))
-            datasets.append(GovDataset(
-                portal=portal,
-                dataset_id=did,
-                title=title[:200],
-                description=(item.get("notes", "") or "")[:500],
-                url=item.get("url", "") or f"https://{portal}/dataset/{did}",
-                sector=(item.get("sector", item.get("group", "")) or ""),
-                organization=(item.get("organization", item.get("org", "")) or ""),
-                format=item.get("format", ""),
-                license=item.get("license", item.get("license_id", "")),
-                updated=item.get("metadata_modified", item.get("updated", "")),
-                is_new=True,
-            ))
+            datasets.append(
+                GovDataset(
+                    portal=portal,
+                    dataset_id=did,
+                    title=title[:200],
+                    description=(item.get("notes", "") or "")[:500],
+                    url=item.get("url", "") or f"https://{portal}/dataset/{did}",
+                    sector=(item.get("sector", item.get("group", "")) or ""),
+                    organization=(item.get("organization", item.get("org", "")) or ""),
+                    format=item.get("format", ""),
+                    license=item.get("license", item.get("license_id", "")),
+                    updated=item.get("metadata_modified", item.get("updated", "")),
+                    is_new=True,
+                )
+            )
 
         return datasets
 
@@ -247,31 +277,38 @@ class GovPortalCrawler:
             import urllib.request
 
             datasets: list[GovDataset] = []
-            params = urllib.parse.urlencode({
-                "format": "json",
-                "per_page": min(50, max_results),
-            })
+            params = urllib.parse.urlencode(
+                {
+                    "format": "json",
+                    "per_page": min(50, max_results),
+                }
+            )
             url = f"https://api.worldbank.org/v2/dataset?{params}"
-            req = urllib.request.Request(url, headers={
-                "User-Agent": "PythonAI/2.0 (data-discovery)",
-            })
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "PythonAI/2.0 (data-discovery)",
+                },
+            )
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 
             items = data[1] if isinstance(data, list) and len(data) > 1 else data
             for item in items[:max_results] if isinstance(items, list) else []:
                 did = item.get("id", "")
-                datasets.append(GovDataset(
-                    portal="worldbank",
-                    dataset_id=did,
-                    title=item.get("name", did)[:200],
-                    description=(item.get("description", "") or "")[:500],
-                    url=f"https://data.worldbank.org/indicator/{did}",
-                    sector=item.get("topic", ""),
-                    organization="World Bank",
-                    license="CC-BY",
-                    is_new=True,
-                ))
+                datasets.append(
+                    GovDataset(
+                        portal="worldbank",
+                        dataset_id=did,
+                        title=item.get("name", did)[:200],
+                        description=(item.get("description", "") or "")[:500],
+                        url=f"https://data.worldbank.org/indicator/{did}",
+                        sector=item.get("topic", ""),
+                        organization="World Bank",
+                        license="CC-BY",
+                        is_new=True,
+                    )
+                )
 
             return datasets
 
@@ -344,21 +381,23 @@ class GovPortalCrawler:
             score = self.score_dataset(ds)
             priority = "high" if score >= 0.7 else "medium" if score >= 0.5 else "low"
 
-            records.append(DatasetRecord(
-                id=f"{ds.portal}_{ds.dataset_id}"[:100],
-                name=ds.title[:60],
-                source=ds.portal,
-                url=ds.url,
-                size_bytes=ds.size_bytes,
-                estimated_records=ds.num_records,
-                languages=["en", "hi"] if "india" in ds.portal.lower() else ["en"],
-                domains=[domain],
-                modalities=["text", "tabular"],
-                license=ds.license or "Open Government License",
-                priority=priority,
-                quality_score=round(score, 2),
-                description=ds.description[:200],
-            ))
+            records.append(
+                DatasetRecord(
+                    id=f"{ds.portal}_{ds.dataset_id}"[:100],
+                    name=ds.title[:60],
+                    source=ds.portal,
+                    url=ds.url,
+                    size_bytes=ds.size_bytes,
+                    estimated_records=ds.num_records,
+                    languages=["en", "hi"] if "india" in ds.portal.lower() else ["en"],
+                    domains=[domain],
+                    modalities=["text", "tabular"],
+                    license=ds.license or "Open Government License",
+                    priority=priority,
+                    quality_score=round(score, 2),
+                    description=ds.description[:200],
+                )
+            )
         return records
 
 

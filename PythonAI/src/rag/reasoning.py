@@ -10,6 +10,7 @@ class ReasoningEngine:
     Reasoning engine to perform Chain-of-Thought (CoT) and multi-step planning.
     It can decide if a query needs deep reasoning, generate a plan, and reflect on it.
     """
+
     def __init__(self, model: str = DEFAULT_MODEL):
         self.model = model
 
@@ -20,13 +21,27 @@ class ReasoningEngine:
         """
         # A simple heuristic based router
         complex_keywords = [
-            "why", "how to design", "architecture", "debug", "issue", "error",
-            "optimize", "performance", "compare", "vs", "difference between",
-            "best practice", "pattern", "implement a", "build a", "threading",
-            "asyncio", "memory leak"
+            "why",
+            "how to design",
+            "architecture",
+            "debug",
+            "issue",
+            "error",
+            "optimize",
+            "performance",
+            "compare",
+            "vs",
+            "difference between",
+            "best practice",
+            "pattern",
+            "implement a",
+            "build a",
+            "threading",
+            "asyncio",
+            "memory leak",
         ]
         q_lower = question.lower()
-        if len(q_lower.split()) > 15: # Long questions usually need reasoning
+        if len(q_lower.split()) > 15:  # Long questions usually need reasoning
             return True
 
         for kw in complex_keywords:
@@ -94,4 +109,3 @@ REVIEW:
         except Exception as e:
             print(f"[Reasoning] Reflection failed: {e}")
             return "LGTM"
-

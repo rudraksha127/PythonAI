@@ -20,16 +20,16 @@ ROOT = Path(__file__).resolve().parent.parent.parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.core.agents import AgentOrchestrator
-from src.core.providers import ProfileManager
-from src.core.providers import get_registry as get_model_registry
-from src.core.registry import get_registry as get_tool_registry
-from src.core.tools import register_all_tools
-from src.data.apikeys import active_providers
+from src.core.agents import AgentOrchestrator  # noqa: E402
+from src.core.providers import ProfileManager  # noqa: E402
+from src.core.providers import get_registry as get_model_registry  # noqa: E402
+from src.core.registry import get_registry as get_tool_registry  # noqa: E402
+from src.core.tools import register_all_tools  # noqa: E402
+from src.data.apikeys import active_providers  # noqa: E402
 
 # Import utils — support both package and script contexts
 try:
-    from ..utils import inject_dashboard_css, metric_card
+    from ..utils import inject_dashboard_css  # noqa: E402  # noqa: E402
 except ImportError:
     from src.webui.utils import inject_dashboard_css
 
@@ -37,6 +37,7 @@ except ImportError:
 # ════════════════════════════════════════
 # SESSION STATE DEFAULTS
 # ════════════════════════════════════════
+
 
 def init_workspace_state() -> None:
     """Initialize session state defaults for the agent workspace."""
@@ -79,7 +80,7 @@ def render() -> None:
         .badge-reviewer { background-color: #d6336c; }
         .badge-mcp { background-color: #e8590c; }
         .badge-orchestrator { background-color: #7048e8; }
-        
+
         .plan-step-card {
             background: rgba(28, 28, 40, 0.7);
             border: 1px solid rgba(255, 255, 255, 0.08);
@@ -91,7 +92,7 @@ def render() -> None:
         .step-running { border-left: 4px solid #1c7ed6; }
         .step-done { border-left: 4px solid #2b8a3e; }
         .step-failed { border-left: 4px solid #fa5252; }
-        
+
         .synthesis-card {
             background: rgba(20, 20, 30, 0.85);
             border: 1px solid rgba(0, 210, 255, 0.2);
@@ -108,7 +109,7 @@ def render() -> None:
     st.markdown(
         '<div class="main-header">'
         "<h1>🔮 Agent Swarm Workspace</h1>"
-        "<p class=\"subtitle\">Orchestrate a swarm of specialized AI agents working together to solve complex tasks</p>"
+        '<p class="subtitle">Orchestrate a swarm of specialized AI agents working together to solve complex tasks</p>'
         "</div>",
         unsafe_allow_html=True,
     )
@@ -178,7 +179,7 @@ def render() -> None:
             st.markdown('<div class="synthesis-card">', unsafe_allow_html=True)
             st.markdown("### 👑 Synthesized Solution")
             st.markdown(st.session_state.workspace_synthesis)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
     with right_col:
         # Show dynamic Plan Checklist
@@ -215,7 +216,7 @@ def render() -> None:
                         <span style="font-size:0.8rem;font-weight:600;">{status_lbl}</span>
                     </div>
                     <div style="margin-top:0.4rem;font-size:0.9rem;">{step.task}</div>
-                    {f'<div style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-top:0.2rem;">Depends on: {", ".join(step.depends_on)}</div>' if step.depends_on else ''}
+                    {f'<div style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-top:0.2rem;">Depends on: {", ".join(step.depends_on)}</div>' if step.depends_on else ""}
                     </div>""",
                     unsafe_allow_html=True,
                 )
@@ -269,7 +270,9 @@ def _render_sidebar_config() -> None:
             if default_model and default_model not in provider_models:
                 provider_models.insert(0, default_model)
 
-            current_model = current_profile.model if current_profile and current_profile.provider == selected_prov else ""
+            current_model = (
+                current_profile.model if current_profile and current_profile.provider == selected_prov else ""
+            )
             if current_model and current_model not in provider_models:
                 provider_models.insert(0, current_model)
 
@@ -366,6 +369,7 @@ def _execute_swarm(prompt: str) -> None:
             outputs["success"] = True
         except Exception as e:
             import traceback
+
             outputs["error"] = f"Execution error: {e}\n{traceback.format_exc()}"
             outputs["success"] = False
 
@@ -375,18 +379,16 @@ def _execute_swarm(prompt: str) -> None:
 
     # Create UI status container for streaming logs
     status_container = st.status("🔮 Orchestrating Agent Swarm...", expanded=True)
-    plan_checklist_placeholder = st.empty()
+    st.empty()
 
     # Loop while thread runs
     while orch_thread.is_alive():
         # Drain queue logs
-        logs_added = False
         while not log_queue.empty():
             try:
                 log_msg = log_queue.get_nowait()
                 st.session_state.workspace_logs.append(log_msg)
                 status_container.write(log_msg)
-                logs_added = True
             except queue.Empty:
                 break
 
@@ -425,7 +427,9 @@ def _execute_swarm(prompt: str) -> None:
     else:
         status_container.update(label="❌ Swarm execution failed!", state="error", expanded=True)
         st.error(outputs["error"])
-        st.session_state.workspace_synthesis = "Failed to synthesize a solution due to errors. Check execution logs above."
+        st.session_state.workspace_synthesis = (
+            "Failed to synthesize a solution due to errors. Check execution logs above."
+        )
         st.session_state.workspace_summary = "Failed."
 
     # Rerun to cleanly draw the final synthesis outside the active runner loop

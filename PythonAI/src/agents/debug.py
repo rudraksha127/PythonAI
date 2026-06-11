@@ -11,6 +11,7 @@ Your job:
 4. Return the FIXED code with comments explaining each fix
 If the code is perfect, say "LGTM ✓" and return it unchanged."""
 
+
 def run_debug_agent(task: GenerationTask) -> dict[str, Any]:
     prompt = f"Review this code carefully:\n\n{task.prompt}"
     try:

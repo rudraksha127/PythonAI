@@ -28,16 +28,16 @@ from src.data.metadata import DataDomain, DatasetRecord
 # ── Domain gap weights (how much we need data in each domain) ─────────
 # Higher = bigger gap to fill
 DOMAIN_GAP_WEIGHTS: dict[DataDomain, float] = {
-    DataDomain.FORMAL_SCIENCE: 0.6,       # Well-served by arXiv/MathPile
-    DataDomain.NATURAL_SCIENCE: 0.7,      # Growing field
-    DataDomain.ENGINEERING: 0.5,           # Heavily served by The Stack
-    DataDomain.MEDICINE: 0.85,             # Underrepresented in pre-training
-    DataDomain.SOCIAL_SCIENCE: 0.8,        # Underrepresented
-    DataDomain.BUSINESS: 0.8,              # Scarce in open data
-    DataDomain.ARTS: 0.9,                  # Rarely in pre-training corpora
-    DataDomain.LANGUAGE: 0.65,             # Good coverage from FineWeb
-    DataDomain.MULTIMODAL: 0.85,           # Vast gap in most models
-    DataDomain.EMERGING: 0.9,              # Frontier domain, urgent
+    DataDomain.FORMAL_SCIENCE: 0.6,  # Well-served by arXiv/MathPile
+    DataDomain.NATURAL_SCIENCE: 0.7,  # Growing field
+    DataDomain.ENGINEERING: 0.5,  # Heavily served by The Stack
+    DataDomain.MEDICINE: 0.85,  # Underrepresented in pre-training
+    DataDomain.SOCIAL_SCIENCE: 0.8,  # Underrepresented
+    DataDomain.BUSINESS: 0.8,  # Scarce in open data
+    DataDomain.ARTS: 0.9,  # Rarely in pre-training corpora
+    DataDomain.LANGUAGE: 0.65,  # Good coverage from FineWeb
+    DataDomain.MULTIMODAL: 0.85,  # Vast gap in most models
+    DataDomain.EMERGING: 0.9,  # Frontier domain, urgent
 }
 
 # Source reputation score (0-1)
@@ -67,15 +67,35 @@ LICENSE_BONUS: dict[str, float] = {
 
 # Language priority (Indic languages get boost)
 HIGH_PRIORITY_LANGUAGES = {
-    "hi", "bn", "te", "mr", "ta", "gu", "kn", "ml",
-    "pa", "or", "ur", "as", "mai", "sat", "kok", "doi",
-    "mni", "ne", "sd", "brx", "ks", "sa",
+    "hi",
+    "bn",
+    "te",
+    "mr",
+    "ta",
+    "gu",
+    "kn",
+    "ml",
+    "pa",
+    "or",
+    "ur",
+    "as",
+    "mai",
+    "sat",
+    "kok",
+    "doi",
+    "mni",
+    "ne",
+    "sd",
+    "brx",
+    "ks",
+    "sa",
 }
 
 
 @dataclass
 class ScoredDataset:
     """A dataset with computed priority score and breakdown."""
+
     record: DatasetRecord
     overall_score: float = 0.0
     priority: str = "low"
@@ -83,10 +103,7 @@ class ScoredDataset:
 
     @property
     def summary(self) -> str:
-        return (
-            f"[{self.priority.upper():6s}] {self.record.name[:40]:40s} "
-            f"score={self.overall_score:.3f}"
-        )
+        return f"[{self.priority.upper():6s}] {self.record.name[:40]:40s} score={self.overall_score:.3f}"
 
 
 class PriorityRanker:
@@ -155,13 +172,13 @@ class PriorityRanker:
 
         # 1. Size factor (log scale, up to 0.25)
         size_bytes = record.actual_size_bytes or 0
-        size_gb = size_bytes / (1024 ** 3) if size_bytes > 0 else 0
+        size_gb = size_bytes / (1024**3) if size_bytes > 0 else 0
         if size_gb > 0:
             size_score = min(0.25, 0.05 * math.log10(1 + size_gb))
         elif record.estimated_record_count and record.estimated_record_count > 0:
             size_score = min(0.2, 0.02 * math.log10(1 + record.estimated_record_count))
         elif record.estimated_size_bytes and record.estimated_size_bytes > 0:
-            est_gb = record.estimated_size_bytes / (1024 ** 3)
+            est_gb = record.estimated_size_bytes / (1024**3)
             size_score = min(0.2, 0.02 * math.log10(1 + est_gb * 100))
         else:
             size_score = 0.05  # Unknown size = small bonus
@@ -204,7 +221,7 @@ class PriorityRanker:
 
         # 4. Language value (0-0.15)
         lang_score = 0.0
-        for lang in (record.languages or []):
+        for lang in record.languages or []:
             lang_lower = lang.lower().split("-")[0]
             if lang_lower in HIGH_PRIORITY_LANGUAGES:
                 lang_score = min(0.15, lang_score + 0.08)
@@ -331,17 +348,11 @@ class PriorityRanker:
             "scored": scored[:50],  # Top 50
             "domains_covered": sorted(domains_covered),
             "sources_used": sorted(sources_used),
-            "total_size_gb": round(total_size / (1024 ** 3), 2),
+            "total_size_gb": round(total_size / (1024**3), 2),
             "priority_counts": priority_counts,
-            "avg_score": round(
-                sum(s.overall_score for s in scored) / len(scored), 4
-            ) if scored else 0.0,
-            "critical_datasets": [
-                s.record.id for s in scored if s.priority == "critical"
-            ],
-            "recommended_first": [
-                s.record.id for s in scored[:10]
-            ],
+            "avg_score": round(sum(s.overall_score for s in scored) / len(scored), 4) if scored else 0.0,
+            "critical_datasets": [s.record.id for s in scored if s.priority == "critical"],
+            "recommended_first": [s.record.id for s in scored[:10]],
         }
 
 
@@ -370,23 +381,16 @@ def print_ranking(scored: list[ScoredDataset]) -> None:
         return
 
     print(f"{'Priority':8s} {'Score':6s} {'Name':40s} {'Domain':18s} {'Size':>10s}")
-    print(f"{'─'*8} {'─'*6} {'─'*40} {'─'*18} {'─'*10}")
+    print(f"{'─' * 8} {'─' * 6} {'─' * 40} {'─' * 18} {'─' * 10}")
     for s in scored:
         domain_str = (
-            s.record.domain.value[:16]
-            if isinstance(s.record.domain, DataDomain)
-            else str(s.record.domain)[:16]
-        ) if s.record.domain else "unknown"
+            (s.record.domain.value[:16] if isinstance(s.record.domain, DataDomain) else str(s.record.domain)[:16])
+            if s.record.domain
+            else "unknown"
+        )
         size_bytes = s.record.actual_size_bytes or s.record.estimated_size_bytes or 0
-        size_str = (
-            f"{size_bytes / (1024**3):.1f}GB"
-            if size_bytes > 0
-            else "?"
-        )
-        print(
-            f"{s.priority:8s} {s.overall_score:.4f} "
-            f"{s.record.name[:40]:40s} {domain_str:18s} {size_str:>10s}"
-        )
+        size_str = f"{size_bytes / (1024**3):.1f}GB" if size_bytes > 0 else "?"
+        print(f"{s.priority:8s} {s.overall_score:.4f} {s.record.name[:40]:40s} {domain_str:18s} {size_str:>10s}")
 
 
 if __name__ == "__main__":
@@ -395,7 +399,8 @@ if __name__ == "__main__":
 
     samples = [
         DatasetRecord(
-            id="test_1", name="Hindi News Corpus",
+            id="test_1",
+            name="Hindi News Corpus",
             source_url="https://huggingface.co/datasets/hindi_news",
             protocol=DownloadProtocol.HUGGINGFACE,
             domain=DataDomain.LANGUAGE,
@@ -406,7 +411,8 @@ if __name__ == "__main__":
             quality_score=0.8,
         ),
         DatasetRecord(
-            id="test_2", name="Medical QA Dataset",
+            id="test_2",
+            name="Medical QA Dataset",
             source_url="https://huggingface.co/datasets/med_qa",
             protocol=DownloadProtocol.HUGGINGFACE,
             domain=DataDomain.MEDICINE,
@@ -417,7 +423,8 @@ if __name__ == "__main__":
             quality_score=0.9,
         ),
         DatasetRecord(
-            id="test_3", name="GitHub Code Samples",
+            id="test_3",
+            name="GitHub Code Samples",
             source_url="https://github.com/example/code",
             protocol=DownloadProtocol.GIT_LFS,
             domain=DataDomain.ENGINEERING,

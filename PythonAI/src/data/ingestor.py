@@ -17,8 +17,8 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
-from src.rag.knowledge_graph import KnowledgeGraph
-from src.rag.rag_engine import CHUNKS_FILE, DB_PATH
+from src.rag.knowledge_graph import KnowledgeGraph  # noqa: E402
+from src.rag.rag_engine import CHUNKS_FILE, DB_PATH  # noqa: E402
 
 D_DRIVE_BASE = Path("D:/PythonAI_Data")
 SO_DIR = D_DRIVE_BASE / "stackoverflow"
@@ -37,16 +37,19 @@ def parse_so_data() -> list[dict[str, Any]]:
             for q in data:
                 body = q.get("body", "")
                 import re
+
                 # Strip basic HTML tags
                 body_clean = re.sub(r"<[^>]+>", "", body)
-                chunks.append({
-                    "id": f"so_q_{q.get('question_id')}",
-                    "title": q.get("title", ""),
-                    "text": body_clean,
-                    "type": "so_question",
-                    "category": "qa",
-                    "tags": q.get("tags", []),
-                })
+                chunks.append(
+                    {
+                        "id": f"so_q_{q.get('question_id')}",
+                        "title": q.get("title", ""),
+                        "text": body_clean,
+                        "type": "so_question",
+                        "category": "qa",
+                        "tags": q.get("tags", []),
+                    }
+                )
         except Exception as e:
             print(f"Error reading {f}: {e}")
 
@@ -56,14 +59,17 @@ def parse_so_data() -> list[dict[str, Any]]:
             for a in data:
                 body = a.get("body", "")
                 import re
+
                 body_clean = re.sub(r"<[^>]+>", "", body)
-                chunks.append({
-                    "id": f"so_a_{a.get('answer_id')}",
-                    "title": f"Answer to {a.get('question_id')}",
-                    "text": body_clean,
-                    "type": "so_answer",
-                    "category": "qa",
-                })
+                chunks.append(
+                    {
+                        "id": f"so_a_{a.get('answer_id')}",
+                        "title": f"Answer to {a.get('question_id')}",
+                        "text": body_clean,
+                        "type": "so_answer",
+                        "category": "qa",
+                    }
+                )
         except Exception as e:
             print(f"Error reading {f}: {e}")
 
@@ -81,14 +87,16 @@ def parse_github_data() -> list[dict[str, Any]]:
             data = json.loads(f.read_text(encoding="utf-8"))
             for r in data:
                 desc = r.get("description") or ""
-                chunks.append({
-                    "id": f"gh_{r.get('name')}",
-                    "title": r.get("name", ""),
-                    "text": f"{r.get('name')}: {desc}",
-                    "type": "github_repo",
-                    "category": "repository",
-                    "topics": r.get("topics", []),
-                })
+                chunks.append(
+                    {
+                        "id": f"gh_{r.get('name')}",
+                        "title": r.get("name", ""),
+                        "text": f"{r.get('name')}: {desc}",
+                        "type": "github_repo",
+                        "category": "repository",
+                        "topics": r.get("topics", []),
+                    }
+                )
         except Exception as e:
             print(f"Error reading {f}: {e}")
 
@@ -132,18 +140,16 @@ def ingest_data() -> None:
     print("\n[Ingest] Vectorizing into ChromaDB...")
     embedder = SentenceTransformer("all-MiniLM-L6-v2")
     client = chromadb.PersistentClient(path=str(DB_PATH))
-    collection = client.get_or_create_collection(
-        name="python_godmode", metadata={"hnsw:space": "cosine"}
-    )
+    collection = client.get_or_create_collection(name="python_godmode", metadata={"hnsw:space": "cosine"})
 
     batch_size = 50
     for i in tqdm(range(0, len(new_unique), batch_size), desc="Embedding"):
         batch = new_unique[i : i + batch_size]
         texts = [
-            f"Title: {c.get('title','')}\n"
-            f"Type: {c.get('type','')}\n"
-            f"Category: {c.get('category','')}\n\n"
-            f"{c.get('text','')[:2000]}"
+            f"Title: {c.get('title', '')}\n"
+            f"Type: {c.get('type', '')}\n"
+            f"Category: {c.get('category', '')}\n\n"
+            f"{c.get('text', '')[:2000]}"
             for c in batch
         ]
         ids = [c.get("id") for c in batch]
@@ -159,7 +165,7 @@ def ingest_data() -> None:
                 {
                     "title": c.get("title", ""),
                     "type": c.get("type", "unknown"),
-                    "category": c.get("category", "unknown")
+                    "category": c.get("category", "unknown"),
                 }
                 for c in batch
             ],

@@ -156,7 +156,7 @@ OPENAI_COMPATIBLE_PROVIDERS = [
 ]
 
 # For error tests we need to raise URLError which is caught by provider try/except
-from urllib.error import URLError
+from urllib.error import URLError  # noqa: E402  # noqa: E402
 
 
 class TestOpenAICompatibleToolsParameter:
@@ -179,7 +179,9 @@ class TestOpenAICompatibleToolsParameter:
         assert "error" in result
 
     @pytest.mark.parametrize("module,func_name,provider_kwargs,mock_path", OPENAI_COMPATIBLE_PROVIDERS)
-    def test_tools_in_payload_when_provided(self, module: str, func_name: str, provider_kwargs: dict, mock_path: str) -> None:
+    def test_tools_in_payload_when_provided(
+        self, module: str, func_name: str, provider_kwargs: dict, mock_path: str
+    ) -> None:
         """When tools are provided, payload should contain tools + tool_choice='auto'."""
         mod = __import__(f"src.core.providers.{module}", fromlist=[func_name])
         func = getattr(mod, func_name)
@@ -220,7 +222,9 @@ class TestOpenAICompatibleToolsParameter:
         assert "tool_choice" not in payload, f"{module}.{func_name}: tool_choice present despite None"
 
     @pytest.mark.parametrize("module,func_name,provider_kwargs,mock_path", OPENAI_COMPATIBLE_PROVIDERS)
-    def test_tools_omitted_when_empty_list(self, module: str, func_name: str, provider_kwargs: dict, mock_path: str) -> None:
+    def test_tools_omitted_when_empty_list(
+        self, module: str, func_name: str, provider_kwargs: dict, mock_path: str
+    ) -> None:
         """When tools=[], payload should NOT contain tools (empty list is falsy)."""
         mod = __import__(f"src.core.providers.{module}", fromlist=[func_name])
         func = getattr(mod, func_name)
@@ -240,7 +244,9 @@ class TestOpenAICompatibleToolsParameter:
         assert "tool_choice" not in payload, f"{module}.{func_name}: tool_choice present despite empty list"
 
     @pytest.mark.parametrize("module,func_name,provider_kwargs,mock_path", OPENAI_COMPATIBLE_PROVIDERS)
-    def test_tool_calls_parsed_in_response(self, module: str, func_name: str, provider_kwargs: dict, mock_path: str) -> None:
+    def test_tool_calls_parsed_in_response(
+        self, module: str, func_name: str, provider_kwargs: dict, mock_path: str
+    ) -> None:
         """Tool calls in the API response should be parsed correctly."""
         mod = __import__(f"src.core.providers.{module}", fromlist=[func_name])
         func = getattr(mod, func_name)
@@ -260,7 +266,9 @@ class TestOpenAICompatibleToolsParameter:
         assert tc["id"] == "call_abc123"
 
     @pytest.mark.parametrize("module,func_name,provider_kwargs,mock_path", OPENAI_COMPATIBLE_PROVIDERS)
-    def test_tools_do_not_break_error_handling(self, module: str, func_name: str, provider_kwargs: dict, mock_path: str) -> None:
+    def test_tools_do_not_break_error_handling(
+        self, module: str, func_name: str, provider_kwargs: dict, mock_path: str
+    ) -> None:
         """Passing tools should not break error handling when network fails."""
         mod = __import__(f"src.core.providers.{module}", fromlist=[func_name])
         func = getattr(mod, func_name)
@@ -276,7 +284,9 @@ class TestOpenAICompatibleToolsParameter:
         assert result["tool_calls"] == []
 
     @pytest.mark.parametrize("module,func_name,provider_kwargs,mock_path", OPENAI_COMPATIBLE_PROVIDERS)
-    def test_tools_preserved_with_system_message(self, module: str, func_name: str, provider_kwargs: dict, mock_path: str) -> None:
+    def test_tools_preserved_with_system_message(
+        self, module: str, func_name: str, provider_kwargs: dict, mock_path: str
+    ) -> None:
         """Tools should still work when the message list includes a system message."""
         mod = __import__(f"src.core.providers.{module}", fromlist=[func_name])
         func = getattr(mod, func_name)
@@ -298,7 +308,9 @@ class TestOpenAICompatibleToolsParameter:
         assert payload["messages"][1]["role"] == "user"
 
     @pytest.mark.parametrize("module,func_name,provider_kwargs,mock_path", OPENAI_COMPATIBLE_PROVIDERS)
-    def test_tool_definition_preserves_all_fields(self, module: str, func_name: str, provider_kwargs: dict, mock_path: str) -> None:
+    def test_tool_definition_preserves_all_fields(
+        self, module: str, func_name: str, provider_kwargs: dict, mock_path: str
+    ) -> None:
         """The full tool definition (name, description, parameters) should be preserved."""
         mod = __import__(f"src.core.providers.{module}", fromlist=[func_name])
         func = getattr(mod, func_name)

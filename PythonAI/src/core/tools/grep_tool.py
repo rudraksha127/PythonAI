@@ -21,54 +21,59 @@ from ..tool import (
 )
 
 GrepTool = build_tool(
-    type("GrepToolDef", (), {
-        "name": "grep",
-        "description": "Search file contents using regular expressions. Returns matching lines with context.",
-        "search_hint": "search code, find patterns, regex search",
-        "input_schema": InputSchema(
-            pattern=Parameter(
-                type="string",
-                description="Regular expression pattern to search for",
-                required=True,
+    type(
+        "GrepToolDef",
+        (),
+        {
+            "name": "grep",
+            "description": "Search file contents using regular expressions. Returns matching lines with context.",
+            "search_hint": "search code, find patterns, regex search",
+            "input_schema": InputSchema(
+                pattern=Parameter(
+                    type="string",
+                    description="Regular expression pattern to search for",
+                    required=True,
+                ),
+                include=Parameter(
+                    type="string",
+                    description="Glob pattern for files to include (e.g., '*.py', '*.{ts,js}')",
+                    default="*",
+                ),
+                cwd=Parameter(
+                    type="string",
+                    description="Directory to search in (default: project root)",
+                ),
+                max_results=Parameter(
+                    type="integer",
+                    description="Maximum results to return (default: 50)",
+                    default=50,
+                ),
+                context_lines=Parameter(
+                    type="integer",
+                    description="Number of context lines before/after match (default: 0)",
+                    default=0,
+                ),
+                ignore_case=Parameter(
+                    type="boolean",
+                    description="Case insensitive search",
+                    default=False,
+                ),
             ),
-            include=Parameter(
-                type="string",
-                description="Glob pattern for files to include (e.g., '*.py', '*.{ts,js}')",
-                default="*",
+            "is_readonly": True,
+            "is_concurrency_safe": True,
+            "max_result_size_chars": 50000,
+            "call": lambda input_data, context: _grep_call(input_data, context),
+            "validate_input": lambda input_data, context: _grep_validate(input_data, context),
+            "get_tool_use_summary": lambda input_data: f"/{input_data.get('pattern', '')}/" if input_data else None,
+            "get_activity_description": lambda input_data: (
+                f"Searching for {input_data.get('pattern', '')}" if input_data else None
             ),
-            cwd=Parameter(
-                type="string",
-                description="Directory to search in (default: project root)",
-            ),
-            max_results=Parameter(
-                type="integer",
-                description="Maximum results to return (default: 50)",
-                default=50,
-            ),
-            context_lines=Parameter(
-                type="integer",
-                description="Number of context lines before/after match (default: 0)",
-                default=0,
-            ),
-            ignore_case=Parameter(
-                type="boolean",
-                description="Case insensitive search",
-                default=False,
-            ),
-        ),
-        "is_readonly": True,
-        "is_concurrency_safe": True,
-        "max_result_size_chars": 50000,
-        "call": lambda input_data, context: _grep_call(input_data, context),
-        "validate_input": lambda input_data, context: _grep_validate(input_data, context),
-        "get_tool_use_summary": lambda input_data: f"/{input_data.get('pattern', '')}/" if input_data else None,
-        "get_activity_description": lambda input_data: f"Searching for {input_data.get('pattern', '')}" if input_data else None,
-    })
+        },
+    )
 )
 
 
-def _grep_validate(input_data: dict[str, Any],
-                   context: ToolUseContext) -> ValidationResult:
+def _grep_validate(input_data: dict[str, Any], context: ToolUseContext) -> ValidationResult:
     pattern = input_data.get("pattern", "")
     if not pattern:
         return ValidationResult(success=False, message="pattern is required", error_code=1)
@@ -79,8 +84,7 @@ def _grep_validate(input_data: dict[str, Any],
     return ValidationResult(success=True)
 
 
-def _grep_call(input_data: dict[str, Any],
-               context: ToolUseContext) -> ToolResult:
+def _grep_call(input_data: dict[str, Any], context: ToolUseContext) -> ToolResult:
     pattern_str = input_data.get("pattern", "")
     include = input_data.get("include", "*")
     cwd = input_data.get("cwd") or context.cwd or os.getcwd()
@@ -112,9 +116,12 @@ def _grep_call(input_data: dict[str, Any],
     try:
         for root, dirs, files in os.walk(cwd):
             # Skip hidden directories and common non-code dirs
-            dirs[:] = [d for d in dirs if not d.startswith(".") and d not in
-                       {"node_modules", "__pycache__", ".git", ".venv", "venv",
-                        "dist", "build", ".tox", "eggs"}]
+            dirs[:] = [
+                d
+                for d in dirs
+                if not d.startswith(".")
+                and d not in {"node_modules", "__pycache__", ".git", ".venv", "venv", "dist", "build", ".tox", "eggs"}
+            ]
 
             for file in files:
                 if len(matches) >= max_results:
@@ -129,9 +136,25 @@ def _grep_call(input_data: dict[str, Any],
                 filepath = os.path.join(root, file)
 
                 # Skip binary files by extension
-                binary_exts = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg",
-                              ".woff", ".woff2", ".ttf", ".eot", ".o", ".pyc",
-                              ".pyd", ".so", ".dll", ".dylib", ".exe"}
+                binary_exts = {
+                    ".png",
+                    ".jpg",
+                    ".jpeg",
+                    ".gif",
+                    ".ico",
+                    ".svg",
+                    ".woff",
+                    ".woff2",
+                    ".ttf",
+                    ".eot",
+                    ".o",
+                    ".pyc",
+                    ".pyd",
+                    ".so",
+                    ".dll",
+                    ".dylib",
+                    ".exe",
+                }
                 if os.path.splitext(file)[1].lower() in binary_exts:
                     continue
 
@@ -150,12 +173,14 @@ def _grep_call(input_data: dict[str, Any],
                         context_section = "".join(lines[context_start:context_end])
                         rel_path = os.path.relpath(filepath, cwd)
 
-                        matches.append({
-                            "file": rel_path,
-                            "line_number": i + 1,
-                            "line": line.rstrip("\n\r"),
-                            "context": context_section.rstrip(),
-                        })
+                        matches.append(
+                            {
+                                "file": rel_path,
+                                "line_number": i + 1,
+                                "line": line.rstrip("\n\r"),
+                                "context": context_section.rstrip(),
+                            }
+                        )
 
                         if len(matches) >= max_results:
                             break
@@ -163,14 +188,16 @@ def _grep_call(input_data: dict[str, Any],
             if len(matches) >= max_results:
                 break
 
-        return ToolResult(data={
-            "pattern": pattern_str,
-            "total_matches": len(matches),
-            "total_files_searched": total_files_searched,
-            "matches": matches,
-            "cwd": cwd,
-            "message": f"Found {len(matches)} matches in {total_files_searched} files",
-        })
+        return ToolResult(
+            data={
+                "pattern": pattern_str,
+                "total_matches": len(matches),
+                "total_files_searched": total_files_searched,
+                "matches": matches,
+                "cwd": cwd,
+                "message": f"Found {len(matches)} matches in {total_files_searched} files",
+            }
+        )
 
     except Exception as e:
         return ToolResult(data={"error": f"Grep failed: {e}"}, error=f"Grep failed: {e}")

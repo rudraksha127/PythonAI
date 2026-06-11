@@ -48,6 +48,7 @@ class ToolRegistry:
             Number of MCP tools registered
         """
         from .mcp.tool_adapter import MCPToolAdapter
+
         adapter = MCPToolAdapter(connection)
         result = adapter.register_all(self)
         return cast(int, result)
@@ -67,10 +68,7 @@ class ToolRegistry:
             Number of tools removed
         """
         prefix = f"mcp__{server_name}__"
-        to_remove = [
-            name for name in self._mcp_tools
-            if name.startswith(prefix)
-        ]
+        to_remove = [name for name in self._mcp_tools if name.startswith(prefix)]
         for name in to_remove:
             self._mcp_tools.pop(name, None)
         return len(to_remove)
@@ -126,22 +124,18 @@ class ToolRegistry:
 
     def get_agent_tools(self) -> list[Tool]:
         """Get tools suitable for sub-agents (readonly + safe)."""
-        return [t for t in self.list_all()
-                if t.is_readonly() or t.is_concurrency_safe()]
+        return [t for t in self.list_all() if t.is_readonly() or t.is_concurrency_safe()]
 
-    def filter_by_permissions(self, tools: list[Tool],
-                              context: ToolUseContext) -> list[Tool]:
+    def filter_by_permissions(self, tools: list[Tool], context: ToolUseContext) -> list[Tool]:
         """Filter tools by permission context."""
         allowed = []
         for tool in tools:
             result = tool.check_permissions({}, context)
-            if result.behavior in (PermissionDecision.ALLOW,
-                                   PermissionDecision.ALWAYS_ALLOW):
+            if result.behavior in (PermissionDecision.ALLOW, PermissionDecision.ALWAYS_ALLOW):
                 allowed.append(tool)
         return allowed
 
-    def assemble_pool(self, context: ToolUseContext | None = None,
-                      include_mcp: bool = True) -> list[Tool]:
+    def assemble_pool(self, context: ToolUseContext | None = None, include_mcp: bool = True) -> list[Tool]:
         """Assemble the full tool pool, sorted by name.
 
         Like Claude Code's assembleToolPool().
@@ -211,7 +205,6 @@ def get_readonly_tools() -> list[Tool]:
     return get_registry().get_readonly()
 
 
-def assemble_tool_pool(context: ToolUseContext | None = None,
-                       include_mcp: bool = True) -> list[Tool]:
+def assemble_tool_pool(context: ToolUseContext | None = None, include_mcp: bool = True) -> list[Tool]:
     """Assemble complete tool pool."""
     return get_registry().assemble_pool(context, include_mcp)

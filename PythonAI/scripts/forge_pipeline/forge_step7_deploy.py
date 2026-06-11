@@ -24,12 +24,14 @@ from forge_config import ForgeConfig
 
 try:
     from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+
     HAS_TRANSFORMERS = True
 except ImportError:
     HAS_TRANSFORMERS = False
 
 try:
     from peft import PeftModel
+
     HAS_PEFT = True
 except ImportError:
     HAS_PEFT = False
@@ -107,6 +109,7 @@ def load_model():
 
 # ── PYDANTIC MODELS ─────────────────────────────────────────────────────────
 
+
 class ChatMessage(BaseModel):
     role: str
     content: str
@@ -136,6 +139,7 @@ class GenerateResponse(BaseModel):
 
 # ── EVENTS ──────────────────────────────────────────────────────────────────
 
+
 @app.on_event("startup")
 async def startup():
     try:
@@ -146,6 +150,7 @@ async def startup():
 
 
 # ── ENDPOINTS ───────────────────────────────────────────────────────────────
+
 
 @app.get("/")
 async def root():
@@ -172,12 +177,14 @@ async def generate(req: GenerateRequest):
     if MODEL_STATE["model"] is None:
         raise HTTPException(503, "Model not loaded")
 
-    full_prompt = f"{req.system}\n\nUser: {req.prompt}\n\nAssistant:" if req.system else f"User: {req.prompt}\n\nAssistant:"
+    full_prompt = (
+        f"{req.system}\n\nUser: {req.prompt}\n\nAssistant:" if req.system else f"User: {req.prompt}\n\nAssistant:"
+    )
 
     start = time.time()
-    inputs = MODEL_STATE["tokenizer"](
-        full_prompt, return_tensors="pt", truncation=True, max_length=2048
-    ).to(MODEL_STATE["device"])
+    inputs = MODEL_STATE["tokenizer"](full_prompt, return_tensors="pt", truncation=True, max_length=2048).to(
+        MODEL_STATE["device"]
+    )
 
     with torch.no_grad():
         outputs = MODEL_STATE["model"].generate(
@@ -188,7 +195,7 @@ async def generate(req: GenerateRequest):
             pad_token_id=MODEL_STATE["tokenizer"].pad_token_id,
         )
 
-    generated = outputs[0][inputs["input_ids"].shape[1]:]
+    generated = outputs[0][inputs["input_ids"].shape[1] :]
     text = MODEL_STATE["tokenizer"].decode(generated, skip_special_tokens=True).strip()
     latency = (time.time() - start) * 1000
 
@@ -218,10 +225,8 @@ async def chat_completions(req: ChatCompletionRequest):
         messages = [{"role": msg.role, "content": msg.content} for msg in req.messages]
 
         # Format input
-        if hasattr(tokenizer, 'apply_chat_template') and tokenizer.chat_template:
-            input_text = tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
-            )
+        if hasattr(tokenizer, "apply_chat_template") and tokenizer.chat_template:
+            input_text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
             inputs = tokenizer(input_text, return_tensors="pt").to(device)
         else:
             parts = [f"{m['role'].capitalize()}: {m['content']}" for m in messages]
@@ -238,7 +243,7 @@ async def chat_completions(req: ChatCompletionRequest):
                 pad_token_id=tokenizer.eos_token_id,
             )
 
-        output_ids = outputs[0][inputs["input_ids"].shape[-1]:]
+        output_ids = outputs[0][inputs["input_ids"].shape[-1] :]
         response_text = tokenizer.decode(output_ids, skip_special_tokens=True).strip()
         latency = (time.time() - start) * 1000
 
@@ -247,11 +252,13 @@ async def chat_completions(req: ChatCompletionRequest):
             "object": "chat.completion",
             "created": int(time.time()),
             "model": req.model,
-            "choices": [{
-                "index": 0,
-                "message": {"role": "assistant", "content": response_text},
-                "finish_reason": "stop",
-            }],
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": response_text},
+                    "finish_reason": "stop",
+                }
+            ],
             "usage": {
                 "prompt_tokens": len(inputs["input_ids"][0]),
                 "completion_tokens": len(output_ids),
@@ -267,6 +274,7 @@ async def chat_completions(req: ChatCompletionRequest):
 def run_server():
     """Start the API server."""
     import uvicorn
+
     console.print("\n[bold cyan]═══ PHASE 7: API DEPLOYMENT ═══[/bold cyan]")
     console.print("[green]Starting FastAPI server on http://localhost:8000[/green]")
     console.print("[green]API docs: http://localhost:8000/docs[/green]")

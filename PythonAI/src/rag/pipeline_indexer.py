@@ -14,12 +14,12 @@ Key features:
 
 Usage:
     from src.rag.pipeline_indexer import RAGPipelineIndexer
-    
+
     indexer = RAGPipelineIndexer()
-    
+
     # Full index pass (scan all files)
     stats = await indexer.index_all()
-    
+
     # Or run continuously
     async for progress in indexer.watch_and_index():
         print(f"Indexed: {progress}")
@@ -48,16 +48,17 @@ DB_PATH = ROOT / "python_brain_godmode"
 STATE_FILE = DB_PATH / "pipeline_index_state.json"
 COLLECTION_NAME = "python_godmode"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-CHUNK_SIZE = 1000        # Max chars per chunk
-CHUNK_OVERLAP = 200      # Overlap between chunks
-BATCH_SIZE = 50           # Embedding batch size
+CHUNK_SIZE = 1000  # Max chars per chunk
+CHUNK_OVERLAP = 200  # Overlap between chunks
+BATCH_SIZE = 50  # Embedding batch size
 MAX_TEXT_LENGTH = 100000  # Truncate texts longer than this before chunking
-MAX_CHUNKS = 200          # Safety: don't create more than this per document
+MAX_CHUNKS = 200  # Safety: don't create more than this per document
 
 
 # ═══════════════════════════════════════════════
 # CHUNK UTILITIES
 # ═══════════════════════════════════════════════
+
 
 def _make_chunk_id(source: str, doc_id: str, chunk_idx: int) -> str:
     """Create a stable unique chunk ID."""
@@ -65,8 +66,7 @@ def _make_chunk_id(source: str, doc_id: str, chunk_idx: int) -> str:
     return hashlib.md5(raw.encode()).hexdigest()[:24]
 
 
-def _chunk_text(text: str, title: str = "", chunk_size: int = CHUNK_SIZE,
-                overlap: int = CHUNK_OVERLAP) -> list[str]:
+def _chunk_text(text: str, title: str = "", chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
     """Split long text into overlapping chunks at sentence/paragraph boundaries."""
     # Truncate absurdly long texts
     if len(text) > MAX_TEXT_LENGTH:
@@ -106,8 +106,7 @@ def _chunk_text(text: str, title: str = "", chunk_size: int = CHUNK_SIZE,
     return chunks
 
 
-def _format_chunk_text(title: str, chunk_text: str, source: str,
-                       category: str, extra: str = "") -> str:
+def _format_chunk_text(title: str, chunk_text: str, source: str, category: str, extra: str = "") -> str:
     """Format a chunk with metadata prefix for embedding/search."""
     parts = [f"Title: {title[:100]}"]
     if source:
@@ -124,6 +123,7 @@ def _format_chunk_text(title: str, chunk_text: str, source: str,
 # ═══════════════════════════════════════════════
 # SOURCE PARSERS
 # ═══════════════════════════════════════════════
+
 
 def _parse_lines(source_type: str, lines: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
@@ -153,6 +153,7 @@ def _parse_preformatted(record: dict[str, Any]) -> list[dict[str, Any]]:
     """Pass-through parser for chunks that are already perfectly formatted."""
     return [record]
 
+
 def _parse_single(source_type: str, record: dict[str, Any]) -> list[dict[str, Any]]:
     """Parse a single record from a given source type into zero or more chunks."""
     if source_type in ("zip_docs", "pypi"):
@@ -167,6 +168,7 @@ def _parse_single(source_type: str, record: dict[str, Any]) -> list[dict[str, An
         return _parse_synthetic(record)
     else:
         return _parse_generic(record)
+
 
 def _parse_openalex(record: dict[str, Any]) -> list[dict[str, Any]]:
     """Parse an OpenAlex research paper record."""
@@ -185,16 +187,18 @@ def _parse_openalex(record: dict[str, Any]) -> list[dict[str, Any]]:
     text_chunks = _chunk_text(full_text, title)
     for i, chunk_text in enumerate(text_chunks):
         extra = f"Year: {year} | Citations: {citations}" if year else ""
-        chunks.append({
-            "id": _make_chunk_id("openalex", doc_id or title, i),
-            "title": title[:200] or f"OpenAlex Paper ({year})",
-            "text": _format_chunk_text(title, chunk_text, "OpenAlex", "research_paper", extra),
-            "source": "openalex",
-            "category": "research_paper",
-            "type": "openalex_work",
-            "year": year,
-            "citations": citations,
-        })
+        chunks.append(
+            {
+                "id": _make_chunk_id("openalex", doc_id or title, i),
+                "title": title[:200] or f"OpenAlex Paper ({year})",
+                "text": _format_chunk_text(title, chunk_text, "OpenAlex", "research_paper", extra),
+                "source": "openalex",
+                "category": "research_paper",
+                "type": "openalex_work",
+                "year": year,
+                "citations": citations,
+            }
+        )
     return chunks
 
 
@@ -203,8 +207,8 @@ def _parse_arxiv(record: dict[str, Any]) -> list[dict[str, Any]]:
     doc_id = record.get("id", "")
     title = (record.get("title") or "").strip()
     abstract = (record.get("abstract") or "").strip()
-    categories = (record.get("categories") or "")
-    created = (record.get("created") or "")
+    categories = record.get("categories") or ""
+    created = record.get("created") or ""
 
     full_text = f"{title}\n\n{abstract}" if title and abstract else (title or abstract)
     if not full_text:
@@ -217,14 +221,16 @@ def _parse_arxiv(record: dict[str, Any]) -> list[dict[str, Any]]:
         extra = f"Categories: {categories}" if categories else ""
         if created:
             extra += f" | Created: {created}" if extra else f"Created: {created}"
-        chunks.append({
-            "id": _make_chunk_id("arxiv", doc_id or title, i),
-            "title": title[:200] or f"arXiv Paper ({category_clean})",
-            "text": _format_chunk_text(title, chunk_text, "arXiv", "research_paper", extra),
-            "source": "arxiv",
-            "category": "research_paper",
-            "type": f"arxiv_{category_clean}",
-        })
+        chunks.append(
+            {
+                "id": _make_chunk_id("arxiv", doc_id or title, i),
+                "title": title[:200] or f"arXiv Paper ({category_clean})",
+                "text": _format_chunk_text(title, chunk_text, "arXiv", "research_paper", extra),
+                "source": "arxiv",
+                "category": "research_paper",
+                "type": f"arxiv_{category_clean}",
+            }
+        )
     return chunks
 
 
@@ -232,8 +238,13 @@ def _parse_huggingface(record: dict[str, Any]) -> list[dict[str, Any]]:
     """Parse a HuggingFace dataset record."""
     # HF records vary widely; extract text fields intelligently
     title = (record.get("title") or record.get("name") or "").strip()
-    text = (record.get("text") or record.get("content") or
-            record.get("body") or record.get("description") or json.dumps(record, ensure_ascii=False)).strip()
+    text = (
+        record.get("text")
+        or record.get("content")
+        or record.get("body")
+        or record.get("description")
+        or json.dumps(record, ensure_ascii=False)
+    ).strip()
 
     if not text:
         return []
@@ -242,24 +253,28 @@ def _parse_huggingface(record: dict[str, Any]) -> list[dict[str, Any]]:
         chunks = []
         text_chunks = _chunk_text(text, title)
         for i, chunk_text in enumerate(text_chunks):
-            chunks.append({
-                "id": _make_chunk_id("huggingface", title or str(hash(text))[:12], i),
-                "title": title[:200] or "HF Dataset Record",
-                "text": _format_chunk_text(title or "Dataset", chunk_text, "HuggingFace", "dataset"),
-                "source": "huggingface",
-                "category": "dataset",
-                "type": "hf_record",
-            })
+            chunks.append(
+                {
+                    "id": _make_chunk_id("huggingface", title or str(hash(text))[:12], i),
+                    "title": title[:200] or "HF Dataset Record",
+                    "text": _format_chunk_text(title or "Dataset", chunk_text, "HuggingFace", "dataset"),
+                    "source": "huggingface",
+                    "category": "dataset",
+                    "type": "hf_record",
+                }
+            )
         return chunks
 
-    return [{
-        "id": _make_chunk_id("huggingface", title or str(hash(text))[:12], 0),
-        "title": title[:200] or "HF Dataset Record",
-        "text": _format_chunk_text(title or "Dataset", text, "HuggingFace", "dataset"),
-        "source": "huggingface",
-        "category": "dataset",
-        "type": "hf_record",
-    }]
+    return [
+        {
+            "id": _make_chunk_id("huggingface", title or str(hash(text))[:12], 0),
+            "title": title[:200] or "HF Dataset Record",
+            "text": _format_chunk_text(title or "Dataset", text, "HuggingFace", "dataset"),
+            "source": "huggingface",
+            "category": "dataset",
+            "type": "hf_record",
+        }
+    ]
 
 
 def _parse_synthetic(record: dict[str, Any]) -> list[dict[str, Any]]:
@@ -276,14 +291,16 @@ def _parse_synthetic(record: dict[str, Any]) -> list[dict[str, Any]]:
     chunks = []
     text_chunks = _chunk_text(full_text, instruction)
     for i, chunk_text in enumerate(text_chunks):
-        chunks.append({
-            "id": _make_chunk_id("synthetic", task_type + instruction[:40], i),
-            "title": f"[Synthetic] {instruction[:120]}",
-            "text": _format_chunk_text(instruction, chunk_text, "Synthetic", task_type),
-            "source": "synthetic",
-            "category": task_type,
-            "type": "synthetic",
-        })
+        chunks.append(
+            {
+                "id": _make_chunk_id("synthetic", task_type + instruction[:40], i),
+                "title": f"[Synthetic] {instruction[:120]}",
+                "text": _format_chunk_text(instruction, chunk_text, "Synthetic", task_type),
+                "source": "synthetic",
+                "category": task_type,
+                "type": "synthetic",
+            }
+        )
     return chunks
 
 
@@ -291,8 +308,19 @@ def _parse_generic(record: dict[str, Any]) -> list[dict[str, Any]]:
     """Generic parser for unknown data formats — extract text fields heuristically."""
     title = (record.get("title") or record.get("name") or record.get("id") or "").strip()
     text_fields = []
-    for key in ("text", "content", "body", "description", "abstract",
-                "output", "response", "answer", "code", "prompt", "instruction"):
+    for key in (
+        "text",
+        "content",
+        "body",
+        "description",
+        "abstract",
+        "output",
+        "response",
+        "answer",
+        "code",
+        "prompt",
+        "instruction",
+    ):
         val = record.get(key)
         if val and isinstance(val, str) and len(val) > 20:
             text_fields.append(f"{key.capitalize()}: {val.strip()}")
@@ -304,20 +332,23 @@ def _parse_generic(record: dict[str, Any]) -> list[dict[str, Any]]:
     chunk_texts = _chunk_text(full_text, title)
     chunks = []
     for i, ct in enumerate(chunk_texts):
-        chunks.append({
-            "id": _make_chunk_id("generic", title or str(hash(full_text))[:12], i),
-            "title": title[:200] or "Unknown Record",
-            "text": _format_chunk_text(title or "Document", ct, "unknown", "unknown"),
-            "source": "unknown",
-            "category": "unknown",
-            "type": "generic",
-        })
+        chunks.append(
+            {
+                "id": _make_chunk_id("generic", title or str(hash(full_text))[:12], i),
+                "title": title[:200] or "Unknown Record",
+                "text": _format_chunk_text(title or "Document", ct, "unknown", "unknown"),
+                "source": "unknown",
+                "category": "unknown",
+                "type": "generic",
+            }
+        )
     return chunks
 
 
 # ═══════════════════════════════════════════════
 # STATE TRACKING
 # ═══════════════════════════════════════════════
+
 
 class IndexState:
     """Tracks which files have been indexed to enable incremental indexing."""
@@ -344,8 +375,7 @@ class IndexState:
     def get_file_state(self, file_path: str) -> dict[str, Any]:
         return self._state.get(file_path, {"lines": 0, "mtime": 0, "chunks": 0})
 
-    def mark_indexed(self, file_path: str, lines_indexed: int,
-                     chunks_added: int, mtime: float) -> None:
+    def mark_indexed(self, file_path: str, lines_indexed: int, chunks_added: int, mtime: float) -> None:
         self._state[file_path] = {
             "lines": lines_indexed,
             "mtime": mtime,
@@ -376,6 +406,7 @@ class IndexState:
 # ═══════════════════════════════════════════════
 # PIPELINE INDEXER
 # ═══════════════════════════════════════════════
+
 
 class RAGPipelineIndexer:
     """
@@ -448,6 +479,7 @@ class RAGPipelineIndexer:
     def _get_embedder(self):
         if self._embedder is None:
             from sentence_transformers import SentenceTransformer
+
             logger.info("[RAG] Loading embedding model...")
             self._embedder = SentenceTransformer(EMBEDDING_MODEL)
         return self._embedder
@@ -458,6 +490,7 @@ class RAGPipelineIndexer:
             return self._collection
 
         import chromadb
+
         self._client = chromadb.PersistentClient(path=str(self.db_path))
         self._collection = self._client.get_or_create_collection(
             name=self.collection_name,
@@ -585,8 +618,7 @@ class RAGPipelineIndexer:
             self.stats["total_chunks"] = self.stats.get("total_chunks", 0) + chunks_count
 
             source_label = file_path.parent.name
-            logger.info(f"[RAG] ✓ {source_label}/{file_path.name}: "
-                        f"{len(new_lines)} new lines → {chunks_count} chunks")
+            logger.info(f"[RAG] ✓ {source_label}/{file_path.name}: {len(new_lines)} new lines → {chunks_count} chunks")
 
         except Exception as e:
             file_stats["error"] = str(e)[:200]
@@ -597,8 +629,7 @@ class RAGPipelineIndexer:
 
     # ── ChromaDB indexing ──────────────────
 
-    async def _index_chunks(self, chunks: list[dict[str, Any]],
-                            source_type: str) -> None:
+    async def _index_chunks(self, chunks: list[dict[str, Any]], source_type: str) -> None:
         """Embed and add chunks to ChromaDB in batches."""
         if not chunks:
             return
@@ -608,7 +639,7 @@ class RAGPipelineIndexer:
         batch_size = BATCH_SIZE
 
         for i in range(0, len(chunks), batch_size):
-            batch = chunks[i:i + batch_size]
+            batch = chunks[i : i + batch_size]
 
             texts = [c["text"] for c in batch]
             ids = [c["id"] for c in batch]
@@ -653,12 +684,14 @@ class RAGPipelineIndexer:
             # Progress callback (for live server streaming)
             if self.progress_callback:
                 try:
-                    await self.progress_callback({
-                        "phase": "RAG Pipeline Indexing",
-                        "source": source_type,
-                        "indexed": min(i + batch_size, len(chunks)),
-                        "total": len(chunks),
-                    })
+                    await self.progress_callback(
+                        {
+                            "phase": "RAG Pipeline Indexing",
+                            "source": source_type,
+                            "indexed": min(i + batch_size, len(chunks)),
+                            "total": len(chunks),
+                        }
+                    )
                 except Exception:
                     pass
 
@@ -692,10 +725,12 @@ class RAGPipelineIndexer:
             # Rebuild BM25 in the existing rag_engine
             if all_docs:
                 from src.rag.rag_engine import SimpleBM25
+
                 bm25_path = DB_PATH / "bm25_index.pkl"
                 bm25 = SimpleBM25(all_docs)
                 try:
                     import pickle
+
                     bm25_path.parent.mkdir(parents=True, exist_ok=True)
                     with open(bm25_path, "wb") as f:
                         pickle.dump(bm25, f)
@@ -706,6 +741,7 @@ class RAGPipelineIndexer:
             # Update KnowledgeGraph incrementally
             try:
                 from src.rag.knowledge_graph import KnowledgeGraph
+
                 kg = KnowledgeGraph()
                 kg.load()
 
@@ -720,21 +756,25 @@ class RAGPipelineIndexer:
                     if not batch or not batch.get("documents"):
                         continue
                     for doc, meta in zip(batch["documents"], batch["metadatas"]):
-                        kg_chunks.append({
-                            "id": meta.get("title", "")[:24] or "unknown",
-                            "title": meta.get("title", ""),
-                            "text": doc,
-                            "category": meta.get("category", "unknown"),
-                            "type": meta.get("type", "unknown"),
-                            "version": "",
-                        })
+                        kg_chunks.append(
+                            {
+                                "id": meta.get("title", "")[:24] or "unknown",
+                                "title": meta.get("title", ""),
+                                "text": doc,
+                                "category": meta.get("category", "unknown"),
+                                "type": meta.get("type", "unknown"),
+                                "version": "",
+                            }
+                        )
 
                 if kg_chunks:
                     kg.build_from_chunks(kg_chunks)
                     kg.save()
-                    logger.info(f"[RAG] KnowledgeGraph updated: "
-                                f"{kg.graph.number_of_nodes()} nodes, "
-                                f"{kg.graph.number_of_edges()} edges")
+                    logger.info(
+                        f"[RAG] KnowledgeGraph updated: "
+                        f"{kg.graph.number_of_nodes()} nodes, "
+                        f"{kg.graph.number_of_edges()} edges"
+                    )
             except Exception as e:
                 logger.warning(f"[RAG] KG update skipped: {e}")
 
@@ -770,12 +810,9 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="RAG Pipeline Indexer")
-    parser.add_argument("--dir", default="D:/PythonAI_Data/anti_gravity_data",
-                        help="Data directory to scan")
-    parser.add_argument("--reset", action="store_true",
-                        help="Reset all index state and re-index from scratch")
-    parser.add_argument("--stats", action="store_true",
-                        help="Show current index state and exit")
+    parser.add_argument("--dir", default="D:/PythonAI_Data/anti_gravity_data", help="Data directory to scan")
+    parser.add_argument("--reset", action="store_true", help="Reset all index state and re-index from scratch")
+    parser.add_argument("--stats", action="store_true", help="Show current index state and exit")
     args = parser.parse_args()
 
     async def cli():
@@ -793,9 +830,11 @@ if __name__ == "__main__":
             else:
                 for fpath, fstate in sorted(state.items()):
                     print(f"  {fpath}")
-                    print(f"    Lines: {fstate.get('lines', 0)}, "
-                          f"Chunks: {fstate.get('chunks', 0)}, "
-                          f"Mtime: {fstate.get('mtime', 0)}")
+                    print(
+                        f"    Lines: {fstate.get('lines', 0)}, "
+                        f"Chunks: {fstate.get('chunks', 0)}, "
+                        f"Mtime: {fstate.get('mtime', 0)}"
+                    )
             return
 
         print(f"[RAG] Starting index pass on: {args.dir}")

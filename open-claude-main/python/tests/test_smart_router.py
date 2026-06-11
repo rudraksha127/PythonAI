@@ -19,8 +19,9 @@ def fake_api_key(monkeypatch):
     monkeypatch.setenv("FAKE_KEY", "test-key")
 
 
-def make_provider(name, healthy=True, configured=True,
-                  latency=100.0, cost=0.002, errors=0, requests=0):
+def make_provider(
+    name, healthy=True, configured=True, latency=100.0, cost=0.002, errors=0, requests=0
+):
     p = Provider(
         name=name,
         ping_url=f"https://{name}.example.com/health",
@@ -45,6 +46,7 @@ def make_router(providers=None, strategy="balanced"):
 
 
 # ── Provider.score() ──────────────────────────────────────────────────────────
+
 
 def test_score_unhealthy_is_inf():
     p = make_provider("openai", healthy=False)
@@ -82,6 +84,7 @@ def test_score_error_rate_penalty():
 
 # ── SmartRouter.is_large_request() ───────────────────────────────────────────
 
+
 def test_is_large_request_short():
     r = make_router()
     msgs = [{"role": "user", "content": "Hello!"}]
@@ -95,6 +98,7 @@ def test_is_large_request_long():
 
 
 # ── SmartRouter.select_provider() ────────────────────────────────────────────
+
 
 def test_select_provider_picks_best_score():
     p1 = make_provider("slow", latency=800.0)
@@ -121,6 +125,7 @@ def test_select_provider_returns_none_when_all_down():
 
 # ── SmartRouter.get_model_for_provider() ─────────────────────────────────────
 
+
 def test_get_model_large_request():
     p = make_provider("openai")
     r = make_router()
@@ -144,6 +149,7 @@ def test_get_model_small_request():
 
 # ── SmartRouter.route() ───────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_route_returns_best_provider():
     p1 = make_provider("expensive", cost=0.05, latency=50.0)
@@ -157,9 +163,12 @@ async def test_route_returns_best_provider():
 async def test_route_uses_big_model_for_large_message_bodies():
     p = make_provider("openai")
     r = make_router(providers=[p])
-    result = await r.route([
-        {"role": "user", "content": "x" * 3001},
-    ], "claude-haiku")
+    result = await r.route(
+        [
+            {"role": "user", "content": "x" * 3001},
+        ],
+        "claude-haiku",
+    )
     assert result["model"] == "openai-big"
 
 
@@ -177,13 +186,13 @@ async def test_route_excludes_providers():
     p2 = make_provider("gemini", latency=200.0)
     r = make_router(providers=[p1, p2], strategy="latency")
     result = await r.route(
-        [{"role": "user", "content": "Hi"}],
-        exclude_providers=["openai"]
+        [{"role": "user", "content": "Hi"}], exclude_providers=["openai"]
     )
     assert result["provider"] == "gemini"
 
 
 # ── SmartRouter.record_result() ──────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_record_result_updates_latency():
@@ -211,6 +220,7 @@ async def test_record_result_increments_errors():
 
 # ── SmartRouter.status() ─────────────────────────────────────────────────────
 
+
 def test_status_returns_all_providers():
     p1 = make_provider("openai")
     p2 = make_provider("gemini")
@@ -226,6 +236,13 @@ def test_status_contains_required_fields():
     p = make_provider("openai")
     r = make_router(providers=[p])
     status = r.status()[0]
-    for field in ["provider", "healthy", "latency_ms",
-                  "cost_per_1k", "requests", "errors", "score"]:
+    for field in [
+        "provider",
+        "healthy",
+        "latency_ms",
+        "cost_per_1k",
+        "requests",
+        "errors",
+        "score",
+    ]:
         assert field in status

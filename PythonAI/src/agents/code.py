@@ -11,6 +11,7 @@ Your responses must include:
 4. Performance considerations
 Never explain what you're about to do — just write the code."""
 
+
 def run_code_agent(task: GenerationTask) -> dict[str, Any]:
     prompt = f"Task: {task.prompt}"
     try:

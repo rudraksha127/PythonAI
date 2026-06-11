@@ -11,6 +11,7 @@ Your job:
 4. Mention version-specific behavior (Python 3.10+ vs 3.8, etc.)
 Format: Markdown with code blocks."""
 
+
 def run_docs_agent(task: GenerationTask) -> dict[str, Any]:
     prompt = f"Explain: {task.prompt}"
     try:

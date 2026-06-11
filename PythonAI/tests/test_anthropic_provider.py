@@ -22,10 +22,12 @@ class TestConvertMessages:
         """System messages should be skipped (handled at top level)."""
         from src.core.providers.anthropic_provider import _convert_messages
 
-        result = _convert_messages([
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": "Hi"},
-        ])
+        result = _convert_messages(
+            [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": "Hi"},
+            ]
+        )
 
         assert len(result) == 1
         assert result[0]["role"] == "user"
@@ -44,18 +46,24 @@ class TestConvertMessages:
         """Assistant messages with tool_calls should include tool_use blocks."""
         from src.core.providers.anthropic_provider import _convert_messages
 
-        result = _convert_messages([{
-            "role": "assistant",
-            "content": "Let me search for that.",
-            "tool_calls": [{
-                "id": "call_123",
-                "type": "function",
-                "function": {
-                    "name": "web_search",
-                    "arguments": '{"query": "Python"}',
-                },
-            }],
-        }])
+        result = _convert_messages(
+            [
+                {
+                    "role": "assistant",
+                    "content": "Let me search for that.",
+                    "tool_calls": [
+                        {
+                            "id": "call_123",
+                            "type": "function",
+                            "function": {
+                                "name": "web_search",
+                                "arguments": '{"query": "Python"}',
+                            },
+                        }
+                    ],
+                }
+            ]
+        )
 
         assert len(result) == 1
         content = result[0]["content"]
@@ -72,12 +80,16 @@ class TestConvertMessages:
         """Tool result messages should become tool_result content blocks."""
         from src.core.providers.anthropic_provider import _convert_messages
 
-        result = _convert_messages([{
-            "role": "tool",
-            "content": '{"results": ["doc1"]}',
-            "tool_call_id": "call_123",
-            "name": "web_search",
-        }])
+        result = _convert_messages(
+            [
+                {
+                    "role": "tool",
+                    "content": '{"results": ["doc1"]}',
+                    "tool_call_id": "call_123",
+                    "name": "web_search",
+                }
+            ]
+        )
 
         assert len(result) == 1
         assert result[0]["role"] == "user"
@@ -92,10 +104,17 @@ class TestConvertMessages:
 
         messages = [
             {"role": "user", "content": "Search for Python"},
-            {"role": "assistant", "content": "", "tool_calls": [{
-                "id": "call_1", "type": "function",
-                "function": {"name": "search", "arguments": '{"q": "Python"}'},
-            }]},
+            {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {"name": "search", "arguments": '{"q": "Python"}'},
+                    }
+                ],
+            },
             {"role": "tool", "content": '["result"]', "tool_call_id": "call_1", "name": "search"},
         ]
 
@@ -113,6 +132,7 @@ class TestConvertMessages:
     def test_empty_messages(self) -> None:
         """Empty message list should return empty list."""
         from src.core.providers.anthropic_provider import _convert_messages
+
         assert _convert_messages([]) == []
 
 
@@ -122,6 +142,7 @@ class TestCallAnthropic:
     def test_importable(self) -> None:
         """call_anthropic should be importable."""
         from src.core.providers.anthropic_provider import call_anthropic
+
         assert call_anthropic is not None
 
     def test_no_api_key_returns_error(self) -> None:
@@ -187,18 +208,20 @@ class TestCallAnthropicWithTools:
         result = call_anthropic(
             messages=[{"role": "user", "content": "Search for Python"}],
             api_key="",
-            tools=[{
-                "type": "function",
-                "function": {
-                    "name": "web_search",
-                    "description": "Search the web",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {"query": {"type": "string"}},
-                        "required": ["query"],
+            tools=[
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "web_search",
+                        "description": "Search the web",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {"query": {"type": "string"}},
+                            "required": ["query"],
+                        },
                     },
-                },
-            }],
+                }
+            ],
         )
 
         # Should return error (no API key), not crash
@@ -209,18 +232,20 @@ class TestCallAnthropicWithTools:
         """Tools should be converted from OpenAI to Anthropic format."""
         from src.core.providers.anthropic_provider import call_anthropic
 
-        openai_tools = [{
-            "type": "function",
-            "function": {
-                "name": "web_search",
-                "description": "Search the web",
-                "parameters": {
-                    "type": "object",
-                    "properties": {"query": {"type": "string"}},
-                    "required": ["query"],
+        openai_tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "web_search",
+                    "description": "Search the web",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"query": {"type": "string"}},
+                        "required": ["query"],
+                    },
                 },
-            },
-        }]
+            }
+        ]
 
         result = call_anthropic(
             messages=[{"role": "user", "content": "Search"}],

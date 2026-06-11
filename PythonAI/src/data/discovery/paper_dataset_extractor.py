@@ -49,6 +49,7 @@ PAPER_WITH_DATASET_PATTERN = re.compile(
 @dataclass
 class ExtractedDataset:
     """A dataset extracted from a research paper."""
+
     name: str
     source_url: str = ""
     source_paper_title: str = ""
@@ -124,16 +125,18 @@ class PaperDatasetExtractor:
             if hf_path not in seen_names:
                 seen_names.add(hf_path)
                 is_new = bool(PAPER_WITH_DATASET_PATTERN.search(text))
-                extracted.append(ExtractedDataset(
-                    name=hf_path.split("/")[-1],
-                    source_url=f"https://huggingface.co/datasets/{hf_path}",
-                    source_paper_title=paper_title,
-                    source_paper_url=paper_url,
-                    hf_path=hf_path,
-                    is_new_dataset=is_new,
-                    confidence=0.9 if is_new else 0.6,
-                    description=f"Dataset from HuggingFace: {hf_path}",
-                ))
+                extracted.append(
+                    ExtractedDataset(
+                        name=hf_path.split("/")[-1],
+                        source_url=f"https://huggingface.co/datasets/{hf_path}",
+                        source_paper_title=paper_title,
+                        source_paper_url=paper_url,
+                        hf_path=hf_path,
+                        is_new_dataset=is_new,
+                        confidence=0.9 if is_new else 0.6,
+                        description=f"Dataset from HuggingFace: {hf_path}",
+                    )
+                )
 
         # 2. Find GitHub repo URLs
         for match in GITHUB_URL_PATTERN.finditer(text):
@@ -141,35 +144,35 @@ class PaperDatasetExtractor:
             if repo not in seen_names and self._is_dataset_repo(repo):
                 seen_names.add(repo)
                 is_new = bool(PAPER_WITH_DATASET_PATTERN.search(text))
-                extracted.append(ExtractedDataset(
-                    name=repo.split("/")[-1],
-                    source_url=f"https://github.com/{repo}",
-                    source_paper_title=paper_title,
-                    source_paper_url=paper_url,
-                    github_repo=repo,
-                    is_new_dataset=is_new,
-                    confidence=0.7 if is_new else 0.4,
-                    description=f"GitHub repository: {repo}",
-                ))
+                extracted.append(
+                    ExtractedDataset(
+                        name=repo.split("/")[-1],
+                        source_url=f"https://github.com/{repo}",
+                        source_paper_title=paper_title,
+                        source_paper_url=paper_url,
+                        github_repo=repo,
+                        is_new_dataset=is_new,
+                        confidence=0.7 if is_new else 0.4,
+                        description=f"GitHub repository: {repo}",
+                    )
+                )
 
         # 3. Find dataset name mentions (lower confidence)
         for match in DATASET_NAME_PATTERN.finditer(text):
             name = match.group("name")
-            if (
-                name not in seen_names
-                and len(name) >= 4
-                and not name.startswith(("http", "www", "arXiv", "DOI"))
-            ):
+            if name not in seen_names and len(name) >= 4 and not name.startswith(("http", "www", "arXiv", "DOI")):
                 seen_names.add(name)
                 is_new = bool(PAPER_WITH_DATASET_PATTERN.search(text))
-                extracted.append(ExtractedDataset(
-                    name=name,
-                    source_paper_title=paper_title,
-                    source_paper_url=paper_url,
-                    is_new_dataset=is_new,
-                    confidence=0.3,
-                    description=f"Dataset mentioned in paper: {name}",
-                ))
+                extracted.append(
+                    ExtractedDataset(
+                        name=name,
+                        source_paper_title=paper_title,
+                        source_paper_url=paper_url,
+                        is_new_dataset=is_new,
+                        confidence=0.3,
+                        description=f"Dataset mentioned in paper: {name}",
+                    )
+                )
 
         # Tag new ones
         for ds in extracted:
@@ -202,9 +205,12 @@ class PaperDatasetExtractor:
                 import xml.etree.ElementTree as ET
 
                 url = f"https://export.arxiv.org/api/query?id_list={arxiv_id}&max_results=1"
-                req = urllib.request.Request(url, headers={
-                    "User-Agent": "PythonAI/2.0 (discovery-engine)",
-                })
+                req = urllib.request.Request(
+                    url,
+                    headers={
+                        "User-Agent": "PythonAI/2.0 (discovery-engine)",
+                    },
+                )
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     xml_data = resp.read().decode("utf-8")
 
@@ -238,8 +244,15 @@ class PaperDatasetExtractor:
     def _is_dataset_repo(repo: str) -> bool:
         """Heuristic: check if a repo name looks like a dataset."""
         dataset_indicators = [
-            "data", "dataset", "corpus", "bench", "eval",
-            "collection", "gallery", "images", "sounds",
+            "data",
+            "dataset",
+            "corpus",
+            "bench",
+            "eval",
+            "collection",
+            "gallery",
+            "images",
+            "sounds",
         ]
         name = repo.split("/")[-1].lower() if "/" in repo else repo.lower()
         return any(indicator in name for indicator in dataset_indicators)
@@ -255,23 +268,27 @@ class PaperDatasetExtractor:
             if ds.confidence < 0.3:
                 continue  # Skip low-confidence matches
 
-            priority = "high" if ds.is_new_dataset and ds.confidence >= 0.7 else "medium" if ds.confidence >= 0.5 else "low"
+            priority = (
+                "high" if ds.is_new_dataset and ds.confidence >= 0.7 else "medium" if ds.confidence >= 0.5 else "low"
+            )
 
-            records.append(DatasetRecord(
-                id=f"paper_{ds.name.lower().replace(' ', '_').replace('/', '_')}",
-                name=ds.name[:60],
-                source="paper",
-                url=ds.source_url or ds.source_paper_url,
-                size_bytes=0,
-                estimated_records=0,
-                languages=["en"],
-                domains=[domain],
-                modalities=["text"],
-                license="Unknown",
-                priority=priority,
-                quality_score=round(ds.confidence, 2),
-                description=f"From paper '{ds.source_paper_title[:80]}': {ds.description[:120]}",
-            ))
+            records.append(
+                DatasetRecord(
+                    id=f"paper_{ds.name.lower().replace(' ', '_').replace('/', '_')}",
+                    name=ds.name[:60],
+                    source="paper",
+                    url=ds.source_url or ds.source_paper_url,
+                    size_bytes=0,
+                    estimated_records=0,
+                    languages=["en"],
+                    domains=[domain],
+                    modalities=["text"],
+                    license="Unknown",
+                    priority=priority,
+                    quality_score=round(ds.confidence, 2),
+                    description=f"From paper '{ds.source_paper_title[:80]}': {ds.description[:120]}",
+                )
+            )
         return records
 
 
@@ -289,11 +306,13 @@ def extract_datasets_from_papers(
         extracted = extractor.extract_from_arxiv(arxiv_ids)
     else:
         # Default: try a few recent arXiv papers
-        extracted = extractor.extract_from_arxiv([
-            "2405.12345",
-            "2405.67890",
-            "2406.11111",
-        ])
+        extracted = extractor.extract_from_arxiv(
+            [
+                "2405.12345",
+                "2405.67890",
+                "2406.11111",
+            ]
+        )
 
     return extractor.to_metadata_records(extracted)
 

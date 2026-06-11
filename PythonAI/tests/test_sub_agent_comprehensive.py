@@ -34,6 +34,7 @@ def registry():
 @pytest.fixture
 def agent(registry):
     """Create a basic SubAgent for testing."""
+
     def mock_llm(messages, tools):
         return {"content": "Task complete.", "tool_calls": []}
 
@@ -93,8 +94,10 @@ class TestGetToolPool:
         class MockMCPTool(Tool):
             def __init__(self):
                 super().__init__(name="mcp__test__db", description="MCP DB tool")
+
             def input_schema(self):
                 return InputSchema()
+
             def call(self, input_data, context):
                 return ToolResult(data="ok")
 
@@ -112,6 +115,7 @@ class TestGetToolPool:
     def test_empty_pool_if_no_tools(self):
         """_get_tool_pool should return empty list when no tools available."""
         from src.core.registry import ToolRegistry
+
         empty_registry = ToolRegistry()
         a = SubAgent(
             name="empty",
@@ -195,38 +199,34 @@ class TestExecuteTool:
 
     def test_successful_tool_execution(self, agent):
         """_execute_tool should execute a valid tool and return results."""
-        result = agent._execute_tool({
-            "function": {"name": "bash", "arguments": '{"command": "echo hello"}'}
-        })
+        result = agent._execute_tool({"function": {"name": "bash", "arguments": '{"command": "echo hello"}'}})
         parsed = json.loads(result)
         assert "hello" in str(parsed)
 
     def test_tool_not_found(self, agent):
         """_execute_tool should return error for unknown tools."""
-        result = agent._execute_tool({
-            "function": {"name": "nonexistent_tool_xyz", "arguments": "{}"}
-        })
+        result = agent._execute_tool({"function": {"name": "nonexistent_tool_xyz", "arguments": "{}"}})
         parsed = json.loads(result)
         assert "error" in parsed
         assert "not found" in parsed["error"].lower()
 
     def test_invalid_json_arguments(self, agent):
         """_execute_tool should handle invalid JSON arguments."""
-        result = agent._execute_tool({
-            "function": {"name": "bash", "arguments": "not valid json"}
-        })
+        result = agent._execute_tool({"function": {"name": "bash", "arguments": "not valid json"}})
         # Should not crash — invalid args get wrapped as raw_input
         parsed = json.loads(result)
         assert isinstance(parsed, dict)
 
     def test_tool_raises_exception(self, agent):
         """_execute_tool should handle tool code that raises."""
-        result = agent._execute_tool({
-            "function": {
-                "name": "bash",
-                "arguments": '{"command": "exit 1"}',
+        result = agent._execute_tool(
+            {
+                "function": {
+                    "name": "bash",
+                    "arguments": '{"command": "exit 1"}',
+                }
             }
-        })
+        )
         parsed = json.loads(result)
         # bash exit code 1 should produce an error
         assert isinstance(parsed, dict)
@@ -234,10 +234,12 @@ class TestExecuteTool:
     def test_function_key_variants(self, agent):
         """_execute_tool should handle both 'function' key and flat format."""
         # Flat format (no 'function' key)
-        result = agent._execute_tool({
-            "name": "bash",
-            "arguments": '{"command": "echo flat"}',
-        })
+        result = agent._execute_tool(
+            {
+                "name": "bash",
+                "arguments": '{"command": "echo flat"}',
+            }
+        )
         parsed = json.loads(result)
         assert isinstance(parsed, dict)
 
@@ -316,14 +318,16 @@ class TestMaxStepsExhaustion:
             call_count[0] += 1
             return {
                 "content": "Using a tool...",
-                "tool_calls": [{
-                    "id": "call_1",
-                    "type": "function",
-                    "function": {
-                        "name": "bash",
-                        "arguments": '{"command": "echo hello"}',
-                    },
-                }],
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {
+                            "name": "bash",
+                            "arguments": '{"command": "echo hello"}',
+                        },
+                    }
+                ],
             }
 
         agent = SubAgent(
@@ -372,14 +376,16 @@ class TestMaxStepsExhaustion:
             if call_count[0] <= 1:
                 return {
                     "content": "Thinking...",
-                    "tool_calls": [{
-                        "id": "call_1",
-                        "type": "function",
-                        "function": {
-                            "name": "bash",
-                            "arguments": '{"command": "echo hello"}',
-                        },
-                    }],
+                    "tool_calls": [
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {
+                                "name": "bash",
+                                "arguments": '{"command": "echo hello"}',
+                            },
+                        }
+                    ],
                 }
             return {"content": "Final answer.", "tool_calls": []}
 
@@ -440,9 +446,7 @@ class TestCallLLM:
     @patch("src.core.providers.ProviderRouter")
     @patch("src.core.providers.get_provider_api")
     @patch("src.core.providers.ProfileManager")
-    def test_retry_on_exception_via_router(
-        self, mock_profile_mgr, mock_get_api, mock_router_cls, registry
-    ):
+    def test_retry_on_exception_via_router(self, mock_profile_mgr, mock_get_api, mock_router_cls, registry):
         """_call_llm should retry on transient exceptions via the provider router."""
         call_count = [0]
 
@@ -474,7 +478,8 @@ class TestCallLLM:
         mock_profile_mgr.return_value = mock_profile_mgr_instance
 
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             max_retries=2,
             registry=registry,
@@ -488,9 +493,7 @@ class TestCallLLM:
     @patch("src.core.providers.ProviderRouter")
     @patch("src.core.providers.get_provider_api")
     @patch("src.core.providers.ProfileManager")
-    def test_retry_exhausted_returns_none_via_router(
-        self, mock_profile_mgr, mock_get_api, mock_router_cls, registry
-    ):
+    def test_retry_exhausted_returns_none_via_router(self, mock_profile_mgr, mock_get_api, mock_router_cls, registry):
         """_call_llm should return None after exhausting retries via router."""
         call_count = [0]
 
@@ -519,7 +522,8 @@ class TestCallLLM:
         mock_profile_mgr.return_value = mock_profile_mgr_instance
 
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             max_retries=1,
             registry=registry,
@@ -537,6 +541,7 @@ class TestCallLLM:
         self, mock_profile_mgr, mock_get_api, mock_router_cls, registry
     ):
         """With max_retries=0, a failed call should return None immediately via router."""
+
         def fails(*args, **kwargs):
             raise RuntimeError("Error")
 
@@ -561,7 +566,8 @@ class TestCallLLM:
         mock_profile_mgr.return_value = mock_profile_mgr_instance
 
         agent = SubAgent(
-            name="test", role="coding",
+            name="test",
+            role="coding",
             system_prompt="Test",
             max_retries=0,
             registry=registry,
@@ -585,14 +591,16 @@ class TestRunToolCallParsing:
         def tool_llm(messages, tools):
             return {
                 "content": "Using tool...",
-                "tool_calls": [{
-                    "id": "call_1",
-                    "type": "function",
-                    "function": {
-                        "name": "bash",
-                        "arguments": '{"command": "echo hello"}',
-                    },
-                }],
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {
+                            "name": "bash",
+                            "arguments": '{"command": "echo hello"}',
+                        },
+                    }
+                ],
             }
 
         agent = SubAgent(
@@ -608,7 +616,7 @@ class TestRunToolCallParsing:
         # The tool-use loop needs another LLM call to finish
         # We've set max_tool_calls=4, but the mock always returns a tool call
         # So the safety net should kick in at 4
-        result = agent.run("Do something")
+        agent.run("Do something")
 
         # Stream should have been called at least once
         assert len(stream_log) >= 1
@@ -621,14 +629,16 @@ class TestRunToolCallParsing:
             call_history.append(messages.copy())
             return {
                 "content": "Using tool.",
-                "tool_calls": [{
-                    "id": "call_1",
-                    "type": "function",
-                    "function": {
-                        "name": "bash",
-                        "arguments": '{"command": "echo hello"}',
-                    },
-                }],
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {
+                            "name": "bash",
+                            "arguments": '{"command": "echo hello"}',
+                        },
+                    }
+                ],
             }
 
         agent = SubAgent(
@@ -640,13 +650,14 @@ class TestRunToolCallParsing:
             call_llm_fn=tool_llm,
             on_stream=lambda msg: None,
         )
-        result = agent.run("Do it")
+        agent.run("Do it")
 
         # Messages should contain system + user + assistant + tool + synthesis
         assert len(agent.messages) >= 4
 
     def test_response_without_tool_calls_stops_loop(self, registry):
         """A response without tool calls should stop the reasoning loop."""
+
         def direct_answer(messages, tools):
             return {"content": "Here's the answer.", "tool_calls": []}
 
@@ -673,6 +684,7 @@ class TestRunLLMFailure:
 
     def test_llm_failure_returns_error_result(self, registry):
         """When _call_llm returns None, run() should return a failed result."""
+
         def failing_llm(messages, tools):
             return None  # Simulate exhausted retries
 

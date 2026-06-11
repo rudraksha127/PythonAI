@@ -17,7 +17,7 @@ Usage:
 
     blocks = extract_code_blocks("Some text with ```python\nprint(1)```")
     print(blocks[0].language)  # "python"
-    
+
     ast_info = parse_python_ast("import os\n\ndef foo(): pass")
     print(ast_info["functions"])  # ["foo"]
 """

@@ -43,7 +43,8 @@ def _query_acceptance_rate(db_path: Path, weeks: int = 12) -> list[dict[str, Any
     try:
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
         SELECT
             DATE(timestamp, 'unixepoch') as date,
             SUM(CASE WHEN signal_type = 'accept' OR signal_type = 'pr_merge' THEN 1 ELSE 0 END) as accepts,
@@ -56,7 +57,9 @@ def _query_acceptance_rate(db_path: Path, weeks: int = 12) -> list[dict[str, Any
         WHERE timestamp >= ?
         GROUP BY DATE(timestamp, 'unixepoch')
         ORDER BY date
-        """, (cutoff,))
+        """,
+            (cutoff,),
+        )
         rows = cursor.fetchall()
         conn.close()
     except sqlite3.Error:
@@ -66,16 +69,18 @@ def _query_acceptance_rate(db_path: Path, weeks: int = 12) -> list[dict[str, Any
     for row in rows:
         accepts = row[1]
         total = row[6]
-        data.append({
-            "date": row[0],
-            "accepts": accepts,
-            "rejects": row[2],
-            "edits": row[3],
-            "tests_passed": row[4],
-            "tests_failed": row[5],
-            "total": total,
-            "acceptance_rate": round(accepts / total * 100, 1) if total > 0 else 0,
-        })
+        data.append(
+            {
+                "date": row[0],
+                "accepts": accepts,
+                "rejects": row[2],
+                "edits": row[3],
+                "tests_passed": row[4],
+                "tests_failed": row[5],
+                "total": total,
+                "acceptance_rate": round(accepts / total * 100, 1) if total > 0 else 0,
+            }
+        )
     return data
 
 
@@ -101,11 +106,14 @@ def _query_language_breakdown(db_path: Path, limit: int = 10) -> list[dict[str, 
     try:
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT language, COUNT(*) as cnt
             FROM signals GROUP BY language
             ORDER BY cnt DESC LIMIT ?
-        """, (limit,))
+        """,
+            (limit,),
+        )
         rows = cursor.fetchall()
         conn.close()
         return [{"language": r[0] or "unknown", "count": r[1]} for r in rows]
@@ -133,16 +141,18 @@ def _query_training_runs(db_path: Path) -> list[dict[str, Any]]:
         runs = []
         for r in rows:
             ts = datetime.fromtimestamp(r[1], tz=timezone.utc)
-            runs.append({
-                "run_id": r[0],
-                "date": ts.strftime("%Y-%m-%d"),
-                "model": r[2],
-                "signals_used": r[3],
-                "train_loss": r[4],
-                "eval_loss": r[5],
-                "rate_before": r[6],
-                "rate_after": r[7],
-            })
+            runs.append(
+                {
+                    "run_id": r[0],
+                    "date": ts.strftime("%Y-%m-%d"),
+                    "model": r[2],
+                    "signals_used": r[3],
+                    "train_loss": r[4],
+                    "eval_loss": r[5],
+                    "rate_before": r[6],
+                    "rate_after": r[7],
+                }
+            )
         return runs
     except sqlite3.Error:
         return []
@@ -198,7 +208,7 @@ def _compute_rolling_average(data: list[dict[str, Any]], window: int = 7) -> lis
         if i < window - 1:
             result.append(None)
         else:
-            window_vals = rates[i - window + 1:i + 1]
+            window_vals = rates[i - window + 1 : i + 1]
             result.append(round(sum(window_vals) / len(window_vals), 1))
     return result
 
@@ -227,14 +237,14 @@ def _build_training_runs_table(runs: list[dict[str, Any]]) -> str:
 
     rows_html = ""
     for r in runs:
-        before = f"{r['rate_before']:.1f}%" if r['rate_before'] else "\u2014"
-        after = f"{r['rate_after']:.1f}%" if r['rate_after'] else "\u2014"
-        tl = f"{r['train_loss']:.4f}" if r['train_loss'] else "\u2014"
-        el = f"{r['eval_loss']:.4f}" if r['eval_loss'] else "\u2014"
+        before = f"{r['rate_before']:.1f}%" if r["rate_before"] else "\u2014"
+        after = f"{r['rate_after']:.1f}%" if r["rate_after"] else "\u2014"
+        tl = f"{r['train_loss']:.4f}" if r["train_loss"] else "\u2014"
+        el = f"{r['eval_loss']:.4f}" if r["eval_loss"] else "\u2014"
 
         delta = ""
-        if r['rate_before'] and r['rate_after']:
-            diff = r['rate_after'] - r['rate_before']
+        if r["rate_before"] and r["rate_after"]:
+            diff = r["rate_after"] - r["rate_before"]
             arrow = "\u2191" if diff > 0 else "\u2193"
             color = "var(--accent-emerald)" if diff > 0 else "var(--accent-rose)"
             delta = f'<span style="color: {color};">{arrow} {diff:+.1f}%</span>'
@@ -302,28 +312,34 @@ def _generate_demo_data() -> dict[str, Any]:
             edits = 0
             rejects = total - accepts
 
-        daily_data.append({
-            "date": d,
-            "accepts": accepts,
-            "rejects": max(0, rejects),
-            "edits": edits,
-            "tests_passed": random.randint(0, accepts),
-            "tests_failed": random.randint(0, max(1, total - accepts)),
-            "total": total,
-            "acceptance_rate": round(accepts / total * 100, 1) if total > 0 else 0,
-        })
+        daily_data.append(
+            {
+                "date": d,
+                "accepts": accepts,
+                "rejects": max(0, rejects),
+                "edits": edits,
+                "tests_passed": random.randint(0, accepts),
+                "tests_failed": random.randint(0, max(1, total - accepts)),
+                "total": total,
+                "acceptance_rate": round(accepts / total * 100, 1) if total > 0 else 0,
+            }
+        )
 
     languages = ["python", "javascript", "typescript", "go", "rust", "java", "cpp", "ruby"]
     lang_data = [{"language": lang, "count": random.randint(10, 200)} for lang in languages]
     lang_data.sort(key=lambda x: -x["count"])
 
     training_runs = [
-        {"run_id": f"run_{i:03d}", "date": (today - timedelta(days=i * 7)).isoformat(),
-         "model": "Qwen3-Coder-14B", "signals_used": random.randint(100, 800),
-         "train_loss": round(random.uniform(0.3, 1.2), 4),
-         "eval_loss": round(random.uniform(0.4, 1.4), 4),
-         "rate_before": round(max(20, 70 - i * 3 + random.uniform(-5, 5)), 1),
-         "rate_after": round(max(25, 73 - i * 3 + random.uniform(-3, 3)), 1)}
+        {
+            "run_id": f"run_{i:03d}",
+            "date": (today - timedelta(days=i * 7)).isoformat(),
+            "model": "Qwen3-Coder-14B",
+            "signals_used": random.randint(100, 800),
+            "train_loss": round(random.uniform(0.3, 1.2), 4),
+            "eval_loss": round(random.uniform(0.4, 1.4), 4),
+            "rate_before": round(max(20, 70 - i * 3 + random.uniform(-5, 5)), 1),
+            "rate_after": round(max(25, 73 - i * 3 + random.uniform(-3, 3)), 1),
+        }
         for i in range(10, 0, -1)
     ]
 
@@ -338,10 +354,16 @@ def _generate_demo_data() -> dict[str, Any]:
         },
         "language_data": lang_data,
         "training_runs": training_runs,
-        "sessions": {"total_sessions": 145, "unique_developers": 5, "total_signals": sum(d["total"] for d in daily_data),
-                     "total_accepts": sum(d["accepts"] for d in daily_data),
-                     "total_rejects": sum(d["rejects"] for d in daily_data),
-                     "overall_rate": round(sum(d["accepts"] for d in daily_data) / max(1, sum(d["total"] for d in daily_data)) * 100, 1)},
+        "sessions": {
+            "total_sessions": 145,
+            "unique_developers": 5,
+            "total_signals": sum(d["total"] for d in daily_data),
+            "total_accepts": sum(d["accepts"] for d in daily_data),
+            "total_rejects": sum(d["rejects"] for d in daily_data),
+            "overall_rate": round(
+                sum(d["accepts"] for d in daily_data) / max(1, sum(d["total"] for d in daily_data)) * 100, 1
+            ),
+        },
     }
 
 
@@ -401,8 +423,8 @@ def generate_dashboard(
 
     # Language data
     lang = data.get("language_data", [])
-    lang_labels = json.dumps([l["language"] for l in lang])
-    lang_values = json.dumps([l["count"] for l in lang])
+    lang_labels = json.dumps([ln["language"] for ln in lang])
+    lang_values = json.dumps([ln["count"] for ln in lang])
 
     # Sessions
     if demo:
@@ -906,14 +928,10 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="ForgeAI Acceptance Rate Dashboard Generator")
-    parser.add_argument("--output", "-o", default="forge_dashboard.html",
-                        help="Output HTML file path")
-    parser.add_argument("--weeks", "-w", type=int, default=12,
-                        help="Number of weeks to display (default: 12)")
-    parser.add_argument("--demo", action="store_true",
-                        help="Generate with synthetic demo data")
-    parser.add_argument("--open", action="store_true",
-                        help="Open dashboard in browser after generating")
+    parser.add_argument("--output", "-o", default="forge_dashboard.html", help="Output HTML file path")
+    parser.add_argument("--weeks", "-w", type=int, default=12, help="Number of weeks to display (default: 12)")
+    parser.add_argument("--demo", action="store_true", help="Generate with synthetic demo data")
+    parser.add_argument("--open", action="store_true", help="Open dashboard in browser after generating")
 
     args = parser.parse_args()
 
@@ -925,6 +943,7 @@ if __name__ == "__main__":
 
     if args.open:
         import webbrowser
+
         path = Path(args.output).resolve()
         webbrowser.open(path.as_uri())
         print(f"[ForgeAI] Opened dashboard: {path.as_uri()}")

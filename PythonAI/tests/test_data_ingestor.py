@@ -31,20 +31,24 @@ class TestParseSOData:
         so_dir = tmp_path / "stackoverflow"
         so_dir.mkdir(parents=True)
         q_file = so_dir / "so_top_python.json"
-        q_file.write_text(json.dumps([
-            {
-                "question_id": 12345,
-                "title": "How to use Python lists?",
-                "body": "<p>I want to use <b>lists</b> in Python.</p>",
-                "tags": ["python", "list"],
-            },
-            {
-                "question_id": 12346,
-                "title": "What is a dict?",
-                "body": "Explain dictionaries in Python.",
-                "tags": ["python", "dictionary"],
-            },
-        ]))
+        q_file.write_text(
+            json.dumps(
+                [
+                    {
+                        "question_id": 12345,
+                        "title": "How to use Python lists?",
+                        "body": "<p>I want to use <b>lists</b> in Python.</p>",
+                        "tags": ["python", "list"],
+                    },
+                    {
+                        "question_id": 12346,
+                        "title": "What is a dict?",
+                        "body": "Explain dictionaries in Python.",
+                        "tags": ["python", "dictionary"],
+                    },
+                ]
+            )
+        )
 
         with patch("src.data.ingestor.SO_DIR", so_dir):
             chunks = parse_so_data()
@@ -62,13 +66,17 @@ class TestParseSOData:
         so_dir = tmp_path / "stackoverflow"
         so_dir.mkdir(parents=True)
         q_file = so_dir / "so_top_test.json"
-        q_file.write_text(json.dumps([
-            {
-                "question_id": 1,
-                "title": "Test",
-                "body": "<p>Hello <b>World</b> <a href='x'>link</a></p>",
-            },
-        ]))
+        q_file.write_text(
+            json.dumps(
+                [
+                    {
+                        "question_id": 1,
+                        "title": "Test",
+                        "body": "<p>Hello <b>World</b> <a href='x'>link</a></p>",
+                    },
+                ]
+            )
+        )
 
         with patch("src.data.ingestor.SO_DIR", so_dir):
             chunks = parse_so_data()
@@ -83,13 +91,17 @@ class TestParseSOData:
         so_dir = tmp_path / "stackoverflow"
         so_dir.mkdir(parents=True)
         a_file = so_dir / "so_answers_python.json"
-        a_file.write_text(json.dumps([
-            {
-                "answer_id": 999,
-                "question_id": 12345,
-                "body": "You can use the <code>list.append()</code> method.",
-            },
-        ]))
+        a_file.write_text(
+            json.dumps(
+                [
+                    {
+                        "answer_id": 999,
+                        "question_id": 12345,
+                        "body": "You can use the <code>list.append()</code> method.",
+                    },
+                ]
+            )
+        )
 
         with patch("src.data.ingestor.SO_DIR", so_dir):
             chunks = parse_so_data()
@@ -105,12 +117,20 @@ class TestParseSOData:
         so_dir = tmp_path / "stackoverflow"
         so_dir.mkdir(parents=True)
 
-        (so_dir / "so_top_test.json").write_text(json.dumps([
-            {"question_id": 1, "title": "Q1", "body": "Body1"},
-        ]))
-        (so_dir / "so_answers_test.json").write_text(json.dumps([
-            {"answer_id": 2, "question_id": 1, "body": "Answer1"},
-        ]))
+        (so_dir / "so_top_test.json").write_text(
+            json.dumps(
+                [
+                    {"question_id": 1, "title": "Q1", "body": "Body1"},
+                ]
+            )
+        )
+        (so_dir / "so_answers_test.json").write_text(
+            json.dumps(
+                [
+                    {"answer_id": 2, "question_id": 1, "body": "Answer1"},
+                ]
+            )
+        )
 
         with patch("src.data.ingestor.SO_DIR", so_dir):
             chunks = parse_so_data()
@@ -135,10 +155,14 @@ class TestParseSOData:
         so_dir = tmp_path / "stackoverflow"
         so_dir.mkdir(parents=True)
         q_file = so_dir / "so_top_test.json"
-        q_file.write_text(json.dumps([
-            {"question_id": 1, "title": "Test", "body": "Body"},
-            {"question_id": 2},  # Missing title and body
-        ]))
+        q_file.write_text(
+            json.dumps(
+                [
+                    {"question_id": 1, "title": "Test", "body": "Body"},
+                    {"question_id": 2},  # Missing title and body
+                ]
+            )
+        )
 
         with patch("src.data.ingestor.SO_DIR", so_dir):
             chunks = parse_so_data()
@@ -151,9 +175,13 @@ class TestParseSOData:
         so_dir = tmp_path / "stackoverflow"
         so_dir.mkdir(parents=True)
         q_file = so_dir / "so_top_test.json"
-        q_file.write_text(json.dumps([
-            {"question_id": 1, "title": "Test", "body": "Body"},
-        ]))
+        q_file.write_text(
+            json.dumps(
+                [
+                    {"question_id": 1, "title": "Test", "body": "Body"},
+                ]
+            )
+        )
 
         with patch("src.data.ingestor.SO_DIR", so_dir):
             chunks = parse_so_data()
@@ -179,18 +207,22 @@ class TestParseGitHubData:
         gh_dir = tmp_path / "github_code"
         gh_dir.mkdir(parents=True)
         repo_file = gh_dir / "repos.json"
-        repo_file.write_text(json.dumps([
-            {
-                "name": "requests",
-                "description": "HTTP library for Python",
-                "topics": ["http", "python", "library"],
-            },
-            {
-                "name": "flask",
-                "description": "Web framework",
-                "topics": ["web", "python"],
-            },
-        ]))
+        repo_file.write_text(
+            json.dumps(
+                [
+                    {
+                        "name": "requests",
+                        "description": "HTTP library for Python",
+                        "topics": ["http", "python", "library"],
+                    },
+                    {
+                        "name": "flask",
+                        "description": "Web framework",
+                        "topics": ["web", "python"],
+                    },
+                ]
+            )
+        )
 
         with patch("src.data.ingestor.GITHUB_DIR", gh_dir):
             chunks = parse_github_data()
@@ -208,9 +240,13 @@ class TestParseGitHubData:
         gh_dir = tmp_path / "github_code"
         gh_dir.mkdir(parents=True)
         repo_file = gh_dir / "repos.json"
-        repo_file.write_text(json.dumps([
-            {"name": "empty-repo"},
-        ]))
+        repo_file.write_text(
+            json.dumps(
+                [
+                    {"name": "empty-repo"},
+                ]
+            )
+        )
 
         with patch("src.data.ingestor.GITHUB_DIR", gh_dir):
             chunks = parse_github_data()
@@ -237,9 +273,13 @@ class TestParseGitHubData:
         gh_dir = tmp_path / "github_code"
         gh_dir.mkdir(parents=True)
         repo_file = gh_dir / "repos.json"
-        repo_file.write_text(json.dumps([
-            {"name": "tool", "description": "A tool"},
-        ]))
+        repo_file.write_text(
+            json.dumps(
+                [
+                    {"name": "tool", "description": "A tool"},
+                ]
+            )
+        )
 
         with patch("src.data.ingestor.GITHUB_DIR", gh_dir):
             chunks = parse_github_data()
@@ -250,12 +290,20 @@ class TestParseGitHubData:
         """Should parse multiple JSON files in the directory."""
         gh_dir = tmp_path / "github_code"
         gh_dir.mkdir(parents=True)
-        (gh_dir / "python_repos.json").write_text(json.dumps([
-            {"name": "requests", "description": "HTTP"},
-        ]))
-        (gh_dir / "web_repos.json").write_text(json.dumps([
-            {"name": "flask", "description": "Web"},
-        ]))
+        (gh_dir / "python_repos.json").write_text(
+            json.dumps(
+                [
+                    {"name": "requests", "description": "HTTP"},
+                ]
+            )
+        )
+        (gh_dir / "web_repos.json").write_text(
+            json.dumps(
+                [
+                    {"name": "flask", "description": "Web"},
+                ]
+            )
+        )
 
         with patch("src.data.ingestor.GITHUB_DIR", gh_dir):
             chunks = parse_github_data()
@@ -312,12 +360,20 @@ class TestIngestorEdgeCases:
         gh_dir = tmp_path / "github_code"
         gh_dir.mkdir(parents=True)
 
-        (so_dir / "so_top_test.json").write_text(json.dumps([
-            {"question_id": 1, "title": "Q", "body": "Body"},
-        ]))
-        (gh_dir / "repos.json").write_text(json.dumps([
-            {"name": "repo", "description": "Desc"},
-        ]))
+        (so_dir / "so_top_test.json").write_text(
+            json.dumps(
+                [
+                    {"question_id": 1, "title": "Q", "body": "Body"},
+                ]
+            )
+        )
+        (gh_dir / "repos.json").write_text(
+            json.dumps(
+                [
+                    {"name": "repo", "description": "Desc"},
+                ]
+            )
+        )
 
         with patch("src.data.ingestor.SO_DIR", so_dir):
             with patch("src.data.ingestor.GITHUB_DIR", gh_dir):

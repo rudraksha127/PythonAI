@@ -48,6 +48,7 @@ BASE_DATA_DIR = Path(os.environ.get("DATA_DIR", "D:/PythonAI_Data"))
 # Rate Limiter
 # ════════════════════════════════════════════
 
+
 class RateLimiter:
     """Simple token-bucket rate limiter."""
 
@@ -72,6 +73,7 @@ ProgressCallback = Callable[[str, int, int], None]  # dataset_id, current, total
 # ════════════════════════════════════════════
 # Core Downloader
 # ════════════════════════════════════════════
+
 
 class DownloadOrchestrator:
     """
@@ -102,6 +104,7 @@ class DownloadOrchestrator:
     async def _ensure_session(self):
         if self._session is None:
             import aiohttp
+
             self._session = aiohttp.ClientSession(
                 timeout=aiohttp.ClientTimeout(total=600),
                 headers={"User-Agent": "PythonAI-Collector/1.0"},
@@ -127,8 +130,7 @@ class DownloadOrchestrator:
         result = await self._dispatch_download(record)
         return result
 
-    async def download_week(self, phase: int, week: int,
-                            datasets: list[str] | None = None) -> list[dict[str, Any]]:
+    async def download_week(self, phase: int, week: int, datasets: list[str] | None = None) -> list[dict[str, Any]]:
         """Download all datasets for a given phase+week, or a filtered subset."""
         targets = self.metadata.list_by_week(phase, week)
         if datasets:
@@ -146,8 +148,7 @@ class DownloadOrchestrator:
 
         return results
 
-    async def download_all_phase(self, phase: int,
-                                  datasets: list[str] | None = None) -> list[dict[str, Any]]:
+    async def download_all_phase(self, phase: int, datasets: list[str] | None = None) -> list[dict[str, Any]]:
         """Download all datasets for a given phase."""
         results = []
         for week in range(1, 5):
@@ -276,10 +277,13 @@ class DownloadOrchestrator:
                 # Download parquet file (non-blocking)
                 loop = asyncio.get_event_loop()
                 local_path = await loop.run_in_executor(
-                    None, lambda f=pf: hf_hub_download(
-                        repo_id=repo, filename=f,
-                        repo_type="dataset", local_dir=out_dir / ".hf_cache",
-                    )
+                    None,
+                    lambda f=pf: hf_hub_download(
+                        repo_id=repo,
+                        filename=f,
+                        repo_type="dataset",
+                        local_dir=out_dir / ".hf_cache",
+                    ),
                 )
 
                 # Read parquet and write as JSONL (non-blocking)
@@ -309,8 +313,7 @@ class DownloadOrchestrator:
         return {"records": total_records, "bytes": total_bytes, "file": str(output_file)}
 
     async def _download_hf_jsonl(
-        self, record: DatasetRecord, out_dir: Path,
-        jsonl_files: list[str], repo: str, max_records: int
+        self, record: DatasetRecord, out_dir: Path, jsonl_files: list[str], repo: str, max_records: int
     ) -> dict[str, Any]:
         """Download JSONL/JSON files directly from HuggingFace Hub."""
         from huggingface_hub import hf_hub_download
@@ -327,10 +330,13 @@ class DownloadOrchestrator:
 
                 loop = asyncio.get_event_loop()
                 local_path = await loop.run_in_executor(
-                    None, lambda f=jf: hf_hub_download(
-                        repo_id=repo, filename=f,
-                        repo_type="dataset", local_dir=out_dir / ".hf_cache",
-                    )
+                    None,
+                    lambda f=jf: hf_hub_download(
+                        repo_id=repo,
+                        filename=f,
+                        repo_type="dataset",
+                        local_dir=out_dir / ".hf_cache",
+                    ),
                 )
 
                 with open(local_path, encoding="utf-8") as jf_reader:
@@ -357,7 +363,6 @@ class DownloadOrchestrator:
         temp_file.rename(output_file)
         self.log_callback(f"  Saved {total_records:,} records from JSONL to {output_file}")
         return {"records": total_records, "bytes": total_bytes, "file": str(output_file)}
-
 
     # ── HTTP downloader with resume ──────────────────────────────
 
@@ -406,7 +411,9 @@ class DownloadOrchestrator:
 
     # ── Git LFS downloader ───────────────────────────────────────
 
-    async def _run_cmd(self, cmd: list[str], check: bool = False, cwd: Path | None = None) -> subprocess.CompletedProcess:
+    async def _run_cmd(
+        self, cmd: list[str], check: bool = False, cwd: Path | None = None
+    ) -> subprocess.CompletedProcess:
         """Run a subprocess in a thread to avoid blocking the event loop."""
         return await asyncio.get_event_loop().run_in_executor(
             None,
@@ -451,6 +458,7 @@ class DownloadOrchestrator:
         # Try boto3 first, fallback to HTTP
         try:
             import boto3
+
             s3 = boto3.client("s3")
             filename = key.split("/")[-1] or f"{record.id}.data"
             output_path = out_dir / filename
@@ -557,6 +565,7 @@ class DownloadOrchestrator:
 # Utility: decompress downloaded archives
 # ════════════════════════════════════════════
 
+
 def decompress_file(path: Path, output_dir: Path | None = None, log: Callable[[str], None] | None = None) -> list[Path]:
     """Decompress a downloaded file (gzip, zip, zstd). Returns list of extracted files."""
     log = log or print
@@ -579,6 +588,7 @@ def decompress_file(path: Path, output_dir: Path | None = None, log: Callable[[s
     elif suffix == ".zst":
         try:
             import pyzstd
+
             output_path = output_dir / path.stem.replace(".tar", "")
             with open(path, "rb") as f:
                 compressed = f.read()

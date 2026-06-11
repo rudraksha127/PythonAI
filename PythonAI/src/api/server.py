@@ -52,6 +52,7 @@ from src.utils.metrics import metrics
 # Cloud backend (optional — graceful if not configured)
 try:
     from src.api.cloud_routes import router as cloud_router
+
     _CLOUD_AVAILABLE = True
 except ImportError:
     _CLOUD_AVAILABLE = False
@@ -84,6 +85,7 @@ _schedule_config: dict[str, Any] = {
     "next_run": None,
     "total_runs": 0,
 }
+
 
 # ═══════════════════════════════════════
 # Rate Limiter (in-memory token bucket)
@@ -123,6 +125,7 @@ class _TokenBucket:
             return 0.0
         return max(0.0, (1.0 - tokens) / self.refill_per_sec)
 
+
 _rate_limiter = _TokenBucket(capacity=30, refill_per_sec=1.0)
 
 # ═══════════════════════════════════════
@@ -132,10 +135,12 @@ _MAX_QUESTION_LENGTH = 2000
 _MAX_HISTORY_LENGTH = 20
 _MAX_HISTORY_MSG_LENGTH = 1000
 
+
 def _sanitize_text(text: str, max_len: int) -> str:
     text = text.strip()
     text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
     return text[:max_len]
+
 
 # ═══════════════════════════════════════
 # Lifespan — startup & shutdown
@@ -167,6 +172,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("Training scheduler shut down.")
     logger.info("ForgeAI server shutting down.")
 
+
 # ═══════════════════════════════════════
 # App
 # ═══════════════════════════════════════
@@ -193,6 +199,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ── Security Headers + Rate Limit Middleware ──
 @app.middleware("http")
 async def _security_headers(request: Request, call_next: Any) -> Response:
@@ -218,17 +225,21 @@ async def _security_headers(request: Request, call_next: Any) -> Response:
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     response.headers["Server"] = "ForgeAI"
 
-    logger.info(f"[{request_id}] {request.method} {request.url.path} from={client_ip} status={response.status_code} time={elapsed_ms:.0f}ms")
+    logger.info(
+        f"[{request_id}] {request.method} {request.url.path} from={client_ip} status={response.status_code} time={elapsed_ms:.0f}ms"
+    )
     try:
         metrics.record_api_request(request.url.path, request.method, response.status_code, elapsed_ms)
     except Exception:
         pass
     return response
 
+
 _start_time = time.time()
 
 # ── Global DB cache ──
 _db_cache: Any = None
+
 
 def get_db() -> Any:
     global _db_cache
@@ -237,12 +248,15 @@ def get_db() -> Any:
         _db_cache = load_or_build_db()
     return _db_cache
 
+
 # ═══════════════════════════════════════
 # Request / Response Models
 # ═══════════════════════════════════════
 
+
 class EventPayload(BaseModel):
     """Event from VS Code extension."""
+
     event_type: str = Field(..., description="accept, reject, edit, pr_merge, test_pass, test_fail")
     session_id: str
     project_id: str
@@ -268,6 +282,7 @@ class EventPayload(BaseModel):
             raise ValueError(f"Invalid event_type. Must be one of: {valid}")
         return v
 
+
 class AskRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=_MAX_QUESTION_LENGTH)
     model: str = Field(default="", max_length=100)
@@ -279,6 +294,7 @@ class AskRequest(BaseModel):
     @classmethod
     def _clean_question(cls, v: str) -> str:
         return _sanitize_text(v, _MAX_QUESTION_LENGTH)
+
 
 class ChatRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=_MAX_QUESTION_LENGTH)
@@ -298,20 +314,24 @@ class ChatRequest(BaseModel):
                 msg["content"] = _sanitize_text(msg["content"], _MAX_HISTORY_MSG_LENGTH)
         return trimmed
 
+
 class RAGSearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=500)
     project_id: str
     strategy: str = Field(default="hybrid", description="hybrid, vector, graph, agentic")
     k: int = Field(default=10, ge=1, le=50)
 
+
 class IndexRequest(BaseModel):
     project_id: str
     repo_path: str
     force_reindex: bool = False
 
+
 # ═══════════════════════════════════════
 # Endpoints
 # ═══════════════════════════════════════
+
 
 @app.get("/health")
 async def health_check() -> dict[str, Any]:
@@ -327,8 +347,11 @@ async def health_check() -> dict[str, Any]:
             "enabled": _schedule_config["enabled"],
             "next_run": _schedule_config["next_run"],
             "total_runs": _schedule_config["total_runs"],
-        } if _scheduler and _scheduler.running else {"enabled": False, "status": "not_running"},
+        }
+        if _scheduler and _scheduler.running
+        else {"enabled": False, "status": "not_running"},
     }
+
 
 @app.get("/stats")
 async def get_stats() -> dict[str, Any]:
@@ -351,12 +374,15 @@ async def get_stats() -> dict[str, Any]:
         "avg_edit_distance": 0.0,
     }
 
+
 @app.get("/metrics")
 async def get_metrics() -> dict[str, Any]:
     """Performance metrics for monitoring."""
     return metrics.get_summary()
 
+
 # ─── Capture Engine Endpoints ───────────────────────────────────────
+
 
 @app.post("/api/events")
 async def capture_event(payload: EventPayload) -> dict[str, Any]:
@@ -436,18 +462,21 @@ async def capture_event(payload: EventPayload) -> dict[str, Any]:
         logger.info(f"Captured {payload.event_type} event: {signal_id} in {elapsed_ms:.1f}ms")
 
         # Broadcast to dashboard clients
-        await _broadcast_to_dashboards({
-            "type": "event_captured",
-            "event_type": payload.event_type,
-            "signal_id": signal_id,
-            "timestamp": time.time(),
-        })
+        await _broadcast_to_dashboards(
+            {
+                "type": "event_captured",
+                "event_type": payload.event_type,
+                "signal_id": signal_id,
+                "timestamp": time.time(),
+            }
+        )
 
         return {"event_id": signal_id, "captured": True}
 
     except Exception as e:
         logger.error(f"Error capturing event: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to capture event")
+
 
 @app.get("/api/metrics/acceptance-rate")
 async def get_acceptance_rate(project_id: str | None = None, weeks: int = 12) -> dict[str, Any]:
@@ -461,11 +490,11 @@ async def get_acceptance_rate(project_id: str | None = None, weeks: int = 12) ->
     # Compute training run markers
     runs = _capture_engine.get_training_runs(limit=20)
     markers = [
-        {"timestamp": r["timestamp"], "delta": r["acceptance_delta"], "signals": r["signals_used"]}
-        for r in runs
+        {"timestamp": r["timestamp"], "delta": r["acceptance_delta"], "signals": r["signals_used"]} for r in runs
     ]
 
     return {"data": rates, "training_markers": markers}
+
 
 @app.get("/api/training/status")
 async def get_training_status(project_id: str | None = None) -> dict[str, Any]:
@@ -479,6 +508,7 @@ async def get_training_status(project_id: str | None = None) -> dict[str, Any]:
         "active_run": _active_training_run,
         "history": history,
     }
+
 
 @app.post("/api/training/trigger")
 async def trigger_training(project_id: str | None = None) -> dict[str, Any]:
@@ -500,14 +530,18 @@ async def trigger_training(project_id: str | None = None) -> dict[str, Any]:
     }
 
     # Broadcast start
-    await _broadcast_to_dashboards({
-        "type": "training_started",
-        "run_id": run_id,
-    })
+    await _broadcast_to_dashboards(
+        {
+            "type": "training_started",
+            "run_id": run_id,
+        }
+    )
 
     return {"run_id": run_id, "status": "queued"}
 
+
 # ─── WebSocket Endpoints ───────────────────────────────────────────
+
 
 @app.websocket("/ws/events")
 async def websocket_events(websocket: WebSocket):
@@ -579,12 +613,14 @@ async def websocket_events(websocket: WebSocket):
                 await websocket.send_json({"event_id": signal_id, "captured": True})
 
                 # Broadcast to dashboards
-                await _broadcast_to_dashboards({
-                    "type": "event_captured",
-                    "event_type": payload.event_type,
-                    "signal_id": signal_id,
-                    "timestamp": time.time(),
-                })
+                await _broadcast_to_dashboards(
+                    {
+                        "type": "event_captured",
+                        "event_type": payload.event_type,
+                        "signal_id": signal_id,
+                        "timestamp": time.time(),
+                    }
+                )
 
             except Exception as e:
                 logger.error(f"Error processing WebSocket event: {e}")
@@ -592,6 +628,7 @@ async def websocket_events(websocket: WebSocket):
 
     except WebSocketDisconnect:
         logger.info("VS Code extension disconnected")
+
 
 @app.websocket("/ws/training-progress")
 async def websocket_training_progress(websocket: WebSocket):
@@ -612,6 +649,7 @@ async def websocket_training_progress(websocket: WebSocket):
     finally:
         if websocket in _ws_clients:
             _ws_clients.remove(websocket)
+
 
 # ═══════════════════════════════════════
 # Training Scheduler (APScheduler)
@@ -675,10 +713,12 @@ async def _run_scheduled_training():
 
     try:
         # Broadcast start
-        await _broadcast_to_dashboards({
-            "type": "training_started",
-            "run_id": run_id,
-        })
+        await _broadcast_to_dashboards(
+            {
+                "type": "training_started",
+                "run_id": run_id,
+            }
+        )
 
         # Log the scheduled run
         _schedule_config["last_run"] = time.time()
@@ -756,6 +796,7 @@ async def get_training_schedule() -> dict[str, Any]:
 
 class ScheduleUpdate(BaseModel):
     """Update the training cron schedule."""
+
     enabled: bool | None = None
     cron: str | None = Field(
         default=None,
@@ -803,13 +844,15 @@ async def update_training_schedule(body: ScheduleUpdate) -> dict[str, Any]:
         "cron": _schedule_config["cron"],
         "description": _schedule_config["description"],
         "next_run": _schedule_config["next_run"],
-        "message": "Schedule updated" + (" and scheduler restarted." if _schedule_config["enabled"] else ". Scheduler paused."),
+        "message": "Schedule updated"
+        + (" and scheduler restarted." if _schedule_config["enabled"] else ". Scheduler paused."),
     }
 
 
 # ═══════════════════════════════════════
 # WebSocket Broadcast helper
 # ═══════════════════════════════════════
+
 
 async def _broadcast_to_dashboards(message: dict[str, Any]):
     """Broadcast a message to all connected dashboard clients."""
@@ -825,7 +868,9 @@ async def _broadcast_to_dashboards(message: dict[str, Any]):
         if client in _ws_clients:
             _ws_clients.remove(client)
 
+
 # ─── RAG Endpoints ─────────────────────────────────────────────────
+
 
 @app.post("/api/rag/search")
 async def rag_search(request: RAGSearchRequest) -> dict[str, Any]:
@@ -867,6 +912,7 @@ async def rag_search(request: RAGSearchRequest) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"RAG search error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="RAG search failed")
+
 
 @app.post("/api/rag/index")
 async def rag_index(request: IndexRequest) -> dict[str, Any]:
@@ -917,7 +963,9 @@ async def rag_stats() -> dict[str, Any]:
             "last_indexed": None,
         }
 
+
 # ─── Agent Endpoints ───────────────────────────────────────────────
+
 
 @app.post("/api/agent/chat")
 async def agent_chat(request: ChatRequest) -> StreamingResponse:
@@ -925,6 +973,7 @@ async def agent_chat(request: ChatRequest) -> StreamingResponse:
     Agent chat with streaming response (SSE).
     Routes to fast/balanced/powerful model based on task complexity.
     """
+
     async def generate() -> AsyncGenerator[str, None]:
         try:
             coll, embedder, bm25, corpus, _ = get_db()
@@ -960,7 +1009,9 @@ async def agent_chat(request: ChatRequest) -> StreamingResponse:
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
+
 # ─── Basic RAG Endpoints (backward compatibility) ──────────────────
+
 
 @app.post("/ask")
 async def ask_question(request: AskRequest) -> dict[str, Any]:
@@ -994,6 +1045,7 @@ async def ask_question(request: AskRequest) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Error answering question: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @app.post("/chat")
 async def chat(request: ChatRequest) -> dict[str, Any]:
@@ -1084,6 +1136,7 @@ async def get_seal_status():
 
 class ProjectResponse(BaseModel):
     """Full project record returned to the dashboard."""
+
     id: str
     name: str
     repo_path: str
@@ -1100,6 +1153,7 @@ class ProjectResponse(BaseModel):
 
 class ProjectCreate(BaseModel):
     """Input model for creating a new project."""
+
     name: str = Field(..., min_length=1, max_length=200, description="Human-readable project name")
     repo_path: str = Field(..., min_length=1, max_length=2000, description="Absolute path to the git repository")
     languages: list[str] = Field(default_factory=list, description="Programming languages detected")
@@ -1112,6 +1166,7 @@ class ProjectCreate(BaseModel):
 
 class ProjectUpdate(BaseModel):
     """Input model for updating an existing project. All fields optional."""
+
     name: str | None = Field(default=None, min_length=1, max_length=200)
     repo_path: str | None = Field(default=None, min_length=1, max_length=2000)
     languages: list[str] | None = None
@@ -1167,10 +1222,10 @@ def _row_to_project(row: tuple) -> dict[str, Any]:
     }
 
 
-
 # ═══════════════════════════════════════
 # Projects — CRUD Endpoints
 # ═══════════════════════════════════════
+
 
 @app.get("/api/projects", response_model=list[ProjectResponse])
 async def get_projects() -> list[ProjectResponse]:
@@ -1215,12 +1270,25 @@ async def create_project(body: ProjectCreate) -> dict[str, Any]:
                         break
                     if f.is_file() and f.suffix:
                         ext_map = {
-                            ".py": "python", ".js": "javascript", ".ts": "typescript",
-                            ".jsx": "javascript", ".tsx": "typescript", ".go": "go",
-                            ".rs": "rust", ".java": "java", ".rb": "ruby",
-                            ".cpp": "cpp", ".c": "c", ".h": "c", ".hpp": "cpp",
-                            ".cs": "csharp", ".swift": "swift", ".kt": "kotlin",
-                            ".scala": "scala", ".php": "php", ".sql": "sql",
+                            ".py": "python",
+                            ".js": "javascript",
+                            ".ts": "typescript",
+                            ".jsx": "javascript",
+                            ".tsx": "typescript",
+                            ".go": "go",
+                            ".rs": "rust",
+                            ".java": "java",
+                            ".rb": "ruby",
+                            ".cpp": "cpp",
+                            ".c": "c",
+                            ".h": "c",
+                            ".hpp": "cpp",
+                            ".cs": "csharp",
+                            ".swift": "swift",
+                            ".kt": "kotlin",
+                            ".scala": "scala",
+                            ".php": "php",
+                            ".sql": "sql",
                         }
                         lang = ext_map.get(f.suffix.lower())
                         if lang:
@@ -1403,7 +1471,7 @@ if _CLOUD_AVAILABLE and cloud_router is not None:
     logger.info("Cloud routes registered")
 
 # ── Include Learning Routes ────────────────────────────────────
-from src.api.learning_routes import router as learning_router
+from src.api.learning_routes import router as learning_router  # noqa: E402
 
 app.include_router(learning_router)
 logger.info("Learning routes registered")
@@ -1414,4 +1482,5 @@ logger.info("Learning routes registered")
 # ═══════════════════════════════════════
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="127.0.0.1", port=7337)

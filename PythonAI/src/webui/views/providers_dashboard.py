@@ -12,7 +12,8 @@ import streamlit as st
 
 def render() -> None:
     """Render the provider routing dashboard page."""
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     .prov-card {
         background: rgba(28, 28, 40, 0.8);
@@ -42,7 +43,9 @@ def render() -> None:
     .route-box .label { font-size: 0.7rem; color: rgba(255,255,255,0.4); text-transform: uppercase; }
     .route-box .value { font-size: 1rem; font-weight: 700; color: #00d2ff; }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     st.title("Provider Routing Dashboard")
     st.caption("Multi-provider routing, model availability, and API key configuration")
@@ -93,15 +96,13 @@ def _render_current_route() -> None:
         with col3:
             strategy = profile.strategy if profile else "auto"
             st.markdown(
-                f'<div class="route-box"><div class="label">Strategy</div>'
-                f'<div class="value">{strategy}</div></div>',
+                f'<div class="route-box"><div class="label">Strategy</div><div class="value">{strategy}</div></div>',
                 unsafe_allow_html=True,
             )
         with col4:
             api_type = result.api_type or "openai"
             st.markdown(
-                f'<div class="route-box"><div class="label">API Type</div>'
-                f'<div class="value">{api_type}</div></div>',
+                f'<div class="route-box"><div class="label">API Type</div><div class="value">{api_type}</div></div>',
                 unsafe_allow_html=True,
             )
 
@@ -139,7 +140,7 @@ def _render_provider_list() -> None:
             f'<div style="display:flex;justify-content:space-between;margin-top:0.2rem;">'
             f'<span class="prov-model">{s.get("default_model", "")}</span>'
             f'<span class="{status_class}">{status_text}</span>'
-            f'</div></div>',
+            f"</div></div>",
             unsafe_allow_html=True,
         )
 
@@ -190,13 +191,15 @@ def _render_model_catalog() -> None:
                 caps.append("coding")
             if m.capabilities.function_calling:
                 caps.append("fn-call")
-            rows.append({
-                "Model": m.id,
-                "Provider": m.provider,
-                "Context": f"{m.context_window:,}",
-                "Capabilities": ", ".join(caps) if caps else "chat",
-                "Default": "[D]" if m.default_model else "",
-            })
+            rows.append(
+                {
+                    "Model": m.id,
+                    "Provider": m.provider,
+                    "Context": f"{m.context_window:,}",
+                    "Capabilities": ", ".join(caps) if caps else "chat",
+                    "Default": "[D]" if m.default_model else "",
+                }
+            )
 
         df = pd.DataFrame(rows)
         st.dataframe(df, use_container_width=True, hide_index=True)
@@ -238,17 +241,12 @@ def _render_profile_config() -> None:
                         if result.error:
                             st.error(f"Route failed: {result.error}")
                         else:
-                            st.success(
-                                f"Route OK: {result.provider}/{result.model} "
-                                f"via {result.base_url}"
-                            )
+                            st.success(f"Route OK: {result.provider}/{result.model} via {result.base_url}")
                     except Exception as e:
                         st.error(f"Route test failed: {e}")
         else:
             st.info("No custom profile. Using auto-select routing.")
-            st.markdown(
-                "Set a provider with: `python -m src.cli provider switch <name>`"
-            )
+            st.markdown("Set a provider with: `python -m src.cli provider switch <name>`")
 
     except Exception as e:
         st.error(f"Cannot load profile: {e}")
