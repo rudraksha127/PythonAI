@@ -27,7 +27,6 @@ import hashlib
 import json
 import pickle
 import re
-import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -35,7 +34,6 @@ from typing import Any
 
 import networkx as nx
 from tqdm import tqdm
-
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -611,19 +609,19 @@ class KnowledgeGraph:
         """Print formatted graph statistics."""
         s = self.stats()
         print(f"\n{'=' * 55}")
-        print(f"  OMNISCIENT Knowledge Graph — Statistics")
+        print("  OMNISCIENT Knowledge Graph — Statistics")
         print(f"{'=' * 55}")
         print(f"  Nodes    : {s['nodes']:,}")
         print(f"  Edges    : {s['edges']:,}")
         print(f"  Density  : {s.get('density', 0):.6f}")
         print(f"  Avg Deg  : {s.get('avg_degree', 0):.2f}")
-        print(f"\n  Edge Types:")
+        print("\n  Edge Types:")
         for et, count in sorted(s.get("edge_types", {}).items(), key=lambda x: -x[1]):
             print(f"    {et:20s}: {count:,}")
-        print(f"\n  Categories:")
+        print("\n  Categories:")
         for cat, count in sorted(s.get("categories", {}).items(), key=lambda x: -x[1]):
             print(f"    {cat:20s}: {count:,}")
-        print(f"\n  Top 10 Hub Nodes:")
+        print("\n  Top 10 Hub Nodes:")
         for hub in s.get("top_hubs", []):
             print(f"    [{hub['degree']:3d}] {hub['title'][:60]}")
         print(f"{'=' * 55}")

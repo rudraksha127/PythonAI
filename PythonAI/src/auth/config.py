@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import copy
 import json
 import stat
 from pathlib import Path
 from typing import Any
-
 
 CONFIG_DIR = Path.home() / ".pythonai"
 CONFIG_FILE = CONFIG_DIR / "config.json"

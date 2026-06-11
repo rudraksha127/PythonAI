@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import getpass
 import hashlib
-import os
 import secrets
 import string
 import time
 from typing import Any
 
 from src.auth.config import AuthConfig
-
 
 SALT_LENGTH = 16
 TOKEN_LENGTH = 32

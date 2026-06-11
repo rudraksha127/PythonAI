@@ -16,11 +16,9 @@ from __future__ import annotations
 import json
 import random
 import time
-import traceback
-from dataclasses import dataclass, field
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
-
 
 # ── Constants ────────────────────────────────────────────────
 
@@ -122,7 +120,7 @@ class SubAgent:
         cls,
         registry: ToolRegistry | None = None,
         **kwargs: Any,
-    ) -> "SubAgent":
+    ) -> SubAgent:
         """Create a coding-focused sub-agent."""
         return cls(
             name=kwargs.get("name", "coder"),
@@ -153,7 +151,7 @@ your final answer. Do NOT continue making tool calls indefinitely.""",
         cls,
         registry: ToolRegistry | None = None,
         **kwargs: Any,
-    ) -> "SubAgent":
+    ) -> SubAgent:
         """Create a research-focused sub-agent."""
         return cls(
             name=kwargs.get("name", "researcher"),
@@ -183,7 +181,7 @@ Do NOT continue searching once you have sufficient information.""",
         cls,
         registry: ToolRegistry | None = None,
         **kwargs: Any,
-    ) -> "SubAgent":
+    ) -> SubAgent:
         """Create an MCP-tool-focused sub-agent."""
         return cls(
             name=kwargs.get("name", "mcp-worker"),
@@ -211,7 +209,7 @@ Do NOT continue making tool calls once you have the information you need.""",
         cls,
         registry: ToolRegistry | None = None,
         **kwargs: Any,
-    ) -> "SubAgent":
+    ) -> SubAgent:
         """Create a code review sub-agent."""
         return cls(
             name=kwargs.get("name", "reviewer"),
@@ -439,7 +437,7 @@ once you have enough information."""
 
         for attempt in range(self.max_retries + 1):
             try:
-                from ..providers import ProviderRouter, get_provider_api, ProfileManager
+                from ..providers import ProfileManager, ProviderRouter, get_provider_api
 
                 router = ProviderRouter()
                 profile = ProfileManager().load()

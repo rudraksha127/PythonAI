@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import ast
 from typing import Any
+
 from src.utils.sandbox import execute_code
 from src.utils.swarm import MCPTool
+
 
 def handle_execute_code(code: str, timeout: int = 5) -> dict[str, Any]:
     """Execute Python code in a secure sandbox."""

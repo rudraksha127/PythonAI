@@ -7,8 +7,6 @@ and tool registry state in real-time.
 
 from __future__ import annotations
 
-import json
-import time
 from typing import Any
 
 import streamlit as st

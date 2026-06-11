@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+
 from src.data.api_dataset_gen import GitHubCodeClient
 from src.utils.swarm import MCPTool
 
@@ -12,12 +13,12 @@ def handle_github_search(query: str, max_results: int = 3) -> dict[str, Any]:
     global _gh_client
     if _gh_client is None:
         _gh_client = GitHubCodeClient()
-        
+
     results = _gh_client.search_code(query, max_results=max_results)
-    
+
     if not results:
         return {"success": False, "error": f"No GitHub code found for '{query}'"}
-        
+
     return {"success": True, "results": results}
 
 github_search_tool = MCPTool(

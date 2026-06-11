@@ -11,7 +11,6 @@ from __future__ import annotations
 import io
 import json
 import sys
-import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -29,27 +28,22 @@ from src.data.apikeys import (
     active_providers,
     delete_key,
     export_dotenv,
-    get_key,
     list_keys,
     set_key,
 )
 from src.rag.models import (
     DEFAULT_MODEL,
     get_model_info,
-    is_model_available,
     list_configured_models,
     list_ollama_models,
-    resolve_model,
 )
 from src.rag.rag_engine import (
-    CHUNKS_FILE,
     DB_PATH,
     get_answer,
     load_or_build_db,
     print_stats,
     save_conversation,
 )
-
 
 # ════════════════════════════════════════
 # PAGE CONFIG
@@ -204,7 +198,6 @@ def _run_generation(max_chunks: int, data_types: list[str], output_name: str) ->
     and keeps the Streamlit UI responsive via captured stdout.
     """
     import subprocess
-    import json
 
     log: list[str] = []
 

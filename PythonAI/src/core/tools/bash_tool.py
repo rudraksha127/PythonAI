@@ -7,24 +7,16 @@ Inspired by Claude Code's BashTool.
 
 from __future__ import annotations
 
-import asyncio
 import os
-import shlex
-import signal
 import subprocess
-import sys
-import time
 from typing import Any
 
 from ..tool import (
-    Tool,
-    ToolResult,
-    ToolUseContext,
     InputSchema,
     Parameter,
+    ToolResult,
+    ToolUseContext,
     ValidationResult,
-    PermissionResult,
-    PermissionDecision,
     build_tool,
 )
 

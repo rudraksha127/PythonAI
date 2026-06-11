@@ -5,10 +5,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
-import pytest
-
-from src.rag.rag_engine import SimpleBM25, hybrid_search, _cosine_sim
-
+from src.rag.rag_engine import SimpleBM25, _cosine_sim, hybrid_search
 
 # ══════════════════════════════════════════════════════════════════════
 # SimpleBM25
@@ -658,8 +655,8 @@ class TestCodeChunksToRagFormat:
 
     def test_basic_conversion(self) -> None:
         """A single CodeChunk should convert to the correct dict format."""
-        from src.rag.rag_engine import _code_chunks_to_rag_format
         from src.rag.cast_chunker import CodeChunk
+        from src.rag.rag_engine import _code_chunks_to_rag_format
 
         chunk = CodeChunk(
             content="def foo():\n    return 42",
@@ -684,8 +681,8 @@ class TestCodeChunksToRagFormat:
 
     def test_with_parent_class(self) -> None:
         """Chunks with parent_class should include it in the title."""
-        from src.rag.rag_engine import _code_chunks_to_rag_format
         from src.rag.cast_chunker import CodeChunk
+        from src.rag.rag_engine import _code_chunks_to_rag_format
 
         chunk = CodeChunk(
             content="def bar(self): pass",
@@ -710,8 +707,8 @@ class TestCodeChunksToRagFormat:
 
     def test_multiple_chunks(self) -> None:
         """Multiple chunks should all be converted."""
-        from src.rag.rag_engine import _code_chunks_to_rag_format
         from src.rag.cast_chunker import CodeChunk
+        from src.rag.rag_engine import _code_chunks_to_rag_format
 
         chunks = [
             CodeChunk(
@@ -738,8 +735,8 @@ class TestCodeChunksToRagFormat:
 
     def test_embedding_text_includes_signature_and_docstring(self) -> None:
         """to_embedding_text() should produce multi-view content."""
-        from src.rag.rag_engine import _code_chunks_to_rag_format
         from src.rag.cast_chunker import CodeChunk
+        from src.rag.rag_engine import _code_chunks_to_rag_format
 
         chunk = CodeChunk(
             content="def compute(x, y):\n    return x + y",
@@ -764,11 +761,10 @@ class TestCodeChunksToRagFormat:
 def test_load_or_build_db_force_rebuild() -> None:
     """load_or_build_db with force_rebuild should call build_db."""
     # This is a lightweight smoke test — we test the import and path logic.
-    from src.rag.rag_engine import load_or_build_db
-    from pathlib import Path
-
     # The function should exist and accept a boolean
     import inspect
+
+    from src.rag.rag_engine import load_or_build_db
     sig = inspect.signature(load_or_build_db)
     assert "force_rebuild" in sig.parameters
 
@@ -791,9 +787,10 @@ def test_format_sources() -> None:
 
 def test_save_conversation_with_temp_files(tmp_path: Path) -> None:
     """save_conversation should write a JSON file with conversation data."""
+    import json
+
     import src.rag.rag_engine as rag
     from src.rag.rag_engine import save_conversation
-    import json
 
     history = [
         {"role": "user", "content": "What is Python?"},
@@ -854,16 +851,18 @@ class TestToPlainList:
         assert _to_plain_list([]) == []
 
     def test_numpy_array(self) -> None:
-        from src.rag.rag_engine import _to_plain_list
         import numpy as np
+
+        from src.rag.rag_engine import _to_plain_list
         arr = np.array([0.5, 0.3, 0.1])
         result = _to_plain_list(arr)
         assert result == [0.5, 0.3, 0.1]
         assert type(result) is list
 
     def test_nested_numpy(self) -> None:
-        from src.rag.rag_engine import _to_plain_list
         import numpy as np
+
+        from src.rag.rag_engine import _to_plain_list
         arr = np.array([[0.1, 0.2], [0.3, 0.4]])
         result = _to_plain_list(arr)
         assert result == [[0.1, 0.2], [0.3, 0.4]]
@@ -1108,8 +1107,9 @@ class TestExportConversationMarkdown:
     """Tests for export_conversation_markdown."""
 
     def test_basic_export(self) -> None:
-        from src.rag.rag_engine import export_conversation_markdown
         from pathlib import Path
+
+        from src.rag.rag_engine import export_conversation_markdown
 
         history = [
             {"role": "user", "content": "What is Python?"},
@@ -1127,8 +1127,9 @@ class TestExportConversationMarkdown:
         Path(result_path).unlink(missing_ok=True)
 
     def test_export_with_citations(self) -> None:
-        from src.rag.rag_engine import export_conversation_markdown
         from pathlib import Path
+
+        from src.rag.rag_engine import export_conversation_markdown
 
         history = [
             {"role": "user", "content": "What are lists?"},
@@ -1148,8 +1149,9 @@ class TestExportConversationMarkdown:
         Path(result_path).unlink(missing_ok=True)
 
     def test_export_empty_history(self) -> None:
-        from src.rag.rag_engine import export_conversation_markdown
         from pathlib import Path
+
+        from src.rag.rag_engine import export_conversation_markdown
 
         result_path = export_conversation_markdown([], output_path=None)
         content = Path(result_path).read_text(encoding="utf-8")
@@ -1157,8 +1159,9 @@ class TestExportConversationMarkdown:
         Path(result_path).unlink(missing_ok=True)
 
     def test_export_to_specified_path(self, tmp_path: Path) -> None:
-        from src.rag.rag_engine import export_conversation_markdown
         from pathlib import Path
+
+        from src.rag.rag_engine import export_conversation_markdown
 
         history = [{"role": "user", "content": "Hi"}]
         output_path = tmp_path / "test_export.md"
@@ -1167,8 +1170,9 @@ class TestExportConversationMarkdown:
         assert Path(result_path).read_text(encoding="utf-8") != ""
 
     def test_export_with_docs_param(self, tmp_path: Path) -> None:
-        from src.rag.rag_engine import export_conversation_markdown
         from pathlib import Path
+
+        from src.rag.rag_engine import export_conversation_markdown
 
         history = [{"role": "user", "content": "Hi"}, {"role": "assistant", "content": "Hello"}]
         docs = [

@@ -13,7 +13,6 @@ from typing import Any
 
 import pytest
 
-
 # ──────────────────────────────────────────────────────────────────────
 # Helpers
 # ──────────────────────────────────────────────────────────────────────
@@ -202,7 +201,7 @@ class TestExportHtmlDashboard:
 
 class TestLoadMetricsFromJson:
     def test_roundtrip(self):
-        from src.training.viz import TrainingMetrics, load_metrics_from_json
+        from src.training.viz import load_metrics_from_json
 
         m1 = _make_metrics()
         with tempfile.TemporaryDirectory() as td:
@@ -218,7 +217,7 @@ class TestLoadMetricsFromJson:
             assert m2.lr_scheduler_type == m1.lr_scheduler_type
 
     def test_partial_data(self):
-        from src.training.viz import TrainingMetrics, load_metrics_from_json, export_metrics_json
+        from src.training.viz import TrainingMetrics, export_metrics_json, load_metrics_from_json
 
         m1 = TrainingMetrics()
         m1.base_model = "test-model"

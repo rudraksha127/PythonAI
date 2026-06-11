@@ -24,12 +24,11 @@ from __future__ import annotations
 import json
 import logging
 import re
-import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
-from urllib.error import URLError, HTTPError
 from xml.etree import ElementTree
 
 logger = logging.getLogger("pythonai.learning.doc_watcher")
@@ -94,7 +93,7 @@ class DocWatcher:
         except OSError as e:
             logger.error("Failed to save doc watcher state: %s", e)
 
-    def _fetch_url(self, url: str, timeout: int = 15) -> Optional[str]:
+    def _fetch_url(self, url: str, timeout: int = 15) -> str | None:
         """Fetch a URL and return its content as string."""
         headers = {
             "User-Agent": "PythonAI/2.1 (DocWatcher)",

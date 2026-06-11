@@ -4,8 +4,6 @@ Unit tests for src.core.mcp.transport — Backward Compatibility Re-exports.
 
 from __future__ import annotations
 
-import pytest
-
 
 class TestTransportReExports:
     """Verify all expected re-exports exist and match types.py."""
@@ -69,24 +67,38 @@ class TestTransportReExports:
     def test_all_imports_match_types_module(self) -> None:
         """All re-exports from transport match those from types module."""
         from src.core.mcp.transport import (
-            TransportType,
-            ServerConfig,
-            StdioConfig,
-            SSEConfig,
-            HTTPConfig,
             ConnectionState,
-            ServerConnection,
+            HTTPConfig,
             MCPScope,
+            ServerConfig,
+            ServerConnection,
+            SSEConfig,
+            StdioConfig,
+            TransportType,
+        )
+        from src.core.mcp.types import (
+            ConnectionState as CS,
+        )
+        from src.core.mcp.types import (
+            HTTPConfig as HTTP,
+        )
+        from src.core.mcp.types import (
+            MCPScope as MS,
+        )
+        from src.core.mcp.types import (
+            ServerConfig as SC,
+        )
+        from src.core.mcp.types import (
+            ServerConnection as SC2,
+        )
+        from src.core.mcp.types import (
+            SSEConfig as SSE,
+        )
+        from src.core.mcp.types import (
+            StdioConfig as Stdio,
         )
         from src.core.mcp.types import (
             TransportType as TT,
-            ServerConfig as SC,
-            StdioConfig as Stdio,
-            SSEConfig as SSE,
-            HTTPConfig as HTTP,
-            ConnectionState as CS,
-            ServerConnection as SC2,
-            MCPScope as MS,
         )
         assert TransportType is TT
         assert ServerConfig is SC

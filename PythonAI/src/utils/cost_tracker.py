@@ -5,6 +5,7 @@ Estimates token counts using tiktoken (for OpenAI) or character length heuristic
 import json
 import os
 from datetime import datetime, timezone
+
 from loguru import logger
 
 try:
@@ -43,10 +44,10 @@ class CostTracker:
     def log_call(self, provider: str, prompt: str, response: str):
         in_tokens = self._estimate_tokens(prompt)
         out_tokens = self._estimate_tokens(response)
-        
+
         rates = PRICING.get(provider, {"in": 0.0, "out": 0.0})
         cost = (in_tokens / 1000.0) * rates["in"] + (out_tokens / 1000.0) * rates["out"]
-        
+
         record = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "provider": provider,
@@ -54,23 +55,23 @@ class CostTracker:
             "out_tokens": out_tokens,
             "cost_usd": cost
         }
-        
+
         # Append to log
         log_data = []
         if os.path.exists(self.log_path):
             try:
-                with open(self.log_path, "r") as f:
+                with open(self.log_path) as f:
                     log_data = json.load(f)
             except Exception:
                 pass
-                
+
         log_data.append(record)
-        
+
         with open(self.log_path, "w") as f:
             json.dump(log_data, f, indent=2)
-            
+
         if cost > 0.01:
             logger.info(f"💰 API Cost ({provider}): ${cost:.4f}")
-            
+
 # Global instance
 tracker = CostTracker()

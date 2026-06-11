@@ -13,16 +13,16 @@ Determines which provider/model to use based on:
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 from .registry import (
-    ModelRegistry,
     ModelDescriptor,
+    ModelRegistry,
     ProviderDescriptor,
     get_registry,
-    find_models_by_capability,
 )
 
 

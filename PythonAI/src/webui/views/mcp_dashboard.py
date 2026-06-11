@@ -7,9 +7,6 @@ MCP configurations in real-time.
 
 from __future__ import annotations
 
-import json
-from typing import Any
-
 import streamlit as st
 
 
@@ -60,7 +57,7 @@ def _render_mcp_config() -> None:
     st.markdown("### Configured Servers")
 
     try:
-        from src.core.mcp import MCPConfigManager, StdioConfig, SSEConfig, HTTPConfig
+        from src.core.mcp import HTTPConfig, MCPConfigManager, SSEConfig, StdioConfig
 
         mgr = MCPConfigManager()
         servers = mgr.get_servers()
@@ -105,7 +102,7 @@ def _render_mcp_config() -> None:
                     st.markdown(f"**Env vars:** {list(config.env.keys())}")
 
                 # Try connect button
-                if st.button(f"Connect", key=f"connect_{name}"):
+                if st.button("Connect", key=f"connect_{name}"):
                     with st.spinner(f"Connecting to {name}..."):
                         from src.core.mcp import MCPClient
                         client = MCPClient()

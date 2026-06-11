@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from src.auth.auth import hash_password, verify_password
 from src.data.merger import merge
-from src.training.evaluator import compute_bleu
 from src.rag.rag_engine import SimpleBM25, format_sources
-from src.utils.swarm import AgentSwarm, GenerationTask, TaskDecomposer
+from src.training.evaluator import compute_bleu
+from src.utils.swarm import AgentSwarm, TaskDecomposer
 
 
 def test_integration_cross_stage_pipeline() -> None:

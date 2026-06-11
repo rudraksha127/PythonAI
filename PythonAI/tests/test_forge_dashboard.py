@@ -10,21 +10,16 @@ Tests cover:
 
 from __future__ import annotations
 
-import json
 import tempfile
 from pathlib import Path
-from typing import Any
-
-import pytest
 
 from src.learning.forge_dashboard import (
+    _build_empty_state,
+    _build_training_runs_table,
     _compute_rolling_average,
     _get_db_path,
-    _build_training_runs_table,
-    _build_empty_state,
     generate_dashboard,
 )
-
 
 # ══════════════════════════════════════════════════════════════════════
 # Rolling Average Tests

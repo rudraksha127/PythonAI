@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .tool import ToolUseContext, ToolProgress, PermissionResult
+from .tool import PermissionResult, ToolProgress, ToolUseContext
 
 
 def make_context(

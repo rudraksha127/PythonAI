@@ -1,26 +1,27 @@
-from fastapi import APIRouter
-from typing import Any, Dict
 import time
+from typing import Any
+
+from fastapi import APIRouter
 
 from src.learning.conv_learner import ConversationLearner
+from src.learning.doc_watcher import DocWatcher
 from src.learning.error_patterns import _get_db as get_error_db
 from src.learning.self_eval import SelfEvaluator
-from src.learning.doc_watcher import DocWatcher
 
 router = APIRouter(prefix="/learning", tags=["Learning & Statistics"])
 
 @router.get("/stats")
-def get_learning_stats() -> Dict[str, Any]:
+def get_learning_stats() -> dict[str, Any]:
     """
     Retrieve comprehensive statistics from all autonomous learning modules.
     Useful for populating the Learning Dashboard.
     """
     start_time = time.time()
-    
+
     # 1. Error Patterns
     error_db = get_error_db()
     error_stats = error_db.get_stats()
-    
+
     # 2. Conversation Learner
     try:
         conv_learner = ConversationLearner()
@@ -34,7 +35,7 @@ def get_learning_stats() -> Dict[str, Any]:
         eval_trend = evaluator.get_trend(limit=5)
     except Exception as e:
         eval_trend = [{"error": str(e)}]
-        
+
     # 4. Doc Watcher
     try:
         doc_watcher = DocWatcher()
@@ -56,14 +57,14 @@ def get_learning_stats() -> Dict[str, Any]:
     }
 
 @router.post("/trigger/sync-so")
-def trigger_sync_so() -> Dict[str, Any]:
+def trigger_sync_so() -> dict[str, Any]:
     """Manually trigger a StackOverflow sync job via the API."""
     from src.learning.so_sync import sync_stackoverflow
     stats = sync_stackoverflow(pages=1)
     return {"status": "success", "stats": stats}
 
 @router.post("/trigger/eval")
-def trigger_eval() -> Dict[str, Any]:
+def trigger_eval() -> dict[str, Any]:
     """Manually trigger a RAG self-evaluation job via the API."""
     from src.learning.self_eval import run_self_evaluation
     stats = run_self_evaluation(sample_size=10)

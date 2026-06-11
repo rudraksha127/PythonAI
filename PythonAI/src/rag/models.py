@@ -11,10 +11,8 @@ import json
 import shutil
 import stat
 import subprocess
-import sys
 from pathlib import Path
 from typing import Any
-
 
 # ═══════════════════════════════════════
 #  File & model metadata

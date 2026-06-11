@@ -6,10 +6,10 @@ Usage:
     python -m src.learning.daemon --interval 24
 """
 
-import time
 import argparse
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -32,7 +32,7 @@ def main():
     python_exe = sys.executable
 
     print("=" * 60)
-    print(f"  🤖 PythonAI OMNISCIENT - Autonomous Learning Daemon")
+    print("  🤖 PythonAI OMNISCIENT - Autonomous Learning Daemon")
     print(f"  Interval: Every {args.interval} hours")
     print("=" * 60)
 

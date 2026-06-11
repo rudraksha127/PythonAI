@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from .tool import Tool, ToolUseContext, PermissionDecision
+from .tool import PermissionDecision, Tool, ToolUseContext
 
 
 class ToolRegistry:

@@ -12,15 +12,13 @@ import re
 from typing import Any
 
 from ..tool import (
-    Tool,
-    ToolResult,
-    ToolUseContext,
     InputSchema,
     Parameter,
+    ToolResult,
+    ToolUseContext,
     ValidationResult,
     build_tool,
 )
-
 
 GrepTool = build_tool(
     type("GrepToolDef", (), {
@@ -140,7 +138,7 @@ def _grep_call(input_data: dict[str, Any],
                 total_files_searched += 1
 
                 try:
-                    with open(filepath, "r", encoding="utf-8", errors="replace") as f:
+                    with open(filepath, encoding="utf-8", errors="replace") as f:
                         lines = f.readlines()
                 except Exception:
                     continue

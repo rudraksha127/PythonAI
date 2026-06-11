@@ -26,7 +26,6 @@ from .types import (
     ServerConfig,
     SSEConfig,
     StdioConfig,
-    TransportType,
     WSConfig,
 )
 

@@ -1,6 +1,7 @@
 from typing import Any
-from src.utils.swarm import GenerationTask
+
 from src.utils.llm import generate_with_provider
+from src.utils.swarm import GenerationTask
 
 TEACHER_SYSTEM_PROMPT = """You are the Teacher Agent — a patient Python educator.
 Your job:

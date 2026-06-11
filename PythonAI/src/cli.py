@@ -3,14 +3,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import signal
+import shlex
 import subprocess
 import sys
 from pathlib import Path
 
-import shlex
-
-from src.auth import interactive_login, logout, check_auth
+from src.auth import check_auth, interactive_login, logout
 from src.auth.config import AuthConfig
 from src.auth.decorators import requires_auth
 from src.data.apikeys import ALL_PROVIDERS
@@ -25,7 +23,6 @@ from src.utils.models import (
     list_ollama_models,
     project_python,
 )
-
 
 VERSION = "2.0.0"
 
@@ -95,10 +92,10 @@ def status(args: argparse.Namespace) -> int:
     print(f"Project files: {audit['total_files']} ({audit['total_mb']} MB, excluding .venv/.git)")
 
     if getattr(args, 'verbose', False):
-        print(f"  Largest files:")
+        print("  Largest files:")
         for f in audit.get('largest_files', [])[:5]:
             print(f"    {f['path']}: {f['bytes'] / 1024:.1f} KB")
-        print(f"  By extension:")
+        print("  By extension:")
         for ext, info in list(audit.get('by_extension', {}).items())[:8]:
             print(f"    {ext or '(none)':10s}: {info['files']:4d} files, {info['bytes'] / 1024:.1f} KB")
 
@@ -192,20 +189,20 @@ def probe(args: argparse.Namespace) -> int:
 def ask(args: argparse.Namespace) -> int:
     if args.agents:
         # Route through the swarm orchestrator
-        from src.utils.swarm import AgentSwarm, execute_agents
         from src.agents import ALL_AGENTS
-        
-        print(f"\n[AgentSwarm] Routing question through specialist agents...")
+        from src.utils.swarm import AgentSwarm, execute_agents
+
+        print("\n[AgentSwarm] Routing question through specialist agents...")
         swarm = AgentSwarm()
         results = execute_agents(args.question, swarm, ALL_AGENTS)
-        
-        print(f"\n[AI] SWARM RESULTS:")
+
+        print("\n[AI] SWARM RESULTS:")
         print(f"{'='*55}")
         for agent_name, output in results.items():
             print(f"[{agent_name.upper()}]:\n{output}\n")
         print(f"{'='*55}")
         return 0
-    
+
     # == Phase 6: Agentic Orchestration mode (--orchestrate) ===
     if getattr(args, 'orchestrate', False):
         from src.core.agents import AgentOrchestrator
@@ -264,7 +261,7 @@ def ask(args: argparse.Namespace) -> int:
         except Exception:
             pass  # Tools already registered
 
-        print(f"\n[Tools] Tool-Calling Mode (engine ready)")
+        print("\n[Tools] Tool-Calling Mode (engine ready)")
         print(f"{'='*55}")
         print(f"  Provider  : {args.model or 'auto'}")
         print(f"  Tools     : {registry.total_count} registered")
@@ -308,7 +305,7 @@ def ask(args: argparse.Namespace) -> int:
                 response = engine.run(q)
                 print()
         return 0
-    
+
     cmd = [str(project_python()), "-m", "src.rag.rag_engine"]
     if args.question:
         cmd.extend(["--question", args.question])
@@ -336,15 +333,15 @@ def ask(args: argparse.Namespace) -> int:
 
 def tools_cmd(args: argparse.Namespace) -> int:
     from src.tools import ALL_TOOLS as MCP_TOOLS
-    
+
     # Show both old MCP tools and new Core tools
-    print(f"\n[Tools] Registered Tools")
+    print("\n[Tools] Registered Tools")
     print(f"{'='*55}")
-    
+
     print(f"\n  MCP Tools ({len(MCP_TOOLS)}):")
     for t in MCP_TOOLS:
         print(f"    - {t.name}: {t.description}")
-    
+
     # Show new Core tools if available
     try:
         from src.core.registry import get_registry
@@ -361,7 +358,7 @@ def tools_cmd(args: argparse.Namespace) -> int:
                 print(f"    - {t.name}: {t.description}{ro}")
     except ImportError:
         pass
-    
+
     print()
     return 0
 
@@ -459,10 +456,11 @@ def cast_cmd(args: argparse.Namespace) -> int:
     if args.mode == "index":
         # Index mode: chunk + embed into ChromaDB
         try:
-            from src.rag.cast_chunker import CastChunker
             import chromadb
             from sentence_transformers import SentenceTransformer
-            from src.rag.rag_engine import ROOT, DB_PATH
+
+            from src.rag.cast_chunker import CastChunker
+            from src.rag.rag_engine import DB_PATH, ROOT
 
             print(f"[cAST] Indexing {path} into code-aware RAG database...")
             chunker = CastChunker(language=args.language)
@@ -521,7 +519,7 @@ def cast_cmd(args: argparse.Namespace) -> int:
 
             if args.stats:
                 print(f"\n{'='*50}")
-                print(f"cAST Indexing Statistics")
+                print("cAST Indexing Statistics")
                 print(f"{'='*50}")
                 print(f"Path          : {path}")
                 print(f"Language      : {args.language}")
@@ -729,7 +727,8 @@ def conv_cmd(args: argparse.Namespace) -> int:
 
 def hf_collect(args: argparse.Namespace) -> int:
     """Download Python code SFT datasets from HuggingFace."""
-    from src.data.hf_collector import HF_DATASETS, run as hf_run, print_stats
+    from src.data.hf_collector import HF_DATASETS, print_stats
+    from src.data.hf_collector import run as hf_run
 
     if args.list:
         print("[HuggingFace Datasets Available]")
@@ -760,12 +759,12 @@ def serve_cmd(args: argparse.Namespace) -> int:
     host = args.host
 
     print(f"[Serve] Starting PythonAI FastAPI server on {host}:{port}...\n")
-    print(f"  Endpoints:")
-    print(f"    POST /ask          Ask a Python question")
-    print(f"    POST /chat         Chat with history")
-    print(f"    GET  /health       Health check")
-    print(f"    GET  /stats        Database statistics")
-    print(f"    GET  /docs         Interactive API docs (Swagger UI)\n")
+    print("  Endpoints:")
+    print("    POST /ask          Ask a Python question")
+    print("    POST /chat         Chat with history")
+    print("    GET  /health       Health check")
+    print("    GET  /stats        Database statistics")
+    print("    GET  /docs         Interactive API docs (Swagger UI)\n")
 
     try:
         import uvicorn
@@ -789,7 +788,7 @@ def dashboard_cmd(args: argparse.Namespace) -> int:
     if not dashboard_path.exists():
         print(f"[Error] Dashboard not found at: {dashboard_path}")
         return 1
-    print(f"[Dashboard] Opening live visualization...")
+    print("[Dashboard] Opening live visualization...")
     sp.Popen(["cmd", "/c", "start", str(dashboard_path)], shell=True)
     return 0
 
@@ -801,9 +800,10 @@ def forge_cmd(args: argparse.Namespace) -> int:
     Generates interactive HTML dashboards from CaptureEngine signal data,
     showing acceptance rate curves, signal breakdown, and training history.
     """
-    from src.learning.forge_dashboard import generate_dashboard, _get_db_path
-    from src.learning.capture_engine import CaptureEngine
     import json
+
+    from src.learning.capture_engine import CaptureEngine
+    from src.learning.forge_dashboard import generate_dashboard
 
     if args.action == "dashboard":
         html = generate_dashboard(
@@ -826,7 +826,7 @@ def forge_cmd(args: argparse.Namespace) -> int:
         # Also show daily rate for last 7 days
         rates = engine.get_acceptance_rate(days=7)
         if rates:
-            print(f"\nLast 7 days acceptance rate:")
+            print("\nLast 7 days acceptance rate:")
             print(f"  {'Date':14s} {'Rate':8s} {'Accept':8s} {'Reject':8s} {'Edit':8s}")
             print(f"  {'-'*14} {'-'*8} {'-'*8} {'-'*8} {'-'*8}")
             for r in rates:
@@ -854,7 +854,6 @@ def collect_data_cmd(args: argparse.Namespace) -> int:
 
 def export_cmd(args: argparse.Namespace) -> int:
     """Export adapter to GGUF / ONNX format."""
-    from src.utils.models import project_python
 
     adapter_path = Path(args.adapter_path)
     if not adapter_path.exists():
@@ -907,8 +906,9 @@ def grpo_cmd(args: argparse.Namespace) -> int:
     surrogate objectives and group-relative advantages. No reward model needed.
     """
     if args.action == "train":
-        from src.training.grpo_trainer import GRPOTrainer, GRPOPair
         import json
+
+        from src.training.grpo_trainer import GRPOPair, GRPOTrainer
 
         # Load pairs
         pairs_path = Path(args.data)
@@ -951,9 +951,10 @@ def grpo_cmd(args: argparse.Namespace) -> int:
 
     elif args.action == "export-pairs":
         """Export GRPO pairs from CaptureEngine DB."""
-        from src.training.grpo_trainer import create_grpo_pairs_from_signals
-        from src.learning.capture_engine import CaptureEngine, SignalType
         import json
+
+        from src.learning.capture_engine import CaptureEngine, SignalType
+        from src.training.grpo_trainer import create_grpo_pairs_from_signals
 
         db_path = Path(args.db).expanduser()
         if not db_path.exists():
@@ -983,9 +984,10 @@ def grpo_cmd(args: argparse.Namespace) -> int:
 
     elif args.action == "stats":
         """Show training runs with acceptance rate deltas."""
-        from src.learning.capture_engine import CaptureEngine
-        from datetime import datetime
         import json
+        from datetime import datetime
+
+        from src.learning.capture_engine import CaptureEngine
 
         db_path = Path(args.db).expanduser()
         if not db_path.exists():
@@ -1006,7 +1008,7 @@ def grpo_cmd(args: argparse.Namespace) -> int:
             return 0
 
         # Table header
-        print(f"\n[GRPO] Recent Training Runs")
+        print("\n[GRPO] Recent Training Runs")
         print(f"{'='*80}")
         print(f"  {'Run ID':12s} {'Date':14s} {'Model':20s} {'Signals':>8s} {'Loss':>8s} {'Rate Before':>12s} {'Rate After':>11s} {'Change':>6s}")
         print(f"  {'-'*12} {'-'*14} {'-'*20} {'-'*8} {'-'*8} {'-'*12} {'-'*11} {'-'*6}")
@@ -1034,8 +1036,9 @@ def grpo_cmd(args: argparse.Namespace) -> int:
 
     elif args.action == "create-pairs":
         """Create GRPO pairs directly from manual inputs (for testing)."""
-        from src.training.grpo_trainer import create_grpo_pairs_from_signals, GRPOPair
         import json
+
+        from src.training.grpo_trainer import GRPOPair, create_grpo_pairs_from_signals
 
         # Read accept, reject, edit JSONL files
         accept_signals = []
@@ -1092,12 +1095,11 @@ def grpo_cmd(args: argparse.Namespace) -> int:
 def discovery_cmd(args: argparse.Namespace) -> int:
     """Discovery Engine — automated dataset discovery."""
     from src.data.discovery import (
+        PriorityRanker,
         auto_discover,
         check_for_new_papers,
-        discover_government_data,
         discover_github_repos,
-        extract_datasets_from_papers,
-        PriorityRanker,
+        discover_government_data,
         print_ranking,
     )
     from src.data.metadata import MetadataManager
@@ -1175,7 +1177,7 @@ def discovery_cmd(args: argparse.Namespace) -> int:
         tiers = {}
         for s in scored:
             tiers[s.priority] = tiers.get(s.priority, 0) + 1
-        print(f"\nSummary by priority tier:")
+        print("\nSummary by priority tier:")
         for tier in ("critical", "high", "medium", "low"):
             if tier in tiers:
                 print(f"  {tier:10s}: {tiers[tier]}")
@@ -1190,14 +1192,14 @@ def discovery_cmd(args: argparse.Namespace) -> int:
 
 def training_cmd(args: argparse.Namespace) -> int:
     """Enhanced training pipeline management."""
+    from src.training.checkpoint_manager import CheckpointManager, format_meta
     from src.training.config import (
         TrainingConfig,
-        smoke_config,
+        production_config,
         quick_config,
         qwen_config,
-        production_config,
+        smoke_config,
     )
-    from src.training.checkpoint_manager import CheckpointManager, format_meta
 
     if args.action == "config":
         """Show / generate / save training configs."""
@@ -1229,7 +1231,7 @@ def training_cmd(args: argparse.Namespace) -> int:
         print(cfg.summary)
         if args.all:
             import json
-            print(f"\nFull config (JSON):")
+            print("\nFull config (JSON):")
             print(json.dumps(cfg.to_dict(), ensure_ascii=False, indent=2))
         return 0
 
@@ -1304,9 +1306,9 @@ def training_cmd(args: argparse.Namespace) -> int:
 
 def phase1_cmd(args: argparse.Namespace) -> int:
     """Phase 1 data collection commands."""
+    from src.data.downloader import BASE_DATA_DIR, DownloadOrchestrator
     from src.data.metadata import MetadataManager
     from src.data.phase1 import generate_phase1_datasets, phase1_stats
-    from src.data.downloader import DownloadOrchestrator, BASE_DATA_DIR
     from src.data.quality import QualityPipeline
 
     if args.action == "init":
@@ -1331,12 +1333,12 @@ def phase1_cmd(args: argparse.Namespace) -> int:
         mgr = MetadataManager()
         stats = mgr.summary()
         pipeline = mgr.pipeline_status()
-        print(f"[Phase1] Collection Status")
+        print("[Phase1] Collection Status")
         print(f"  Total datasets : {stats['total_datasets']}")
-        print(f"  By status:")
+        print("  By status:")
         for status, count in sorted(stats['by_status'].items()):
             print(f"    {status:20s}: {count}")
-        print(f"  By phase:")
+        print("  By phase:")
         for phase, count in sorted(stats['by_phase'].items()):
             pp = pipeline['phases'].get(f'phase_{phase}', {})
             ready = pp.get('ready', 0)
@@ -1358,7 +1360,7 @@ def phase1_cmd(args: argparse.Namespace) -> int:
 
     if args.action == "stats":
         stats = phase1_stats()
-        print(f"Phase 1 — Foundation Data Collection")
+        print("Phase 1 — Foundation Data Collection")
         print(f"  Total datasets    : {stats['total_datasets']}")
         print(f"  Estimated records : {stats['estimated_total_records']:,}")
         print(f"  Estimated size    : {stats['estimated_total_gb']} GB")
@@ -1383,7 +1385,7 @@ def phase1_cmd(args: argparse.Namespace) -> int:
             records = mgr.list_by_domain(DataDomain(args.domain))
         else:
             records = mgr.list_by_phase(1)
-        
+
         print(f"{'ID':40s} {'Status':16s} {'Lang':8s} {'Records':>12s} {'GB':>8s}")
         print(f"{'='*40} {'='*16} {'='*8} {'='*12} {'='*8}")
         for r in records:
@@ -1397,13 +1399,13 @@ def phase1_cmd(args: argparse.Namespace) -> int:
     if args.action == "download":
         import asyncio
         mgr = MetadataManager()
-        
+
         orch = DownloadOrchestrator(
             metadata_mgr=mgr,
             max_concurrent=args.workers,
             log_callback=lambda msg: print(msg),
         )
-        
+
         async def run_downloads():
             try:
                 if args.dataset:
@@ -1415,13 +1417,13 @@ def phase1_cmd(args: argparse.Namespace) -> int:
             finally:
                 await orch.close()
             return results
-        
+
         results = asyncio.run(run_downloads())
-        
+
         success = sum(1 for r in results if "error" not in r)
         failed = sum(1 for r in results if "error" in r)
         total_records = sum(r.get("records", 0) for r in results if "error" not in r)
-        
+
         print(f"\n[Download Complete] {success} succeeded, {failed} failed, {total_records:,} records")
         for r in results:
             if "error" in r:
@@ -1435,36 +1437,36 @@ def phase1_cmd(args: argparse.Namespace) -> int:
         from pathlib import Path
         mgr = MetadataManager()
         dataset_ids = args.datasets if args.datasets else [d.id for d in mgr.list_by_status("downloaded")]
-        
+
         qp = QualityPipeline(
             min_text_length=args.min_length,
             quality_threshold=args.threshold,
             metadata_mgr=mgr,
         )
-        
+
         for did in dataset_ids:
             record = mgr.get(did)
             if not record:
                 print(f"[Error] Dataset '{did}' not found")
                 continue
-            
+
             if not args.input_dir:
                 import os as os_mod
                 data_dir = os_mod.environ.get("DATA_DIR", "D:/PythonAI_Data")
                 dataset_path = Path(data_dir) / record.output_subdir / f"{did}.jsonl"
             else:
                 dataset_path = Path(args.input_dir) / f"{did}.jsonl"
-            
+
             if not dataset_path.exists():
                 print(f"[Skip] {did}: data file not found at {dataset_path}")
                 continue
-            
+
             print(f"[Quality] Running pipeline on {did}...")
             stats = qp.run_file(dataset_path, did)
             if "error" in stats:
                 print(f"  Error: {stats['error']}")
                 continue
-            
+
             print(f"  Input: {stats['total_input']:,} records")
             print(f"  Output: {stats['total_output']:,} records")
             print(f"  Filtered: {stats['filtered_pct']}%")
@@ -1483,16 +1485,16 @@ def phase1_cmd(args: argparse.Namespace) -> int:
 def learn_cmd(args: argparse.Namespace) -> int:
     """Learning Engine CLI hooks."""
     from src.utils.models import project_python
-    
+
     if args.action == "daemon":
         return run([str(project_python()), "-m", "src.learning.daemon", "--interval", str(args.interval)])
-    
+
     if args.action == "sync-so":
         return run([str(project_python()), "-c", "from src.learning.so_sync import sync_stackoverflow; print(sync_stackoverflow(pages=1))"])
-        
+
     if args.action == "eval":
         return run([str(project_python()), "-c", "from src.learning.self_eval import run_self_evaluation; print(run_self_evaluation(sample_size=10))"])
-        
+
     return 1
 
 
@@ -1601,10 +1603,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     learn_parser = sub.add_parser("learn", help="Run learning module tasks (daemon, sync-so, eval).")
     learn_sub = learn_parser.add_subparsers(dest="action", required=True)
-    
+
     learn_daemon = learn_sub.add_parser("daemon", help="Run autonomous learning daemon in foreground.")
     learn_daemon.add_argument("--interval", type=int, default=24, help="Run interval in hours")
-    
+
     learn_sync = learn_sub.add_parser("sync-so", help="Sync trending StackOverflow Q&A manually.")
     learn_eval = learn_sub.add_parser("eval", help="Run self-evaluation on RAG answers.")
     learn_parser.set_defaults(func=learn_cmd)
@@ -1940,11 +1942,9 @@ def parse_args() -> argparse.Namespace:
 def provider_cmd(args: argparse.Namespace) -> int:
     """Manage provider selection and routing."""
     from src.core.providers import (
-        ProviderRouter,
         ProfileManager,
         ProviderDiscovery,
-        get_model_info,
-        ALL_MODELS,
+        ProviderRouter,
     )
 
     router = ProviderRouter()
@@ -1952,7 +1952,7 @@ def provider_cmd(args: argparse.Namespace) -> int:
 
     if args.action == "list":
         statuses = router.get_provider_status()
-        print(f"\n[Provider] Available Providers")
+        print("\n[Provider] Available Providers")
         print(f"{'='*60}")
         print(f"  {'ID':14s} {'Status':10s} {'Default Model':30s}")
         print(f"  {'='*14} {'='*10} {'='*30}")
@@ -1964,7 +1964,7 @@ def provider_cmd(args: argparse.Namespace) -> int:
 
     if args.action == "current":
         current = profile_mgr.get_current()
-        print(f"\n[Provider] Current Selection")
+        print("\n[Provider] Current Selection")
         print(f"{'='*50}")
         print(f"  Provider : {current['provider']}")
         print(f"  Model    : {current['model'] or '(default)'}")
@@ -1983,7 +1983,7 @@ def provider_cmd(args: argparse.Namespace) -> int:
         if result.error:
             print(f"  [!] {result.error}")
         else:
-            print(f"  Active Route:")
+            print("  Active Route:")
             print(f"    Provider: {result.provider}")
             print(f"    Model   : {result.model}")
             print(f"    API     : {result.base_url}")
@@ -2026,8 +2026,8 @@ def provider_cmd(args: argparse.Namespace) -> int:
             print(f"     Model: {profile.model}")
         print(f"     Saved to: {profile_mgr.profile_path}")
         print()
-        print(f"  Next: Run 'python -m src.cli ask \"your question\" --tools' to use with tools")
-        print(f"        Or run 'python -m src.cli ask \"your question\"' for RAG mode")
+        print("  Next: Run 'python -m src.cli ask \"your question\" --tools' to use with tools")
+        print("        Or run 'python -m src.cli ask \"your question\"' for RAG mode")
         return 0
 
     if args.action == "reset":
@@ -2080,15 +2080,13 @@ def provider_cmd(args: argparse.Namespace) -> int:
 def mcp_cmd(args: argparse.Namespace) -> int:
     """Manage MCP server connections, configs, and tools."""
     from src.core.mcp import (
+        HTTPConfig,
         MCPClient,
         MCPConfigManager,
         MCPScope,
-        StdioConfig,
         SSEConfig,
-        HTTPConfig,
-        TransportType,
+        StdioConfig,
         discover_mcp_servers,
-        find_mcp_configs,
         find_mcp_json_files,
     )
     from src.core.registry import get_registry
@@ -2110,25 +2108,25 @@ def mcp_cmd(args: argparse.Namespace) -> int:
         # Show global config files
         json_files = find_mcp_json_files()
         if json_files:
-            print(f"\n  Config files:")
+            print("\n  Config files:")
             for f in json_files:
                 print(f"    {f}")
         print()
         return 0
 
     if args.action == "discover":
-        print(f"\n[MCP] Discovery")
+        print("\n[MCP] Discovery")
         print(f"{'='*60}")
 
         # Config files
         json_files = find_mcp_json_files()
         if json_files:
-            print(f"\n  Config files found:")
+            print("\n  Config files found:")
             for f in json_files:
                 size = f.stat().st_size
                 print(f"    - {f} ({size} bytes)")
         else:
-            print(f"\n  No .mcp.json or mcp.json config files found.")
+            print("\n  No .mcp.json or mcp.json config files found.")
 
         # Env vars
         import os
@@ -2221,7 +2219,7 @@ def mcp_cmd(args: argparse.Namespace) -> int:
             connection = client.connect(config, server_name)
 
             if connection.state.name == "CONNECTED":
-                print(f"  [OK] Connected!")
+                print("  [OK] Connected!")
                 print(f"  Tools: {len(connection.tools)}")
                 print(f"  Resources: {len(connection.resources)}")
                 print()
@@ -2243,7 +2241,7 @@ def mcp_cmd(args: argparse.Namespace) -> int:
                 print(f"  [FAIL] {connection.error}")
             print()
         else:
-            print(f"\n[MCP] Connecting to all configured servers...")
+            print("\n[MCP] Connecting to all configured servers...")
             connections = discover_mcp_servers()
 
             connected = 0
@@ -2294,10 +2292,10 @@ def mcp_cmd(args: argparse.Namespace) -> int:
         if args.transport == "sse":
             print(f"  SSE endpoint: http://{args.host}:{args.port}/sse")
             print(f"  Message endpoint: http://{args.host}:{args.port}/message")
-            print(f"  Press Ctrl+C to stop\n")
+            print("  Press Ctrl+C to stop\n")
         else:
-            print(f"  Stdio mode — reading from stdin, writing to stdout")
-            print(f"  Use with: claude mcp add pythonai -- python -m src.cli mcp start")
+            print("  Stdio mode — reading from stdin, writing to stdout")
+            print("  Use with: claude mcp add pythonai -- python -m src.cli mcp start")
             print()
 
         start_mcp_server(

@@ -10,35 +10,48 @@ Modules:
     .../priority_ranker — Score & rank discovered datasets for priority
 """
 
-from src.data.metadata import (
-    DatasetRecord,
-    DownloadProtocol,
-    DownloadStatus,
-    DataDomain,
-    QualityCheck,
-    MetadataManager,
+# ── Discovery Engine exports ────────────────────────────────────────
+from src.data.discovery import (
+    ArxivRSSWatcher,
+    GitHubTrending,
+    GovPortalCrawler,
+    HFCatalogScanner,
+    PaperDatasetExtractor,
+    PriorityRanker,
+    ScoredDataset,
+    # Convenience functions
+    auto_discover,
+    check_for_new_papers,
+    discover_github_repos,
+    discover_government_data,
+    extract_datasets_from_papers,
+    print_ranking,
+    rank_discovered,
 )
-
 from src.data.downloader import (
+    BASE_DATA_DIR,
     DownloadOrchestrator,
     RateLimiter,
     decompress_file,
-    BASE_DATA_DIR,
+)
+from src.data.metadata import (
+    DataDomain,
+    DatasetRecord,
+    DownloadProtocol,
+    DownloadStatus,
+    MetadataManager,
+    QualityCheck,
 )
 
-from src.data.quality import (
-    QualityPipeline,
-    check_text_length,
-    detect_language,
-    filter_by_language,
-    scan_pii,
-    mask_pii,
-    exact_dedup,
-    near_dedup,
-    check_boilerplate,
-    check_repetition,
+# ── AntiGravity Orchestrator ────────────────────────────────────────
+from src.data.orchestrator import (
+    AntiGravityOrchestrator,
+    CollectionTask,
+    OrchestratorConfig,
+    Phase,
+    PhaseStatus,
+    TaskStatus,
 )
-
 from src.data.phase1 import (
     generate_phase1_datasets,
     generate_week1,
@@ -47,34 +60,17 @@ from src.data.phase1 import (
     generate_week4,
     phase1_stats,
 )
-
-# ── AntiGravity Orchestrator ────────────────────────────────────────
-from src.data.orchestrator import (
-    AntiGravityOrchestrator,
-    OrchestratorConfig,
-    Phase,
-    PhaseStatus,
-    CollectionTask,
-    TaskStatus,
-)
-
-# ── Discovery Engine exports ────────────────────────────────────────
-from src.data.discovery import (
-    HFCatalogScanner,
-    ArxivRSSWatcher,
-    GovPortalCrawler,
-    GitHubTrending,
-    PaperDatasetExtractor,
-    PriorityRanker,
-    ScoredDataset,
-    # Convenience functions
-    auto_discover,
-    check_for_new_papers,
-    discover_government_data,
-    discover_github_repos,
-    extract_datasets_from_papers,
-    rank_discovered,
-    print_ranking,
+from src.data.quality import (
+    QualityPipeline,
+    check_boilerplate,
+    check_repetition,
+    check_text_length,
+    detect_language,
+    exact_dedup,
+    filter_by_language,
+    mask_pii,
+    near_dedup,
+    scan_pii,
 )
 
 __all__ = [

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -10,7 +10,6 @@ from src.core.agents.orchestrator import AgentOrchestrator, PlanStep
 from src.core.agents.sub_agent import SubAgent, SubAgentResult
 from src.core.registry import get_registry
 from src.core.tools import register_all_tools
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 
@@ -79,8 +78,8 @@ class TestInitDefaultAgents:
 
     def test_mcp_agent_created_with_mcp_tools(self):
         """MCP agent should be created when MCP tools are registered."""
-        from src.core.tool import Tool
         from src.core.registry import ToolRegistry
+        from src.core.tool import Tool
 
         class MockMCPTool(Tool):
             def __init__(self):

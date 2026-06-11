@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-    
 import math
 import os
 import re
@@ -18,9 +17,9 @@ import ollama
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
-from src.rag.models import DEFAULT_MODEL, list_configured_models, list_ollama_models, resolve_model
 from src.rag.cast_chunker import CastChunker, CodeChunk
 from src.rag.knowledge_graph import KnowledgeGraph
+from src.rag.models import DEFAULT_MODEL, list_configured_models, list_ollama_models, resolve_model
 from src.rag.reasoning import ReasoningEngine
 from src.rag.verifier import AnswerVerifier
 
@@ -503,15 +502,15 @@ def get_answer(
 
     messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
     messages.extend(history[-10:])
-    
+
     # ── Phase 2: Reasoning Engine ──
     reasoning_engine = ReasoningEngine(model=model)
     plan_text = ""
     if reasoning_engine.requires_reasoning(question):
-        print(f"\n[Reasoning] Complex query detected. Generating plan...")
+        print("\n[Reasoning] Complex query detected. Generating plan...")
         plan_text = reasoning_engine.generate_plan(question, context)
         print(f"  -> Plan: {plan_text.replace(chr(10), ' | ')[:150]}...")
-        
+
         prompt_with_plan = f"{USER_PROMPT_TEMPLATE.format(context=context, question=question)}\n\nREASONING PLAN:\n{plan_text}"
         messages.append({"role": "user", "content": prompt_with_plan})
     else:
@@ -546,35 +545,35 @@ def get_answer(
 
     # ── Phase 2: Reflection & Verification ──
     verifier = AnswerVerifier(model=model)
-    
+
     # Optional reflection step
     if plan_text:
-        print(f"\n[Reasoning] Reflecting on answer...")
+        print("\n[Reasoning] Reflecting on answer...")
         reflection = reasoning_engine.reflect_and_correct(question, full)
         if "LGTM" not in reflection:
             print(f"  [Reflection] Suggested correction: {reflection[:100]}...")
-            
+
     if not no_exec:
-        print(f"\n[Verify] Validating answer...")
+        print("\n[Verify] Validating answer...")
         code_ver = verifier.verify_code(full, timeout=exec_timeout)
         if code_ver["blocks_checked"] > 0:
             if code_ver["all_passed"]:
                 print(f"  [OK] Code execution: All {code_ver['blocks_checked']} block(s) passed.")
             else:
-                print(f"  [WARN] Code execution: Errors found in blocks.")
+                print("  [WARN] Code execution: Errors found in blocks.")
                 for d in code_ver["details"]:
                     if d["status"] == "error":
                         print(f"    - {d['output'][:80]}")
         else:
             print("  [OK] Code execution: No code blocks to check.")
-            
-        print(f"  [Verify] Checking facts against context...")
+
+        print("  [Verify] Checking facts against context...")
         fact_ver = verifier.verify_facts(question, full, context)
         if fact_ver.get("hallucinations_found"):
             print(f"  [WARN] Fact check: Hallucinations detected! {fact_ver.get('explanation')}")
         else:
-            print(f"  [OK] Fact check: Passed.")
-            
+            print("  [OK] Fact check: Passed.")
+
         conf = verifier.compute_confidence(code_ver, fact_ver)
         print(f"  [Confidence Score] {conf * 100:.0f}%")
 
@@ -584,11 +583,11 @@ def get_answer(
             constitution = ConstitutionalCheck()
             violations = constitution.validate_all(full, code_ver, fact_ver)
             if violations:
-                print(f"\n  [CONSTITUTION] Response violated principles:")
+                print("\n  [CONSTITUTION] Response violated principles:")
                 for v in violations:
                     print(f"    - {v}")
             else:
-                print(f"\n  [CONSTITUTION] Passed all core value checks.")
+                print("\n  [CONSTITUTION] Passed all core value checks.")
         except ImportError:
             pass
     # Show sources with citations
@@ -664,7 +663,7 @@ def build_db(chunks_file: Path) -> tuple[Any, SentenceTransformer, SimpleBM25 | 
     ]
     print(f"[cAST] Code chunks after filtering: {len(code_valid):,}")
     valid.extend(code_valid)
-    print(f"\n[Build] Building GOD MODE database...")
+    print("\n[Build] Building GOD MODE database...")
 
     embedder = SentenceTransformer("all-MiniLM-L6-v2")
     client = chromadb.PersistentClient(path=str(DB_PATH))
@@ -777,7 +776,7 @@ def load_db(chunks_file: Path) -> tuple[Any, SentenceTransformer, SimpleBM25 | N
 def print_stats(collection: Any, chunks_file: Path) -> None:
     """Print database statistics."""
     count = collection.count()
-    print(f"\n[Stats] RAG Database Statistics")
+    print("\n[Stats] RAG Database Statistics")
     print(f"{'='*55}")
     print(f"  Chunks in DB : {count:,}")
     print(f"  Source file  : {chunks_file.name}")
@@ -790,13 +789,13 @@ def print_stats(collection: Any, chunks_file: Path) -> None:
         categories = Counter(m.get("category", "") for m in metadatas)
         types = Counter(m.get("type", "") for m in metadatas)
 
-        print(f"\n  Versions:")
+        print("\n  Versions:")
         for ver, cnt in versions.most_common(10):
             print(f"    Python {ver or '(none)'}: {cnt:,}")
-        print(f"\n  Categories (top 10):")
+        print("\n  Categories (top 10):")
         for cat, cnt in categories.most_common(10):
             print(f"    {cat}: {cnt:,}")
-        print(f"\n  Types (top 10):")
+        print("\n  Types (top 10):")
         for t, cnt in types.most_common(10):
             print(f"    {t}: {cnt:,}")
     print(f"{'='*55}\n")
@@ -874,7 +873,6 @@ def extract_code_blocks(text: str) -> list[str]:
 
 
 def load_or_build_db(force_rebuild: bool = False) -> tuple[Any, SentenceTransformer, SimpleBM25 | None, list[str], KnowledgeGraph, Path]:
-    import chromadb  # late import for startup speed
 
     chunks_file = (
         ROOT / "data" / "raw" / "raw_chunks_godmode.json"
@@ -1114,7 +1112,6 @@ def show_model_info(model: str = DEFAULT_MODEL) -> None:
 
 
 def main() -> None:
-    import chromadb  # late import for startup speed
 
     args = parse_args()
 
@@ -1130,7 +1127,7 @@ def main() -> None:
         print("\n[Models] Available Ollama models:")
         configured = list_configured_models()
         if available_ollama:
-            print(f"\n  Locally available:")
+            print("\n  Locally available:")
             for m in available_ollama:
                 print(f"    - {m}")
         else:
@@ -1175,7 +1172,7 @@ def main() -> None:
         )
         return
 
-    print(f"""
+    print("""
 Commands:
   'rebuild'     → Rebuild database
   'expand'      → Download extra data (PEPs, libraries)

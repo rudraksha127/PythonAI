@@ -3,19 +3,12 @@
 from __future__ import annotations
 
 import json
-import hashlib
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from src.data.quality import (
-    TEXT_LENGTH_MIN,
-    TEXT_LENGTH_RECOMMENDED,
-    TEXT_LENGTH_IDEAL,
     BOILERPLATE_PATTERNS,
     PII_PATTERNS,
-    LANG_CONFIDENCE_THRESHOLD,
     QualityPipeline,
     _jaccard_from_signatures,
     _minhash_signature,
@@ -31,7 +24,6 @@ from src.data.quality import (
     near_dedup,
     scan_pii,
 )
-
 
 # ══════════════════════════════════════════════════════════════════════
 # check_text_length

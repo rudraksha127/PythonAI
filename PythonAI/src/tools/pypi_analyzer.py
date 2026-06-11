@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-import urllib.request
 import json
+import urllib.request
 from typing import Any
+
 from src.utils.swarm import MCPTool
+
 
 def handle_pypi_analyzer(package_name: str) -> dict[str, Any]:
     """Query PyPI JSON API for package info."""

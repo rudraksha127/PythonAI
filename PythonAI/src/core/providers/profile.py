@@ -14,10 +14,9 @@ import json
 import os
 import stat
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
-
 
 DEFAULT_PROFILE_PATH = Path.home() / ".pythonai" / "provider-profile.json"
 CONFIG_DIR = Path.home() / ".pythonai"
@@ -39,7 +38,7 @@ class ProviderProfile:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ProviderProfile":
+    def from_dict(cls, data: dict[str, Any]) -> ProviderProfile:
         return cls(
             provider=data.get("provider", "auto"),
             model=data.get("model", ""),

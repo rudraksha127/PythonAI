@@ -12,7 +12,6 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any
 
 import streamlit as st
 
@@ -21,8 +20,9 @@ ROOT = Path(__file__).resolve().parent.parent.parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.core.agents import AgentOrchestrator, PlanStep
-from src.core.providers import ProfileManager, ProviderRouter, get_registry as get_model_registry
+from src.core.agents import AgentOrchestrator
+from src.core.providers import ProfileManager
+from src.core.providers import get_registry as get_model_registry
 from src.core.registry import get_registry as get_tool_registry
 from src.core.tools import register_all_tools
 from src.data.apikeys import active_providers
@@ -31,7 +31,7 @@ from src.data.apikeys import active_providers
 try:
     from ..utils import inject_dashboard_css, metric_card
 except ImportError:
-    from src.webui.utils import inject_dashboard_css, metric_card
+    from src.webui.utils import inject_dashboard_css
 
 
 # ════════════════════════════════════════
@@ -259,7 +259,7 @@ def _render_sidebar_config() -> None:
             # List known models for this provider
             model_reg = get_model_registry()
             provider_models = [m.id for m in model_reg.list_models(selected_prov)]
-            
+
             # Fetch default model if known
             default_model = ""
             p_desc = model_reg.get_provider(selected_prov)

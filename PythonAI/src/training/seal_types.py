@@ -19,8 +19,7 @@ import json
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 class SealActionType(str, Enum):
@@ -79,7 +78,7 @@ class SelfEditAction:
     """Generation temperature for creating examples."""
 
     @classmethod
-    def from_json(cls, text: str) -> Optional["SelfEditAction"]:
+    def from_json(cls, text: str) -> SelfEditAction | None:
         """Parse a SelfEditAction from a JSON string.
 
         Attempts to extract JSON from a code block or raw text.
@@ -169,7 +168,7 @@ class CurriculumState:
     """Action type → list of reward deltas from using that action."""
 
     # Best performing configuration
-    best_action: Optional[dict[str, Any]] = None
+    best_action: dict[str, Any] | None = None
     """The action that produced the best acceptance rate improvement."""
 
     def to_dict(self) -> dict[str, Any]:
@@ -187,7 +186,7 @@ class CurriculumState:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "CurriculumState":
+    def from_dict(cls, data: dict[str, Any]) -> CurriculumState:
         return cls(
             cycle_number=data.get("cycle_number", 0),
             total_actions_taken=data.get("total_actions_taken", 0),
@@ -274,10 +273,10 @@ class RewardRecord:
     examples_generated: int = 0
     """How many synthetic examples were generated."""
 
-    inner_train_loss: Optional[float] = None
+    inner_train_loss: float | None = None
     """Training loss from the inner loop SFT."""
 
-    inner_eval_loss: Optional[float] = None
+    inner_eval_loss: float | None = None
     """Evaluation loss from the inner loop SFT."""
 
     timestamp: float = field(default_factory=time.time)
@@ -397,7 +396,7 @@ class SealConfig:
     """Probability of choosing a random action instead of the best-known one."""
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "SealConfig":
+    def from_dict(cls, data: dict[str, Any]) -> SealConfig:
         valid_keys = set(cls.__dataclass_fields__.keys())
         filtered = {k: v for k, v in data.items() if k in valid_keys}
         return cls(**filtered)

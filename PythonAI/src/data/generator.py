@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
 import threading
 import time
@@ -15,7 +14,6 @@ from tqdm import tqdm
 
 from src.data.apikeys import ALL_PROVIDERS, resolve_all
 from src.utils.swarm import AgentSwarm, TaskDecomposer
-
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -451,10 +449,10 @@ def main(resume: bool = False, quality_min: int = QUALITY_MIN_DEFAULT) -> None:
         if start_index > 0:
             print(f"Resuming from chunk {start_index} (already generated {len(all_pairs)} pairs)")
 
-    print(f"\nGenerating dataset...")
+    print("\nGenerating dataset...")
     print(f"Valid chunks  : {len(valid):,}")
-    print(f"Data types    : 10+")
-    print(f"Workers       : 50 parallel\n")
+    print("Data types    : 10+")
+    print("Workers       : 50 parallel\n")
 
     start = time.time()
 
@@ -489,18 +487,18 @@ def main(resume: bool = False, quality_min: int = QUALITY_MIN_DEFAULT) -> None:
     elapsed = (time.time() - start) / 60
 
     print(f"\n{'='*50}")
-    print(f"COMPLETE!")
+    print("COMPLETE!")
     print(f"Total pairs  : {len(all_pairs):,}")
     print(f"Unique       : {len(seen_hashes):,}")
     print(f"Time         : {elapsed:.0f} min")
     print(f"File         : {OUTPUT}")
-    print(f"\nBy type:")
+    print("\nBy type:")
     for t, n in sorted(type_stats.items(), key=lambda x: -x[1]):
         print(f"  {t:15s}: {n:,}")
     print(f"{'='*50}")
 
     # Print API stats
-    print(f"\nAPI Usage:")
+    print("\nAPI Usage:")
     for name in sorted(set(list(calls.keys()) + list(fails.keys()))):
         c = calls.get(name, 0)
         f = fails.get(name, 0)

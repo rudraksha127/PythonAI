@@ -22,16 +22,15 @@ from __future__ import annotations
 
 import asyncio
 import gzip
-import io
 import json
 import os
 import shutil
 import subprocess
-import sys
 import time
 import zipfile
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Coroutine
+from typing import Any
 from urllib.parse import urlparse
 
 from src.data.metadata import (
@@ -207,7 +206,7 @@ class DownloadOrchestrator:
         instead of the datasets library, for better Python 3.14 compatibility.
         """
         try:
-            from huggingface_hub import list_repo_files, hf_hub_download
+            from huggingface_hub import hf_hub_download, list_repo_files
         except ImportError:
             raise RuntimeError("huggingface_hub not installed. Run: pip install huggingface_hub")
 
@@ -334,7 +333,7 @@ class DownloadOrchestrator:
                     )
                 )
 
-                with open(local_path, "r", encoding="utf-8") as jf_reader:
+                with open(local_path, encoding="utf-8") as jf_reader:
                     for line in jf_reader:
                         if max_records and total_records >= max_records:
                             break

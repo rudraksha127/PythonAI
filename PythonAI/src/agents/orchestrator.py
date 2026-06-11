@@ -1,13 +1,13 @@
 from typing import Any
-import json
+
 from loguru import logger
-from src.utils.swarm import GenerationTask
-from src.utils.llm import generate_with_provider, generate_parallel, get_provider_status
-from src.utils.memory import AgentMemory
 
 # Import specific agents to allow collaboration
 from src.agents.code import run_code_agent
 from src.agents.debug import run_debug_agent
+from src.utils.llm import generate_parallel
+from src.utils.memory import AgentMemory
+from src.utils.swarm import GenerationTask
 
 # Global memory instance
 memory = AgentMemory()
@@ -24,18 +24,18 @@ def run_orchestrator_agent(task: GenerationTask, session_id: str = "default") ->
     # Search memory for past context
     past_context = memory.search_memory(session_id, task.prompt)
     context_str = "\n".join(past_context)
-    
+
     # 1. Routing decision
     prompt_lower = task.prompt.lower()
     is_coding_task = any(kw in prompt_lower for kw in [
-        "code", "function", "script", "bug", "implement", "class", "def ", 
+        "code", "function", "script", "bug", "implement", "class", "def ",
         "import", "write a", "build a", "create a program", "fix this"
     ])
-    
+
     if is_coding_task:
         logger.info("[Orchestrator] Routing to Code Agent (parallel race)...")
         code_result = run_code_agent(task).get("output", "")
-        
+
         logger.info("[Orchestrator] Code generated. Routing to Debug Agent for verification...")
         verify_task = GenerationTask(
             prompt=f"Review and fix any potential issues in this code. "
@@ -43,14 +43,14 @@ def run_orchestrator_agent(task: GenerationTask, session_id: str = "default") ->
                    f"Code:\n{code_result}\n\nOriginal Request: {task.prompt}"
         )
         final_result = run_debug_agent(verify_task).get("output", "")
-        
+
         response = f"**[Orchestrator Verified Output]**\n\n{final_result}"
     else:
         # Standard processing — use parallel for speed
         prompt = f"Task: {task.prompt}"
         if context_str:
             prompt = f"Relevant past context:\n{context_str}\n\n{prompt}"
-        
+
         try:
             response = generate_parallel(
                 prompt,
@@ -58,9 +58,9 @@ def run_orchestrator_agent(task: GenerationTask, session_id: str = "default") ->
             )
         except Exception as e:
             response = f"[Orchestrator Agent failed]: {e}"
-            
+
     # Save interaction to memory
     memory.add_memory(session_id, "user", task.prompt)
     memory.add_memory(session_id, "orchestrator", response)
-    
+
     return {"output": response}

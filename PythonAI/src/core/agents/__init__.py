@@ -14,9 +14,9 @@ Each SubAgent runs an independent LLM+tool loop (ToolCallingEngine)
 with its own tool pool and context window.
 """
 
+from .orchestrator import AgentOrchestrator, PlanStep
 from .sub_agent import SubAgent, SubAgentResult
 from .swarm import AgentSwarm
-from .orchestrator import AgentOrchestrator, PlanStep
 
 __all__ = [
     "SubAgent",

@@ -15,15 +15,32 @@ Individual provider API modules:
 
 from typing import Any
 
+from .anthropic_provider import call_anthropic
+from .deepseek_provider import call_deepseek
+from .discovery import (
+    ProviderDiscovery,
+    discover_all_local,
+    discover_ollama_models,
+    discover_openai_compatible_models,
+)
+from .gemini_provider import call_gemini
+from .mistral_provider import call_mistral
+from .ollama_provider import call_ollama, call_ollama_native
+from .openai_provider import call_openai, call_openai_stream
+from .profile import (
+    DEFAULT_PROFILE_PATH,
+    ProfileManager,
+    ProviderProfile,
+)
 from .registry import (
-    ModelRegistry,
-    ModelCapabilities,
-    ModelDescriptor,
-    ProviderDescriptor,
     ALL_MODELS,
     ALL_PROVIDERS,
-    get_model_info,
+    ModelCapabilities,
+    ModelDescriptor,
+    ModelRegistry,
+    ProviderDescriptor,
     find_models_by_capability,
+    get_model_info,
     get_registry,
 )
 from .router import (
@@ -31,23 +48,6 @@ from .router import (
     RouteResult,
     RouteStrategy,
 )
-from .profile import (
-    ProviderProfile,
-    ProfileManager,
-    DEFAULT_PROFILE_PATH,
-)
-from .discovery import (
-    ProviderDiscovery,
-    discover_ollama_models,
-    discover_openai_compatible_models,
-    discover_all_local,
-)
-from .openai_provider import call_openai, call_openai_stream
-from .gemini_provider import call_gemini
-from .deepseek_provider import call_deepseek
-from .ollama_provider import call_ollama, call_ollama_native
-from .mistral_provider import call_mistral
-from .anthropic_provider import call_anthropic
 
 # All provider API call functions
 PROVIDER_API_CALLS = {

@@ -21,7 +21,15 @@ Individual stage test functions are also available in separate files:
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from typing import Any
+
+# Ensure the project root is on sys.path so "src" can be imported
+# when running this file directly (not via pytest).
+_proj_root = Path(__file__).resolve().parent.parent
+if str(_proj_root) not in sys.path:
+    sys.path.insert(0, str(_proj_root))
 
 # ──────────────────────────────────────────────────────────────────────
 # 1. AUTH SYSTEM
@@ -559,4 +567,11 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    # Reconfigure stdout to UTF-8 on Windows to avoid UnicodeEncodeError
+    # with emoji characters in the status output.
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
     raise SystemExit(main())

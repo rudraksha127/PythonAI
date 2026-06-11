@@ -10,7 +10,7 @@ Gracefully handles missing credentials — all cloud features are optional.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from supabase import create_async_client, create_client
 

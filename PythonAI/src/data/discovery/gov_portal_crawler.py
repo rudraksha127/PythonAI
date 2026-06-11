@@ -18,13 +18,11 @@ Usage:
 from __future__ import annotations
 
 import json
-import re
-import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from src.data.metadata import DatasetRecord, DataDomain, MetadataManager
+from src.data.metadata import DataDomain, DatasetRecord, MetadataManager
 
 DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / ".gov_cache.json"
 
@@ -162,8 +160,8 @@ class GovPortalCrawler:
     ) -> list[GovDataset]:
         """Scan a single CKAN-based government portal."""
         try:
-            import urllib.request
             import urllib.parse
+            import urllib.request
 
             info = self.PORTALS[portal]
             api_url = info["api_url"]
@@ -245,8 +243,8 @@ class GovPortalCrawler:
     def _scan_world_bank(self, max_results: int) -> list[GovDataset]:
         """Scan World Bank Open Data API."""
         try:
-            import urllib.request
             import urllib.parse
+            import urllib.request
 
             datasets: list[GovDataset] = []
             params = urllib.parse.urlencode({

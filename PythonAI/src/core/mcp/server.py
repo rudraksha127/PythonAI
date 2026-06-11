@@ -17,11 +17,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-import socket
 import sys
-from typing import Any, Callable
-
-from .types import MCPToolInfo
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger("pythonai.mcp.server")
 
@@ -266,7 +264,6 @@ def start_mcp_server_sse(
     """
     import http.server
     import urllib.parse
-    import threading
 
     server.refresh_tools()
     logger.info(f"Starting MCP SSE server on {host}:{port}")

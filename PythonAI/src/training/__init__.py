@@ -19,41 +19,39 @@ Modules:
 
 from __future__ import annotations
 
-from src.training.config import (
-    TrainingConfig,
-    smoke_config,
-    quick_config,
-    qwen_config,
-    production_config,
-)
-
 from src.training.checkpoint_manager import (
     CheckpointManager,
     CheckpointMeta,
     format_meta,
 )
-
+from src.training.config import (
+    TrainingConfig,
+    production_config,
+    quick_config,
+    qwen_config,
+    smoke_config,
+)
 from src.training.indra_prompt import (
-    INDRA_SYSTEM_PROMPT,
     INDRA_CONSTITUTION,
     INDRA_CORE_TENETS,
+    INDRA_SYSTEM_PROMPT,
     build_training_system_prompt,
     get_indra_config,
     setup_indra_training,
 )
-
-# SEAL Phase 3 — Autonomous Self-Improvement Loop
-from src.training.seal_types import (
-    SealActionType,
-    SelfEditAction,
-    CurriculumState,
-    RewardRecord,
-    SealConfig,
-)
+from src.training.phase3_seal import SealOrchestrator
 from src.training.seal_curriculum import CurriculumGenerator
 from src.training.seal_inner_loop import SealInnerLoop, SyntheticExampleGenerator
 from src.training.seal_meta_learner import MetaLearner, OuterLoopReward
-from src.training.phase3_seal import SealOrchestrator
+
+# SEAL Phase 3 — Autonomous Self-Improvement Loop
+from src.training.seal_types import (
+    CurriculumState,
+    RewardRecord,
+    SealActionType,
+    SealConfig,
+    SelfEditAction,
+)
 
 __all__ = [
     "TrainingConfig",

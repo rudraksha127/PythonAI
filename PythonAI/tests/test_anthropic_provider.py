@@ -4,11 +4,6 @@ Unit tests for src.core.providers.anthropic_provider — Claude API Integration.
 
 from __future__ import annotations
 
-import json
-from unittest.mock import patch
-
-import pytest
-
 
 class TestConvertMessages:
     """Tests for the _convert_messages helper function."""

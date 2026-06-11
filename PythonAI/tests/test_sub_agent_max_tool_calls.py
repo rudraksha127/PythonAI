@@ -11,14 +11,13 @@ Tests cover:
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from src.core.agents.sub_agent import SubAgent
 from src.core.registry import get_registry
 from src.core.tools import register_all_tools
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 

@@ -17,10 +17,9 @@ from __future__ import annotations
 
 import ast
 import json
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 # Tree-sitter optional — falls back to Python's ast module or line-based chunking
 # Core tree-sitter library (must be installed for any grammar to work)
@@ -117,7 +116,7 @@ class CodeChunk:
     name: str = ""
     docstring: str = ""
     signature: str = ""
-    parent_class: Optional[str] = None
+    parent_class: str | None = None
     dependencies: list[str] = field(default_factory=list)  # function calls, imports
     imports: list[str] = field(default_factory=list)
     filepath: str = ""
@@ -309,7 +308,7 @@ class ASTDependencyExtractor(ast.NodeVisitor):
             self.calls.append(call_name)
         self.generic_visit(node)
 
-    def _get_call_name(self, func_node) -> Optional[str]:
+    def _get_call_name(self, func_node) -> str | None:
         if isinstance(func_node, ast.Name):
             return func_node.id
         elif isinstance(func_node, ast.Attribute):
@@ -1463,7 +1462,7 @@ if __name__ == "__main__":
 
     if args.stats:
         print(f"\n{'='*50}")
-        print(f"cAST Chunking Statistics")
+        print("cAST Chunking Statistics")
         print(f"{'='*50}")
         print(f"Total chunks: {len(chunks)}")
         types = {}

@@ -7,13 +7,11 @@ Provides typed tool interface with validation, permissions, and progress reporti
 
 from __future__ import annotations
 
-import json
-import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Protocol, cast
-
+from typing import Any, Protocol, cast
 
 # ═══════════════════════════════════════
 #  Type Definitions

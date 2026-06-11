@@ -4,10 +4,8 @@ import argparse
 import subprocess
 import sys
 import types
-from pathlib import Path
 
 import torch
-
 
 DEFAULT_PROMPT = (
     "You are PYTHON MASTER. Explain Python list comprehensions with one runnable "

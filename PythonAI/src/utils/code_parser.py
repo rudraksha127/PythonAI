@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import ast
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -133,7 +133,7 @@ def parse_python_ast(code: str) -> dict[str, Any]:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     result["imports"].append(alias.name)
-            
+
             # Extract from ... import ...
             elif isinstance(node, ast.ImportFrom):
                 module = node.module or ""
@@ -180,7 +180,7 @@ def extract_and_analyze(text: str) -> dict[str, Any]:
 
         # Auto-detect language if missing but syntax looks like Python
         is_python_like = block.language in ("python", "py", "") and not block.is_inline
-        
+
         if is_python_like:
             ast_info = parse_python_ast(block.code)
             # If it was explicitly marked as python, or if it parses validly

@@ -25,31 +25,29 @@ import json
 import logging
 import os
 import re
+import sqlite3  # Projects store
 import time
 import uuid
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, AsyncGenerator, Optional
+from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
+# APScheduler — automated training scheduling
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from src.cli import VERSION
-from src.learning.capture_engine import CaptureEngine, SignalType
+from src.learning.capture_engine import CaptureEngine
 from src.rag.models import list_ollama_models, resolve_model
 from src.rag.rag_engine import DEFAULT_MODEL, get_answer, load_or_build_db
 from src.training.grpo_trainer import GRPOTrainer
 from src.training.sdft_trainer import SDFTTrainer
 from src.utils.metrics import metrics
-from fastapi import Query
-
-import sqlite3  # Projects store
-
-# APScheduler — automated training scheduling
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
 
 # Cloud backend (optional — graceful if not configured)
 try:
@@ -63,20 +61,21 @@ except ImportError:
 # Logging — centralized
 # ═══════════════════════════════════════
 from src.utils.logging_config import setup_logging
+
 setup_logging()
 logger = logging.getLogger("forgeai.api")
 
 # ═══════════════════════════════════════
 # Global State
 # ═══════════════════════════════════════
-_capture_engine: Optional[CaptureEngine] = None
-_sdft_trainer: Optional[SDFTTrainer] = None
-_grpo_trainer: Optional[GRPOTrainer] = None
-_active_training_run: Optional[dict[str, Any]] = None
+_capture_engine: CaptureEngine | None = None
+_sdft_trainer: SDFTTrainer | None = None
+_grpo_trainer: GRPOTrainer | None = None
+_active_training_run: dict[str, Any] | None = None
 _ws_clients: list[WebSocket] = []  # Dashboard WebSocket clients
 
 # Training scheduler config (persisted to environment)
-_scheduler: Optional[AsyncIOScheduler] = None
+_scheduler: AsyncIOScheduler | None = None
 _schedule_config: dict[str, Any] = {
     "enabled": os.environ.get("FORGEAI_SCHEDULER_ENABLED", "true").lower() == "true",
     "cron": os.environ.get("FORGEAI_SCHEDULER_CRON", "0 2 * * 1"),  # Monday 2AM by default
@@ -146,7 +145,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global _capture_engine, _sdft_trainer, _grpo_trainer
     logger.info("ForgeAI server starting up...")
     _capture_engine = CaptureEngine()
-    
+
     # Default model for training (can be overridden via env var)
     _default_model = os.environ.get(
         "FORGEAI_BASE_MODEL",
@@ -250,16 +249,16 @@ class EventPayload(BaseModel):
     file_path: str
     line_number: int = 0
     language: str
-    framework: Optional[str] = None
+    framework: str | None = None
     project_type: str = "general"
     suggestion: str
     suggestion_metadata: dict = Field(default_factory=dict)
     context_before: str = ""
     context_after: str = ""
     full_context: str = ""
-    final_code: Optional[str] = None
+    final_code: str | None = None
     edit_distance: float = 0.0
-    developer_id: Optional[str] = None
+    developer_id: str | None = None
 
     @field_validator("event_type")
     @classmethod
@@ -288,7 +287,7 @@ class ChatRequest(BaseModel):
     mmr: bool = False
     mmr_lambda: float = Field(default=0.7, ge=0.0, le=1.0)
     history: list[dict[str, Any]] = Field(default_factory=list)
-    project_id: Optional[str] = None
+    project_id: str | None = None
 
     @field_validator("history")
     @classmethod
@@ -451,7 +450,7 @@ async def capture_event(payload: EventPayload) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail="Failed to capture event")
 
 @app.get("/api/metrics/acceptance-rate")
-async def get_acceptance_rate(project_id: Optional[str] = None, weeks: int = 12) -> dict[str, Any]:
+async def get_acceptance_rate(project_id: str | None = None, weeks: int = 12) -> dict[str, Any]:
     """Get acceptance rate over time for dashboard chart."""
     if _capture_engine is None:
         raise HTTPException(status_code=503, detail="Capture engine not initialized")
@@ -469,7 +468,7 @@ async def get_acceptance_rate(project_id: Optional[str] = None, weeks: int = 12)
     return {"data": rates, "training_markers": markers}
 
 @app.get("/api/training/status")
-async def get_training_status(project_id: Optional[str] = None) -> dict[str, Any]:
+async def get_training_status(project_id: str | None = None) -> dict[str, Any]:
     """Get current training status and history."""
     if _capture_engine is None:
         raise HTTPException(status_code=503, detail="Capture engine not initialized")
@@ -482,7 +481,7 @@ async def get_training_status(project_id: Optional[str] = None) -> dict[str, Any
     }
 
 @app.post("/api/training/trigger")
-async def trigger_training(project_id: Optional[str] = None) -> dict[str, Any]:
+async def trigger_training(project_id: str | None = None) -> dict[str, Any]:
     """Manually trigger a training run."""
     global _active_training_run
 
@@ -1405,6 +1404,7 @@ if _CLOUD_AVAILABLE and cloud_router is not None:
 
 # ── Include Learning Routes ────────────────────────────────────
 from src.api.learning_routes import router as learning_router
+
 app.include_router(learning_router)
 logger.info("Learning routes registered")
 

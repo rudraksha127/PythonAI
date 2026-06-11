@@ -7,7 +7,6 @@ Handles dependencies, result collection, and parallel execution.
 
 from __future__ import annotations
 
-import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 

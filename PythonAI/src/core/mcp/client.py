@@ -16,12 +16,8 @@ import json
 import logging
 import os
 import subprocess
-import sys
 import threading
-import time
-import uuid
-from typing import Any, Callable
-from urllib.parse import urlparse
+from typing import Any
 
 import httpx
 
@@ -31,11 +27,10 @@ from .types import (
     MCPResourceInfo,
     MCPToolInfo,
     MCPToolResult,
-    SSEConfig,
     ServerConfig,
     ServerConnection,
+    SSEConfig,
     StdioConfig,
-    TransportType,
 )
 
 logger = logging.getLogger("pythonai.mcp")
@@ -80,7 +75,7 @@ class MCPClient:
                 env=env,
                 text=True,
             )
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             return ServerConnection(
                 name=config.command,
                 state=ConnectionState.FAILED,
@@ -499,8 +494,8 @@ class _SSETransport:
         event = threading.Event()
         self._response_events[req_id] = event
 
-        import urllib.request
         import urllib.error
+        import urllib.request
 
         try:
             data_bytes = text.encode("utf-8")

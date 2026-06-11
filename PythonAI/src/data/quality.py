@@ -23,15 +23,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
 import time
-from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from src.data.metadata import DatasetRecord, DownloadStatus, MetadataManager, QualityCheck
-
+from src.data.metadata import MetadataManager
 
 # ════════════════════════════════════════════
 # Text quality heuristics
@@ -110,7 +107,7 @@ def detect_language(text: str) -> tuple[str, float]:
 
     # Fallback to langdetect
     try:
-        from langdetect import detect, DetectorFactory
+        from langdetect import DetectorFactory, detect
         DetectorFactory.seed = 42
         lang = detect(text[:1000])
         return lang, 0.8  # langdetect doesn't give confidence, use default
@@ -453,7 +450,7 @@ class QualityPipeline:
             return {"error": f"File not found: {path}"}
 
         records: list[dict[str, Any]] = []
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if line:

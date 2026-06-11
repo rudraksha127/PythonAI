@@ -14,17 +14,14 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import time
-from collections import Counter
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
-
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_PROMPTS = [
@@ -211,7 +208,7 @@ def generate_html_report(report: ComparisonReport, output_path: Path) -> str:
             output_snippet = r.output[:300].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             output_snippet = output_snippet.replace("\\n", "<br>").replace("\\n```", "<pre><code>").replace("```", "</code></pre>")
             code_badge = '<span class="badge code">Has Code</span>' if r.has_code else ''
-            error_badge = f'<span class="badge error">Error</span>' if r.error else ''
+            error_badge = '<span class="badge error">Error</span>' if r.error else ''
             cells += f"""
             <td>
                 <small class="meta">Time: {r.generation_time_s}s | Tokens: {r.output_length_tokens}</small>

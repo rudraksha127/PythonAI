@@ -24,10 +24,9 @@ import logging
 import random
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from src.training.seal_types import (
-    CurriculumState,
     RewardRecord,
     SealConfig,
     SelfEditAction,
@@ -49,7 +48,7 @@ class MetaLearner:
     learns to prefer actions that yield the best results.
     """
 
-    def __init__(self, config: Optional[SealConfig] = None):
+    def __init__(self, config: SealConfig | None = None):
         self.config = config or SealConfig()
         self.reward_history: list[RewardRecord] = []
 
@@ -235,7 +234,7 @@ class OuterLoopReward:
     def compute_reward(
         rate_before: float,
         rate_after: float,
-        inner_metrics: Optional[dict[str, Any]] = None,
+        inner_metrics: dict[str, Any] | None = None,
     ) -> RewardRecord:
         """Compute a reward record from before/after metrics.
 
@@ -262,8 +261,8 @@ class OuterLoopReward:
         capture_engine: Any,
         cycle: int,
         action: SelfEditAction,
-        inner_metrics: Optional[dict[str, Any]] = None,
-    ) -> Optional[RewardRecord]:
+        inner_metrics: dict[str, Any] | None = None,
+    ) -> RewardRecord | None:
         """Compute reward using the capture engine's acceptance rate data.
 
         Uses the last 7 days before the current time as "before" and

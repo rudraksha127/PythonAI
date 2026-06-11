@@ -10,15 +10,13 @@ from __future__ import annotations
 from typing import Any
 
 from ..tool import (
-    Tool,
-    ToolResult,
-    ToolUseContext,
     InputSchema,
     Parameter,
+    ToolResult,
+    ToolUseContext,
     ValidationResult,
     build_tool,
 )
-
 
 WebSearchTool = build_tool(
     type("WebSearchToolDef", (), {
@@ -129,9 +127,10 @@ def _search_duckduckgo(query: str, max_results: int) -> list[dict[str, str]]:
 def _search_fallback(query: str, max_results: int) -> list[dict[str, str]]:
     """Fallback search using a simple web scrape approach."""
     try:
-        import requests
         import re
         from urllib.parse import quote_plus
+
+        import requests
 
         encoded = quote_plus(query)
         url = f"https://html.duckduckgo.com/html/?q={encoded}"

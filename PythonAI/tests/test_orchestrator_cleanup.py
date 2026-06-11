@@ -19,7 +19,6 @@ from src.core.agents.orchestrator import AgentOrchestrator
 from src.core.registry import get_registry
 from src.core.tools import register_all_tools
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────
 
 

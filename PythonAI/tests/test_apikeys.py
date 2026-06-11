@@ -12,12 +12,8 @@ Tests:
 
 from __future__ import annotations
 
-import json
 import os
-import tempfile
-import threading
 import time
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -25,15 +21,13 @@ import pytest
 from src.data.apikeys import (
     ALL_PROVIDERS,
     PROVIDER_LABELS,
-    PROVIDER_TIERS,
     PROVIDER_MAX_CONCURRENCY,
-    RateLimitState,
+    PROVIDER_TIERS,
     MultiAgentKeyManager,
-    resolve_key,
-    resolve_all,
+    RateLimitState,
     get_available_providers,
     get_provider_info,
-    _load,
+    resolve_all,
 )
 
 

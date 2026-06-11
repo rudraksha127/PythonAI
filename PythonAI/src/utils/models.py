@@ -6,10 +6,10 @@ import shutil
 import subprocess
 import sys
 from collections import Counter, defaultdict
+from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Generator
-
+from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent.parent  # src/utils/ -> project root
 IGNORED_SCAN_DIRS = {".venv", ".git", "__pycache__", "node_modules"}

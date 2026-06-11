@@ -8,12 +8,11 @@ Inspired by Claude Code's MCPTool in services/mcp/client.ts.
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 
-from .client import call_tool, list_tools
-from .types import ConnectionState, MCPToolInfo, ServerConnection, TransportType
+from .client import call_tool
+from .types import ConnectionState, MCPToolInfo, ServerConnection
 
 logger = logging.getLogger("pythonai.mcp.tool_adapter")
 

@@ -16,20 +16,17 @@ from __future__ import annotations
 import json
 import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
 from collections.abc import Callable
-from typing import Any, cast
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
+from typing import Any
 
-from .tool import (
-    Tool,
-    ToolResult,
-    ToolUseContext,
-    PermissionDecision,
-    ValidationResult,
-)
 from .registry import ToolRegistry, get_registry
-
+from .tool import (
+    PermissionDecision,
+    Tool,
+    ToolUseContext,
+)
 
 # =======================================
 #  Immutable Config Snapshot
@@ -317,7 +314,7 @@ class ToolCallingEngine:
             return self.deps.call_llm(messages, tools)  # type: ignore[no-any-return]
 
         try:
-            from .providers import ProviderRouter, get_provider_api, ProfileManager
+            from .providers import ProfileManager, ProviderRouter, get_provider_api
 
             router = ProviderRouter()
 
@@ -647,7 +644,7 @@ Think step by step about which tools to use and in what order."""
             return None
         try:
             msg_dicts = [m.to_dict() for m in self.messages]
-            from .compact.auto_compact import auto_compact_if_needed, _simple_compact
+            from .compact.auto_compact import _simple_compact, auto_compact_if_needed
             result = auto_compact_if_needed(
                 msg_dicts,
                 model_context_window=self.config.model_context_window,
@@ -679,7 +676,7 @@ Think step by step about which tools to use and in what order."""
             return None
         try:
             msg_dicts = [m.to_dict() for m in self.messages]
-            from .compact.reactive_compact import reactive_compact_if_needed, is_prompt_too_long_error
+            from .compact.reactive_compact import is_prompt_too_long_error, reactive_compact_if_needed
             if not is_prompt_too_long_error(response):
                 return None
             from .compact.auto_compact import _simple_compact

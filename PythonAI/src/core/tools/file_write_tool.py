@@ -11,11 +11,10 @@ import os
 from typing import Any
 
 from ..tool import (
-    Tool,
-    ToolResult,
-    ToolUseContext,
     InputSchema,
     Parameter,
+    ToolResult,
+    ToolUseContext,
     ValidationResult,
     build_tool,
 )

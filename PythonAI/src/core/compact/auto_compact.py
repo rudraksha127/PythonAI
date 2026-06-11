@@ -13,7 +13,6 @@ Also integrates session memory compaction as first attempt.
 
 from __future__ import annotations
 
-import json
 import time
 from collections.abc import Callable
 from typing import Any

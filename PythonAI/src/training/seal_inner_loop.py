@@ -19,19 +19,21 @@ import logging
 import random
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from src.training.seal_types import (
-    CurriculumState,
-    RewardRecord,
-    SealConfig,
-    SelfEditAction,
-)
 from src.training.sdft_trainer import (
     ReplayBuffer,
     ReplayBufferConfig,
+)
+from src.training.sdft_trainer import (
     SDFTTrainer as SDFTBaseTrainer,
+)
+from src.training.sdft_trainer import (
     TrainingExample as SDFTExample,
+)
+from src.training.seal_types import (
+    SealConfig,
+    SelfEditAction,
 )
 
 logger = logging.getLogger("forgeai.seal.inner")
@@ -90,7 +92,7 @@ class SyntheticExampleGenerator:
     so it can be used interchangeably with real developer signals.
     """
 
-    def __init__(self, config: Optional[SealConfig] = None):
+    def __init__(self, config: SealConfig | None = None):
         self.config = config or SealConfig()
         self._ollama_available = None  # Lazy check
 
@@ -109,7 +111,7 @@ class SyntheticExampleGenerator:
     def generate_examples(
         self,
         action: SelfEditAction,
-        count: Optional[int] = None,
+        count: int | None = None,
     ) -> list[dict[str, Any]]:
         """Generate synthetic training examples matching a curriculum action.
 
@@ -218,7 +220,7 @@ class SyntheticExampleGenerator:
 
         return examples
 
-    def _parse_generation(self, text: str) -> Optional[dict[str, Any]]:
+    def _parse_generation(self, text: str) -> dict[str, Any] | None:
         """Parse a generated example from LLM output.
 
         Accepts JSON in code blocks or raw JSON.
@@ -362,8 +364,8 @@ class SealInnerLoop:
 
     def __init__(
         self,
-        config: Optional[SealConfig] = None,
-        capture_engine: Optional[Any] = None,
+        config: SealConfig | None = None,
+        capture_engine: Any | None = None,
     ):
         self.config = config or SealConfig()
         self.generator = SyntheticExampleGenerator(config)
@@ -588,7 +590,7 @@ def _vary_prompt(prompt: str) -> str:
     return prompt + random.choice(variations)
 
 
-def _rule_based_variation(example: dict[str, Any]) -> Optional[dict[str, Any]]:
+def _rule_based_variation(example: dict[str, Any]) -> dict[str, Any] | None:
     """Create a simple rule-based variation of an example.
 
     Used when Ollama is not available for LLM-based augmentation.

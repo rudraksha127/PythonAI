@@ -11,14 +11,14 @@ New code should import directly from .types instead.
 from __future__ import annotations
 
 from .types import (
-    TransportType,
-    ServerConfig,
-    StdioConfig,
-    SSEConfig,
-    HTTPConfig,
     ConnectionState,
-    ServerConnection,
+    HTTPConfig,
     MCPScope,
+    ServerConfig,
+    ServerConnection,
+    SSEConfig,
+    StdioConfig,
+    TransportType,
 )
 
 __all__ = [

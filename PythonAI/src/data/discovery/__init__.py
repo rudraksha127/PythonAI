@@ -16,15 +16,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.data.discovery.hf_catalog_scanner import HFCatalogScanner
 from src.data.discovery.arxiv_rss_watcher import ArxivRSSWatcher
-from src.data.discovery.gov_portal_crawler import GovPortalCrawler
 from src.data.discovery.github_trending import GitHubTrending
+from src.data.discovery.gov_portal_crawler import GovPortalCrawler
+from src.data.discovery.hf_catalog_scanner import HFCatalogScanner
 from src.data.discovery.paper_dataset_extractor import PaperDatasetExtractor
-from src.data.discovery.priority_ranker import PriorityRanker, ScoredDataset, rank_discovered, print_ranking
-
+from src.data.discovery.priority_ranker import PriorityRanker, ScoredDataset, print_ranking, rank_discovered
 from src.data.metadata import DatasetRecord
-
 
 # ── Convenience functions ────────────────────────────────────────────
 

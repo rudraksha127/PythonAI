@@ -5,20 +5,18 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
 import requests
 
 from src.data.collector import (
-    ERROR_PATTERNS,
     CACHE_FILE,
+    ERROR_PATTERNS,
     _crawl_index_page,
     load_cache,
     needs_update,
     save_cache,
 )
-
 
 # ══════════════════════════════════════════════════════════════════════
 # load_cache / save_cache

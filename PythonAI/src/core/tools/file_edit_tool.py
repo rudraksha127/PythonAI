@@ -11,15 +11,13 @@ import os
 from typing import Any
 
 from ..tool import (
-    Tool,
-    ToolResult,
-    ToolUseContext,
     InputSchema,
     Parameter,
+    ToolResult,
+    ToolUseContext,
     ValidationResult,
     build_tool,
 )
-
 
 FileEditTool = build_tool(
     type("FileEditToolDef", (), {
@@ -85,7 +83,7 @@ def _edit_call(input_data: dict[str, Any],
     file_path = os.path.normpath(os.path.expanduser(file_path))
 
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
 
         if old_string not in content:

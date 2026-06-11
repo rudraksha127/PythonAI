@@ -12,11 +12,9 @@ Provides professional-quality plots for monitoring training runs:
 from __future__ import annotations
 
 import json
-import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-
 
 # ──────────────────────────────────────────────────────────────────────
 # Data container for all training metrics

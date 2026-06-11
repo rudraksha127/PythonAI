@@ -12,9 +12,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Optional
 
-from src.cloud.config import get_cloud_config
 from src.cloud.supabase_client import get_async_supabase_client, get_supabase_service_client
 
 logger = logging.getLogger("forgeai.cloud.auth")
@@ -282,7 +280,7 @@ async def _ensure_profile_exists(user_id: str, email: str, username: str) -> Non
 # ─── Dependency for FastAPI ──────────────────────────────────────
 
 
-async def get_current_user(authorization: str = "") -> Optional[CloudUser]:
+async def get_current_user(authorization: str = "") -> CloudUser | None:
     """FastAPI dependency: extract and verify the Bearer token.
 
     Usage:

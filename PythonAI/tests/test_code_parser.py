@@ -1,9 +1,7 @@
-import pytest
 from src.utils.code_parser import (
-    CodeBlock,
+    extract_and_analyze,
     extract_code_blocks,
     parse_python_ast,
-    extract_and_analyze,
 )
 
 
@@ -70,16 +68,16 @@ def test_parse_python_ast_invalid():
 def test_extract_and_analyze():
     text = "Python:\n```python\nimport sys\ndef test(): pass\n```\nInvalid:\n```python\ndef (\n```"
     result = extract_and_analyze(text)
-    
+
     assert result["total_blocks"] == 2
     assert result["fenced_blocks"] == 2
     assert result["inline_blocks"] == 0
-    
+
     b1 = result["blocks"][0]
     assert b1["language"] == "python"
     assert "ast" in b1
     assert "sys" in b1["ast"]["imports"]
-    
+
     b2 = result["blocks"][1]
     assert b2["language"] == "python"  # Language declared
     assert "ast" in b2

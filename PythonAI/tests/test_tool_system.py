@@ -4,9 +4,8 @@ PythonAI Tool System — Comprehensive Test
 Tests all Phase 1 tools and the ToolCallingEngine.
 """
 
-import sys
 import os
-import json
+import sys
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -42,7 +41,7 @@ def check(desc, condition, detail=""):
 # ═══════════════════════════════════════
 section("1. Tool Class Creation")
 
-from src.core.tool import build_tool, InputSchema, Parameter, ToolUseContext
+from src.core.tool import InputSchema, Parameter, ToolUseContext, build_tool
 
 # Create context
 ctx = ToolUseContext(cwd=os.path.dirname(os.path.abspath(__file__)))
@@ -98,7 +97,7 @@ check("to_dict has readonly", td.get("readonly") is True)
 # ═══════════════════════════════════════
 section("2. ToolRegistry")
 
-from src.core.registry import ToolRegistry, get_registry
+from src.core.registry import ToolRegistry
 
 registry = ToolRegistry()
 check("New registry has 0 tools", registry.builtin_count == 0)
@@ -208,7 +207,7 @@ check("write file works", result.error is None)
 check("  returns file_path", temp_file in result.data.get("file_path", ""))
 
 # Verify content was written
-with open(temp_file, "r") as f:
+with open(temp_file) as f:
     content = f.read()
 check("  file content matches", content == "Hello World!\nLine 2\n")
 
@@ -233,7 +232,7 @@ check("edit file works", result.error is None)
 check("  message confirms", "Applied edit" in result.data.get("message", ""))
 
 # Verify edited content
-with open(temp_file, "r") as f:
+with open(temp_file) as f:
     content = f.read()
 check("  edited content correct", "Hello PythonAI!" in content)
 check("  original string gone", "Hello World!" not in content)
@@ -372,7 +371,6 @@ check("empty query fails", validation.success is False)
 section("11. ToolCallingEngine")
 
 from src.core.executor import ToolCallingEngine, parse_tool_calls
-from src.core.registry import get_registry
 
 # Test tool call parser
 tc = parse_tool_calls('{"name": "test", "arguments": {"msg": "hello"}}')
@@ -417,21 +415,22 @@ check(f"globbing finds {len(files)} files in src/core", len(files) > 0)
 if files:
     first_file = files[0]["path"]
     full_path = os.path.join(os.path.dirname(__file__), "src/core", first_file)
-    
+
     read_result = FileReadTool.call({"file_path": full_path, "limit": 10}, ctx)
     content = read_result.data.get("content", "")
     check(f"read {first_file} returns content", len(content) > 0)
     check("  has line numbers", "|" in content)
-    
+
     grep_result = GrepTool.call({
         "pattern": "class\\s+\\w+",
         "cwd": os.path.join(os.path.dirname(__file__), "src/core"),
         "max_results": 10,
     }, ctx)
-    check(f"grep finds classes in src/core", grep_result.data.get("total_matches", 0) > 0)
+    check("grep finds classes in src/core", grep_result.data.get("total_matches", 0) > 0)
 
 # Final: ToolRegistry with ALL tools
 from src.core.tools import register_all_tools
+
 registry2 = ToolRegistry()
 register_all_tools(registry2)
 check(f"register_all_tools: {registry2.total_count} tools registered", registry2.total_count > 0)
@@ -452,7 +451,7 @@ print(f"  FAILED: {FAIL}")
 print(f"  TOTAL:  {PASS + FAIL}")
 print(f"  {'='*50}")
 if FAIL == 0:
-    print(f"  *** ALL TESTS PASSED! ***")
+    print("  *** ALL TESTS PASSED! ***")
 else:
     print(f"  ** {FAIL} test(s) failed **")
 print(f"  {'='*50}")

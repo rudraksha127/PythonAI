@@ -5,10 +5,9 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
-
-from unittest.mock import MagicMock
 
 from src.training.comparison import (
     AdapterResult,
@@ -19,7 +18,6 @@ from src.training.comparison import (
     load_adapter_config,
     run_comparison,
 )
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 

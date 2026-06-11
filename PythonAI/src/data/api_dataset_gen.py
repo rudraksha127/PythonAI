@@ -19,22 +19,19 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import base64
 import hashlib
 import json
 import os
 import re
 import threading
 import time
-import urllib.parse
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from dataclasses import dataclass, field
 
 from tqdm import tqdm
-
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -576,7 +573,7 @@ def build_enrichment_prompt(
             parts.append(f"\nGH{i}: {gh.get('repo', '')} ({gh.get('repo_stars', 0)}★)")
             parts.append(f"  File: {gh.get('path', '')}")
 
-    parts.append(f"""
+    parts.append("""
 
 Create 3 high-quality instruction-output training pairs that combine:
 1. Official documentation accuracy
@@ -590,7 +587,7 @@ Each pair MUST include:
 - At least one pitfall or common mistake
 
 Format:
-[{{"instruction":"...", "output":"..."}}]""")
+[{"instruction":"...", "output":"..."}]""")
 
     return "\n".join(parts)
 
@@ -727,7 +724,7 @@ def process_chunk(
     if use_llm:
         # Try LLM enrichment via existing provider rotation
         try:
-            from src.data.generator import call_api, safe_json, setup as setup_apis
+            from src.data.generator import call_api, safe_json
             prompt = build_enrichment_prompt(chunk, so_data, gh_data)
             raw_text, api_name = call_api(prompt, max_tokens=1200)
             raw_pairs = safe_json(raw_text)
@@ -806,7 +803,8 @@ def main(
     # Try to setup LLM APIs if needed
     if use_llm:
         try:
-            from src.data.generator import setup as setup_apis, active
+            from src.data.generator import active
+            from src.data.generator import setup as setup_apis
             if not active:
                 setup_apis()
             print(f"[OK] LLM APIs: {len(active)} active")
@@ -851,9 +849,9 @@ def main(
             ): i
             for i, chunk in enumerate(tasks_to_run, start=start_idx)
         }
-        
+
         pbar = tqdm(as_completed(futures), total=len(futures), desc="Mining")
-        
+
         for future in pbar:
             i = futures[future]
             try:
@@ -902,11 +900,11 @@ def main(
     elapsed = (time.time() - start_time) / 60
 
     print(f"\n{'=' * 65}")
-    print(f"  MINING COMPLETE!")
+    print("  MINING COMPLETE!")
     print(f"  Total pairs : {len(all_pairs):,}")
     print(f"  Time        : {elapsed:.1f} min")
     print(f"  Output      : {OUTPUT_FILE}")
-    print(f"\n  By type:")
+    print("\n  By type:")
     for t, n in sorted(stats.items(), key=lambda x: -x[1]):
         print(f"    {t:20s}: {n:,}")
     print(f"  SO quota remaining: {so_client.quota}")

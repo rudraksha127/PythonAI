@@ -3,6 +3,7 @@ Agent Memory Module using ChromaDB.
 Provides persistent context across sessions for Swarm Agents.
 """
 import os
+
 from loguru import logger
 
 try:
@@ -18,11 +19,11 @@ class AgentMemory:
             logger.warning("chromadb not installed, agent memory will be disabled")
             self.collection = None
             return
-            
+
         # Ensure dir exists
         os.makedirs(db_path, exist_ok=True)
         self.client = chromadb.PersistentClient(path=db_path)
-        
+
         # We create a collection for conversational memory
         self.collection = self.client.get_or_create_collection(
             name="swarm_memory",
@@ -33,10 +34,10 @@ class AgentMemory:
         """Add a turn of conversation to the memory."""
         if not self.collection:
             return
-            
+
         import uuid
         doc_id = f"{session_id}_{uuid.uuid4().hex[:8]}"
-        
+
         self.collection.add(
             documents=[text],
             metadatas=[{"session_id": session_id, "role": role}],
@@ -47,14 +48,14 @@ class AgentMemory:
         """Find relevant past context for a given session and query."""
         if not self.collection:
             return []
-            
+
         try:
             results = self.collection.query(
                 query_texts=[query],
                 n_results=n_results,
                 where={"session_id": session_id}
             )
-            
+
             memories = []
             if results and results["documents"] and results["documents"][0]:
                 for doc, meta in zip(results["documents"][0], results["metadatas"][0]):

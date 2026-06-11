@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from typing import Any
 import ast
+from typing import Any
+
 from src.utils.sandbox import execute_code
 from src.utils.swarm import MCPTool
+
 
 def handle_profiler(code: str, timeout: int = 10) -> dict[str, Any]:
     """Run code with cProfile and return the output."""

@@ -6,8 +6,8 @@ Inspired by Claude Code's compaction architecture:
 - reactive_compact: On 413 response, compact and retry
 """
 
-from .micro_compact import microcompact_messages
 from .auto_compact import auto_compact_if_needed, get_auto_compact_threshold
+from .micro_compact import microcompact_messages
 from .reactive_compact import reactive_compact_if_needed
 
 __all__ = [

@@ -13,13 +13,11 @@ Usage:
 from __future__ import annotations
 
 import json
-import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from src.data.metadata import DataDomain, DatasetRecord, MetadataManager
-
 
 DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / ".hf_scanner_cache.json"
 
@@ -201,8 +199,8 @@ class HFCatalogScanner:
         Falls back to a simulated discovery if the API is unavailable.
         """
         try:
-            import urllib.request
             import urllib.parse
+            import urllib.request
 
             all_results: list[dict[str, Any]] = []
             for term in terms[:5]:  # Limit to first 5 search terms

@@ -12,7 +12,6 @@ Architecture:
 
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 from typing import Any
@@ -1188,7 +1187,7 @@ def get_source_type_breakdown() -> dict[str, int]:
 if __name__ == "__main__":
     configs = generate_all_configs()
     print(f"Total configs generated: {len(configs)}")
-    print(f"\nBreakdown by type:")
+    print("\nBreakdown by type:")
     for stype, count in sorted(get_source_type_breakdown().items()):
         print(f"  {stype:20s}: {count}")
     print(f"\nTotal: {len(configs)} data sources")

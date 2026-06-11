@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import json
-import re
-from typing import Any
-
 import ollama
+
 from src.rag.models import DEFAULT_MODEL
+
 
 class ReasoningEngine:
     """
@@ -22,19 +20,19 @@ class ReasoningEngine:
         """
         # A simple heuristic based router
         complex_keywords = [
-            "why", "how to design", "architecture", "debug", "issue", "error", 
+            "why", "how to design", "architecture", "debug", "issue", "error",
             "optimize", "performance", "compare", "vs", "difference between",
-            "best practice", "pattern", "implement a", "build a", "threading", 
+            "best practice", "pattern", "implement a", "build a", "threading",
             "asyncio", "memory leak"
         ]
         q_lower = question.lower()
         if len(q_lower.split()) > 15: # Long questions usually need reasoning
             return True
-            
+
         for kw in complex_keywords:
             if kw in q_lower:
                 return True
-                
+
         return False
 
     def generate_plan(self, question: str, context: str) -> str:

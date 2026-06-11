@@ -13,7 +13,6 @@ import requests
 
 from src.data.apikeys import resolve_all
 
-
 # ═══════════════════════════════════════════════════════════════
 # API PROVIDERS — OpenAI-compatible endpoints for QA generation
 # Uses API keys from ~/.pythonai/apikeys.json or environment vars
@@ -50,7 +49,7 @@ def save_json(path: Path, data: Any) -> None:
 def row_hash(row: dict[str, Any]) -> str:
     instruction = str(row.get("instruction", "")).strip()
     output = str(row.get("output", "")).strip()
-    return hashlib.sha256(f"{instruction}\n---\n{output}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"{instruction}\n---\n{output}".encode()).hexdigest()
 
 
 def valid_chunk(chunk: dict[str, Any]) -> bool:
@@ -317,14 +316,14 @@ def print_quality_stats(rows: list[dict[str, Any]]) -> None:
     categories = Counter(str(r.get("category", "unknown")) for r in rows)
     top_cats = categories.most_common(5)
 
-    print(f"\nQuality Statistics:")
+    print("\nQuality Statistics:")
     print(f"  Total rows         : {total}")
     print(f"  With code examples : {with_code} ({100 * with_code // total}%)")
     print(f"  Avg instruction len: {avg_instruction_len:.0f} chars")
     print(f"  Avg output len     : {avg_output_len:.0f} chars")
 
     if top_cats:
-        print(f"  Top categories:")
+        print("  Top categories:")
         for cat, count in top_cats:
             print(f"    {cat}: {count}")
 
@@ -398,7 +397,7 @@ def main() -> None:
         if rows:
             print(f"  generated: {len(rows)} rows (via {rows[0].get('generator', '?')})")
         else:
-            print(f"  generated: 0 rows")
+            print("  generated: 0 rows")
 
     if args.merge:
         base = load_json(ROOT / args.base_dataset)

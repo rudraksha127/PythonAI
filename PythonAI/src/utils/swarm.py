@@ -5,11 +5,11 @@ import json
 import threading
 import time
 from collections import OrderedDict
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable
-
+from typing import Any
 
 # ═══════════════════════════════════════
 # LRU RESULT CACHE
@@ -90,7 +90,6 @@ class PriorityQueue:
 
     def peek(self) -> Any | None:
         with self._lock:
-            import heapq
             if not self._items:
                 return None
             return self._items[0].task
@@ -574,7 +573,7 @@ class AgentSwarm:
 
 class AgentRouter:
     """Routes questions to specialized agents."""
-    
+
     def __init__(self):
         # Map of question categories to agent types
         self.routes = {
@@ -598,14 +597,14 @@ class AgentRouter:
             return self.routes["how-to"]
         if any(w in q_lower for w in ["python 2", "python 3", "changed in", "new in", "deprecated"]):
             return self.routes["version"]
-            
+
         return self.routes["general"]
 
 def execute_agents(question: str, swarm: AgentSwarm, workers: dict[str, Callable]) -> dict[str, Any]:
     """Execute specialized agents based on question routing."""
     router = AgentRouter()
     agents_to_run = router.classify_and_route(question)
-    
+
     tasks = []
     for i, agent_type in enumerate(agents_to_run):
         if agent_type in workers:
@@ -617,7 +616,7 @@ def execute_agents(question: str, swarm: AgentSwarm, workers: dict[str, Callable
                     timeout=30.0
                 )
             )
-            
+
     def dispatcher(task: GenerationTask) -> dict[str, Any]:
         agent_func = workers.get(task.task_type)
         if agent_func:
@@ -626,7 +625,7 @@ def execute_agents(question: str, swarm: AgentSwarm, workers: dict[str, Callable
 
     # Simple execution (in parallel)
     results = swarm.execute(tasks, dispatcher)
-    
+
     # Synthesize results
     synthesis = {}
     for task_id, res_data in results.items():
@@ -634,5 +633,5 @@ def execute_agents(question: str, swarm: AgentSwarm, workers: dict[str, Callable
             synthesis[res_data.get("task_type", res_data.get("task_type", "unknown"))] = res_data.get("output", res_data)
         else:
             synthesis[res_data.get("task_type", "unknown")] = f"[Error]: {res_data.get('error')}"
-            
+
     return synthesis

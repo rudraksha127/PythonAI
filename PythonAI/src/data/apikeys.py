@@ -18,7 +18,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
-
 # ═══════════════════════════════════════
 #  File & provider metadata
 # ═══════════════════════════════════════
@@ -607,7 +606,7 @@ class MultiAgentKeyManager:
         """Print a formatted usage report to stdout."""
         report = self.get_usage_report()
         print("=" * 60)
-        print(f"  Multi-Agent Key Manager — Usage Report")
+        print("  Multi-Agent Key Manager — Usage Report")
         print(f"  {report['summary']['total_calls']} total calls | "
               f"{report['summary']['total_429s']} rate limits | "
               f"{report['summary']['total_errors']} errors")

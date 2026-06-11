@@ -4,17 +4,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from src.data.ingestor import (
-    SO_DIR,
     GITHUB_DIR,
-    parse_so_data,
+    SO_DIR,
     parse_github_data,
+    parse_so_data,
 )
-
 
 # ══════════════════════════════════════════════════════════════════════
 # parse_so_data

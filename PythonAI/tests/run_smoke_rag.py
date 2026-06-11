@@ -245,7 +245,7 @@ def main(argv: list[str] | None = None) -> int:
         print("  [SKIP] Phase 2 (RAG query) SKIPPED")
         print()
     else:
-        print(f"  [Phase 2] Running RAG engine with real Ollama query...")
+        print("  [Phase 2] Running RAG engine with real Ollama query...")
         print(f"      Question: \"{args.question}\"")
         print(f"      Timeout:  {args.timeout}s")
         print(f"  {'-' * 55}")
@@ -271,7 +271,7 @@ def main(argv: list[str] | None = None) -> int:
         # Show check results
         checks = r.get("checks", {})
         if checks:
-            print(f"      Checks:")
+            print("      Checks:")
             for check_name, ok in checks.items():
                 print(f"        {'[OK]' if ok else '[--]'}  {check_name}")
 

@@ -35,7 +35,7 @@ import re
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger("pythonai.learning.error_patterns")
 
@@ -242,7 +242,7 @@ class ErrorPatternDB:
         info = _extract_error_info(error)
         error_hash = _compute_error_hash(info["error_type"], info["error_message"])
         now = time.time()
-        
+
         is_unresolved = not solution or solution.strip().lower() == "unresolved"
         if is_unresolved:
             self._trigger_auto_search(info["error_type"], info["error_message"])
@@ -392,7 +392,7 @@ class ErrorPatternDB:
 
 # ─── Module-Level Convenience Functions ──────────────────────────────────
 
-_db: Optional[ErrorPatternDB] = None
+_db: ErrorPatternDB | None = None
 
 
 def _get_db() -> ErrorPatternDB:
@@ -426,7 +426,7 @@ def find_solution(
     error_text: str,
     threshold: float = 0.3,
     max_results: int = 3,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """
     Find the best matching solution for an error (convenience function).
 

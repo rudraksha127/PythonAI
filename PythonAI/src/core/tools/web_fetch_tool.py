@@ -12,11 +12,10 @@ from typing import Any
 from urllib.parse import urlparse
 
 from ..tool import (
-    Tool,
-    ToolResult,
-    ToolUseContext,
     InputSchema,
     Parameter,
+    ToolResult,
+    ToolUseContext,
     ValidationResult,
     build_tool,
 )

@@ -17,11 +17,10 @@ Usage:
 from __future__ import annotations
 
 from src.data.metadata import (
-    DatasetRecord,
     DataDomain,
+    DatasetRecord,
     DownloadProtocol,
 )
-
 
 # ════════════════════════════════════════════
 # Helper builders
@@ -909,7 +908,6 @@ def phase1_stats() -> dict[str, int | dict]:
 
 
 if __name__ == "__main__":
-    import json
     stats = phase1_stats()
     print("Phase 1 — Foundation Data Collection")
     print(f"  Total datasets     : {stats['total_datasets']}")

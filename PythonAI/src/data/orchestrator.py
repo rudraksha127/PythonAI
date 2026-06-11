@@ -7,20 +7,17 @@ Inspired by Dario Amodei's "Machines of Loving Grace" vision.
 
 import asyncio
 import json
-import logging
-import subprocess
 import time
-from pathlib import Path
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Callable, Dict, List, Any
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
+from typing import Any
 
-from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeRemainingColumn
 from loguru import logger
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
 
 console = Console()
 
@@ -95,8 +92,8 @@ class PhaseResult:
     name: str
     status: str  # "✅ SUCCESS", "❌ FAILED", "⏭️ SKIPPED"
     duration_seconds: float = 0.0
-    error: Optional[str] = None
-    details: Dict[str, Any] = field(default_factory=dict)
+    error: str | None = None
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -107,9 +104,9 @@ class DataSourceStatus:
     status: str = "pending"  # pending, downloading, complete, failed
     size_bytes: int = 0
     num_items: int = 0
-    started_at: Optional[str] = None
-    completed_at: Optional[str] = None
-    error: Optional[str] = None
+    started_at: str | None = None
+    completed_at: str | None = None
+    error: str | None = None
 
 
 class AntiGravityOrchestrator:
@@ -137,8 +134,8 @@ class AntiGravityOrchestrator:
         self.status_dir = self.base_dir / ".status"
         self.status_dir.mkdir(exist_ok=True)
 
-        self.phase_results: List[PhaseResult] = []
-        self.source_statuses: Dict[str, DataSourceStatus] = {}
+        self.phase_results: list[PhaseResult] = []
+        self.source_statuses: dict[str, DataSourceStatus] = {}
 
         # Track whether individual sources should be run
         self.priorities = self.config.get("priorities", {})
@@ -156,14 +153,14 @@ class AntiGravityOrchestrator:
             logger.error(f"Config {path} is invalid JSON: {e}")
             return {}
 
-    def _get_key(self, env_key: str, default: Optional[str] = None) -> Optional[str]:
+    def _get_key(self, env_key: str, default: str | None = None) -> str | None:
         """Get API key from environment or config"""
         import os
         return os.environ.get(env_key) or self.config.get(env_key.lower(), default)
 
     def _update_source_status(self, name: str, source_type: str, status: str,
                               size_bytes: int = 0, num_items: int = 0,
-                              error: Optional[str] = None):
+                              error: str | None = None):
         """Update tracking status for a data source"""
         now = datetime.now(timezone.utc).isoformat()
         if name not in self.source_statuses:
@@ -191,7 +188,7 @@ class AntiGravityOrchestrator:
         except Exception as e:
             logger.debug(f"Failed to save status: {e}")
 
-    def _load_status(self) -> Dict[str, DataSourceStatus]:
+    def _load_status(self) -> dict[str, DataSourceStatus]:
         """Load persisted source statuses"""
         try:
             status_file = self.status_dir / "sources.json"
@@ -441,6 +438,7 @@ class AntiGravityOrchestrator:
 
         try:
             from collect_everything import MultiModelSyntheticFactory
+
             from src.data.apikeys import resolve_all
 
             factory = MultiModelSyntheticFactory(api_keys=resolve_all())
@@ -457,7 +455,7 @@ class AntiGravityOrchestrator:
 
     # ── Reporting ─────────────────────────────────────────────
 
-    def get_collection_summary(self) -> Dict[str, Any]:
+    def get_collection_summary(self) -> dict[str, Any]:
         """Get summary of all collected data"""
         summary = {
             "total_size_bytes": 0,

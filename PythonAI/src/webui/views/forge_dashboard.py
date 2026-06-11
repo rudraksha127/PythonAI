@@ -10,9 +10,6 @@ Integrates with CaptureEngine SQLite database.
 
 from __future__ import annotations
 
-import json
-import time
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -36,13 +33,13 @@ def _get_engine(db_path: str | Path | None = None) -> Any | None:
 def _load_data() -> dict[str, Any]:
     """Load all dashboard data from the CaptureEngine database."""
     from src.learning.forge_dashboard import (
+        _compute_rolling_average,
+        _get_db_path,
         _query_acceptance_rate,
         _query_language_breakdown,
         _query_session_stats,
         _query_signal_breakdown,
         _query_training_runs,
-        _get_db_path,
-        _compute_rolling_average,
     )
 
     db_path = _get_db_path()

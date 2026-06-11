@@ -16,13 +16,11 @@ Usage:
 from __future__ import annotations
 
 import json
-import re
-import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from src.data.metadata import DatasetRecord, DataDomain, MetadataManager
+from src.data.metadata import DataDomain, DatasetRecord, MetadataManager
 
 DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / ".github_cache.json"
 
@@ -163,8 +161,8 @@ class GitHubTrending:
     ) -> list[GitHubRepo]:
         """Search GitHub repos by topic using the search API."""
         try:
-            import urllib.request
             import urllib.parse
+            import urllib.request
 
             query = urllib.parse.quote(f"topic:{topic} stars:>={min_stars}")
             url = f"{self.api_base}/search/repositories?q={query}&sort=stars&order=desc&per_page={min(30, max_results)}"

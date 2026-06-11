@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from src.cloud.supabase_client import get_async_supabase_client, get_supabase_service_client
 
@@ -25,7 +26,7 @@ class RealTimeChannel:
         self.channel_name = channel_name
         self.table = table
         self.event = event
-        self._callback: Optional[Callable] = None
+        self._callback: Callable | None = None
         self._channel: Any = None
 
     async def subscribe(self, callback: Callable) -> bool:
@@ -86,8 +87,8 @@ class RealTimeChannel:
 
 # ─── Global Channels ────────────────────────────────────────────
 
-_training_channel: Optional[RealTimeChannel] = None
-_signals_channel: Optional[RealTimeChannel] = None
+_training_channel: RealTimeChannel | None = None
+_signals_channel: RealTimeChannel | None = None
 
 
 async def subscribe_training_progress(callback: Callable) -> bool:
@@ -120,8 +121,8 @@ async def broadcast_training_progress(
     user_id: str,
     run_id: str,
     progress: float,
-    loss: Optional[float] = None,
-    step: Optional[int] = None,
+    loss: float | None = None,
+    step: int | None = None,
 ) -> bool:
     """Broadcast training progress update to Realtime subscribers.
 
@@ -154,7 +155,7 @@ async def broadcast_signal_event(
     user_id: str,
     signal_type: str,
     signal_id: str,
-    metadata: Optional[dict] = None,
+    metadata: dict | None = None,
 ) -> bool:
     """Broadcast a signal capture event to Realtime subscribers."""
     service = get_supabase_service_client()

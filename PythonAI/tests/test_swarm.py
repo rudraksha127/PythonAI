@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -11,7 +11,6 @@ from src.core.agents.sub_agent import SubAgent, SubAgentResult
 from src.core.agents.swarm import AgentSwarm
 from src.core.registry import get_registry
 from src.core.tools import register_all_tools
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 

@@ -13,15 +13,14 @@ Manages the flow:
 from __future__ import annotations
 
 import logging
-import os
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 import stripe
 
 from src.cloud.config import get_cloud_config
 from src.cloud.supabase_client import get_supabase_service_client
-from src.cloud.tiers import PlanTier, PRICING_TIERS
+from src.cloud.tiers import PRICING_TIERS, PlanTier
 
 logger = logging.getLogger("forgeai.cloud.stripe")
 
@@ -157,8 +156,8 @@ def create_checkout_session(
     user_id: str,
     email: str,
     plan_tier: str = PlanTier.PRO,
-    success_url: Optional[str] = None,
-    cancel_url: Optional[str] = None,
+    success_url: str | None = None,
+    cancel_url: str | None = None,
 ) -> dict:
     """Create a Stripe Checkout session for a subscription upgrade.
 
@@ -215,7 +214,7 @@ def create_checkout_session(
 
 def create_portal_session(
     customer_id: str,
-    return_url: Optional[str] = None,
+    return_url: str | None = None,
 ) -> dict:
     """Create a Stripe Billing Portal session for self-serve management.
 
@@ -372,7 +371,7 @@ def cancel_subscription(subscription_id: str) -> dict:
         raise StripeBillingError(f"Failed to cancel subscription: {e}")
 
 
-def _find_user_by_customer(stripe_customer_id: str) -> Optional[str]:
+def _find_user_by_customer(stripe_customer_id: str) -> str | None:
     """Find a ForgeAI user ID from their Stripe customer ID."""
     service = get_supabase_service_client()
     if service is None:

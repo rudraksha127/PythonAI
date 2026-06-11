@@ -15,17 +15,15 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import time
 import traceback
-from dataclasses import dataclass, field
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import Any
 
 from ..registry import ToolRegistry, get_registry
 from .sub_agent import SubAgent, SubAgentResult
 from .swarm import AgentSwarm
-
 
 logger = logging.getLogger("pythonai.orchestrator")
 
@@ -157,22 +155,22 @@ class AgentOrchestrator:
             except Exception as e:
                 logger.debug(f"Planning LLM call via injected fn failed: {e}")
                 return None
-                
+
         try:
-            from ..providers import ProviderRouter, get_provider_api, ProfileManager
-            
+            from ..providers import ProfileManager, ProviderRouter, get_provider_api
+
             router = ProviderRouter()
             profile = ProfileManager().load()
             provider = profile.provider if profile else "auto"
             model = profile.model if profile else ""
-            
+
             route = router.route(
                 provider=provider,
                 model=model,
                 task="reasoning",
                 require_function_calling=False,
             )
-            
+
             if route.error:
                 # Try fallback to first available
                 available = router.get_available_providers()
@@ -186,7 +184,7 @@ class AgentOrchestrator:
                         break
                 else:
                     return None
-                    
+
             api_fn = get_provider_api(route.provider)
             result = api_fn(
                 messages=messages,
@@ -197,11 +195,11 @@ class AgentOrchestrator:
                 max_tokens=max_tokens,
                 tools=None,
             )
-            
+
             if result.get("error"):
                 logger.debug(f"Planning LLM API error: {result['error']}")
                 return None
-                
+
             # Mypy: api_fn returns Any, cast to str for return type
             return result.get("content", "")  # type: ignore[no-any-return]
 
@@ -212,7 +210,7 @@ class AgentOrchestrator:
     def plan_task(self, user_request: str) -> list[PlanStep]:
         """Decompose a user request into a plan of sub-tasks."""
         self.plan = []
-        
+
         # 1. Try LLM-based planning
         llm_steps = self._plan_task_llm(user_request)
         if llm_steps is not None:
@@ -243,15 +241,15 @@ class AgentOrchestrator:
         """Use an LLM to decompose the request into a JSON array of PlanSteps."""
         if self.on_stream is not None:
             self.on_stream("  [LLM] Planning...\n")
-            
+
         agents_info = [
             f"- {agent_name} ({agent.role})"
             for agent_name, agent in self._swarm.agents.items()
         ]
-        
+
         mcp_tools = [f"{t.name}: {t.description[:100]}" for t in self.registry.list_mcp()]
         mcp_info = "\nAvailable MCP Tools:\n" + "\n".join(mcp_tools) if mcp_tools else ""
-        
+
         system_prompt = f"""You are an elite orchestrator AI. Your job is to break down a complex user request into a sequence of sub-tasks assigned to specialized agents.
         
 Available Agents:
@@ -278,7 +276,7 @@ Expected JSON schema:
         response_text = self._call_planning_llm(system_prompt, user_request, max_tokens=1024)
         if not response_text:
             return None
-            
+
         try:
             # Clean up markdown formatting if the LLM ignored instructions
             response_text = response_text.strip()
@@ -288,23 +286,23 @@ Expected JSON schema:
                 response_text = response_text[3:]
             if response_text.endswith("```"):
                 response_text = response_text[:-3]
-                
+
             parsed = json.loads(response_text)
             if not isinstance(parsed, list):
                 logger.debug("LLM plan response was not a list")
                 return None
-                
+
             steps = []
             for item in parsed:
                 if not isinstance(item, dict) or "id" not in item or "agent_name" not in item or "task" not in item:
                     logger.debug(f"Invalid plan step item: {item}")
                     return None
-                    
+
                 agent_name = item["agent_name"]
                 if agent_name not in self._swarm.agents:
                     # Map back to a known agent or fallback
                     agent_name = "coder" if "coder" in self._swarm.agents else list(self._swarm.agents.keys())[0]
-                    
+
                 steps.append(PlanStep(
                     id=item["id"],
                     agent_name=agent_name,
@@ -312,9 +310,9 @@ Expected JSON schema:
                     depends_on=item.get("depends_on", []),
                     priority=item.get("priority", 5),
                 ))
-                
+
             return steps
-            
+
         except json.JSONDecodeError as e:
             logger.debug(f"LLM plan JSON decode error: {e}\nResponse was: {response_text}")
             return None
@@ -495,7 +493,7 @@ Expected JSON schema:
 
     # ── Context Manager ───────────────────────────────────────────
 
-    def __enter__(self) -> "AgentOrchestrator":
+    def __enter__(self) -> AgentOrchestrator:
         """Enter context manager: return self for use in `with` blocks.
 
         Usage:
@@ -669,7 +667,7 @@ Expected JSON schema:
         """Use LLM to synthesize agent results into a cohesive final answer."""
         if self.on_stream is not None:
             self.on_stream("  [LLM] Synthesizing...\n")
-            
+
         system_prompt = """You are an elite orchestrator AI. You have delegated a complex user request to several specialized sub-agents.
 Your task is to synthesize their individual outputs into a single, cohesive, and comprehensive final response for the user.
 
@@ -696,7 +694,7 @@ Provide the final synthesized response:"""
         response_text = self._call_planning_llm(system_prompt, user_prompt, max_tokens=2048)
         if not response_text:
             return None
-            
+
         # Add summary footer
         footer = (
             f"\n\n---\n*Orchestrated across {len(successful)} agents "

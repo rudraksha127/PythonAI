@@ -10,7 +10,6 @@ Used across all API routers to enforce access control consistently.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
 
 from fastapi import Depends, Header, HTTPException, Request
 
@@ -56,7 +55,7 @@ async def require_cloud_user(authorization: str = Header(default="")) -> CloudUs
         raise HTTPException(status_code=401, detail=str(e))
 
 
-async def optional_cloud_user(authorization: str = Header(default="")) -> Optional[CloudUser]:
+async def optional_cloud_user(authorization: str = Header(default="")) -> CloudUser | None:
     """Optionally resolve a cloud user from the authorization header.
 
     Returns CloudUser if valid token, None otherwise.

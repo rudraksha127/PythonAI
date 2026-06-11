@@ -15,9 +15,8 @@ import os
 import subprocess
 from dataclasses import dataclass
 from typing import Any
-from urllib.request import Request, urlopen
 from urllib.error import URLError
-
+from urllib.request import Request, urlopen
 
 # ═══════════════════════════════════════
 #  Ollama Discovery

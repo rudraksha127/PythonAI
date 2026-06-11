@@ -27,11 +27,12 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
+from collections.abc import AsyncIterator, Callable
 from pathlib import Path
-import asyncio
-from typing import Any, AsyncIterator, Callable
+from typing import Any
 
 from loguru import logger
 
@@ -532,7 +533,7 @@ class RAGPipelineIndexer:
             source_type = self._detect_source_type(file_path)
 
             # Read all lines
-            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            with open(file_path, encoding="utf-8", errors="replace") as f:
                 all_lines = [line.strip() for line in f if line.strip()]
 
             total_lines = len(all_lines)
@@ -785,7 +786,7 @@ if __name__ == "__main__":
             print("[RAG] State reset. Re-indexing all files...")
 
         if args.stats:
-            print(f"[RAG] Index state:")
+            print("[RAG] Index state:")
             state = indexer.state._state
             if not state:
                 print("  No files indexed yet.")
@@ -799,7 +800,7 @@ if __name__ == "__main__":
 
         print(f"[RAG] Starting index pass on: {args.dir}")
         stats = await indexer.index_all()
-        print(f"\n[RAG] Index complete:")
+        print("\n[RAG] Index complete:")
         print(f"  Files scanned:  {stats['files_scanned']}")
         print(f"  Files indexed:  {stats['files_indexed']}")
         print(f"  Lines indexed:  {stats['lines_indexed']}")

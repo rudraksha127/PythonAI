@@ -1,8 +1,10 @@
-import sqlite3
 import json
+import sqlite3
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any
+
 from loguru import logger
+
 
 class SQLiteIndexer:
     """
@@ -14,7 +16,7 @@ class SQLiteIndexer:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self._init_db()
-        
+
     def _init_db(self):
         c = self.conn.cursor()
         # Create a generic metadata table
@@ -32,7 +34,7 @@ class SQLiteIndexer:
         c.execute('CREATE INDEX IF NOT EXISTS idx_source ON documents(source)')
         self.conn.commit()
 
-    def index_batch(self, documents: List[Dict[str, Any]]):
+    def index_batch(self, documents: list[dict[str, Any]]):
         """
         Inserts a batch of documents into the SQLite index.
         """
@@ -44,9 +46,9 @@ class SQLiteIndexer:
             title = doc.get('title', '')
             preview = (doc.get('abstract') or doc.get('text') or '')[:500]
             url = doc.get('pdf_url') or doc.get('open_access_url') or doc.get('url') or ''
-            
+
             rows.append((doc_id, source, title, preview, url, json.dumps(doc)))
-            
+
         try:
             c.executemany('''
                 INSERT OR REPLACE INTO documents (id, source, title, content_preview, url, metadata)
@@ -57,7 +59,7 @@ class SQLiteIndexer:
         except Exception as e:
             logger.error(f"Failed to index batch to SQLite: {e}")
 
-    def search(self, query: str, limit: int = 10) -> List[Dict]:
+    def search(self, query: str, limit: int = 10) -> list[dict]:
         c = self.conn.cursor()
         c.execute('''
             SELECT id, source, title, content_preview, url 
@@ -65,7 +67,7 @@ class SQLiteIndexer:
             WHERE title LIKE ? OR content_preview LIKE ?
             LIMIT ?
         ''', (f"%{query}%", f"%{query}%", limit))
-        
+
         results = []
         for row in c.fetchall():
             results.append({

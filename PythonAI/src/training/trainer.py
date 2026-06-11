@@ -4,7 +4,6 @@ import argparse
 import hashlib
 import importlib.util
 import json
-import os
 import random
 import sys
 import time
@@ -13,11 +12,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import torch
 import datasets
+import torch
 from datasets import Dataset, load_from_disk
+
 datasets.disable_caching()
 import datasets.fingerprint
+
 datasets.fingerprint.generate_fingerprint = lambda *args, **kwargs: "dummy_fingerprint"
 
 # ── Unsloth (optional — 2x faster QLoRA, 70% less VRAM) ──
@@ -33,14 +34,13 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
-    TrainerCallback,
-    default_data_collator,
     Trainer,
+    TrainerCallback,
     TrainingArguments,
+    default_data_collator,
 )
 
 from src.training.viz import TrainingMetrics, render_all
-
 
 DEFAULT_SOURCE_FILES = [
     "training_dataset.json",
@@ -81,7 +81,7 @@ def build_examples_from_pairs(rows: list[dict[str, Any]], limit: int) -> list[Ex
                     ast_msg = msg.get("content", "")
             if not user_msg or not ast_msg:
                 continue
-                
+
             examples.append(
                 Example(
                     prompt=user_msg,
@@ -171,7 +171,7 @@ def load_examples(source_files: list[str], limit: int) -> list[Example]:
 
 def make_dataset(examples: list[Example], tokenizer, max_length: int, use_indra: bool = False) -> Dataset:
     rows = []
-    
+
     # Pre-build system prompt if using INDRA
     system_msg = ""
     if use_indra:
@@ -180,7 +180,7 @@ def make_dataset(examples: list[Example], tokenizer, max_length: int, use_indra:
             system_msg = build_training_system_prompt()
         except ImportError:
             print("[WARN] Could not import INDRA prompt, using empty system prompt.")
-    
+
     for example in examples:
         # Chat format if tokenizer has chat template, else fallback
         if hasattr(tokenizer, 'apply_chat_template') and tokenizer.chat_template:
@@ -189,21 +189,21 @@ def make_dataset(examples: list[Example], tokenizer, max_length: int, use_indra:
                 messages.append({"role": "system", "content": system_msg})
             messages.append({"role": "user", "content": example.prompt})
             messages.append({"role": "assistant", "content": example.response})
-            
+
             try:
                 # Get the full templated string
                 full_text = tokenizer.apply_chat_template(messages, tokenize=False)
-                
+
                 # We need to mask the prompt part for loss calculation
                 prompt_messages = messages[:-1]
                 prompt_text = tokenizer.apply_chat_template(prompt_messages, tokenize=False, add_generation_prompt=True)
-                
+
                 prompt_ids = tokenizer(prompt_text, add_special_tokens=False)["input_ids"]
                 full_ids = tokenizer(full_text, add_special_tokens=False)["input_ids"]
-                
+
                 response_ids = full_ids[len(prompt_ids):]
-                
-            except Exception as e:
+
+            except Exception:
                 # Fallback on error
                 prompt_text = f"### Instruction:\n{system_msg}\n{example.prompt}\n\n### Response:\n"
                 eos = tokenizer.eos_token or ""
@@ -594,7 +594,7 @@ def train_with_unsloth(args: argparse.Namespace) -> None:
         )
 
     print(f"\n{'='*60}")
-    print(f"  ⚡ UNSLOTH MODE — 2x faster, 70% less VRAM")
+    print("  ⚡ UNSLOTH MODE — 2x faster, 70% less VRAM")
     print(f"  Model: {args.base_model}")
     print(f"{'='*60}\n")
 
@@ -620,7 +620,7 @@ def train_with_unsloth(args: argparse.Namespace) -> None:
     print(f"Output directory : {args.output_dir}")
     print(f"Max length       : {args.max_length}")
     print(f"CUDA available   : {torch.cuda.is_available()}")
-    print(f"Unsloth          : enabled (FastLanguageModel)")
+    print("Unsloth          : enabled (FastLanguageModel)")
 
     # ── Load model with Unsloth ──
     max_seq_length = getattr(args, "unsloth_max_seq_length", 2048)
@@ -732,7 +732,7 @@ def train_with_unsloth(args: argparse.Namespace) -> None:
             curves_cb.save_plot()
 
     print(f"\n{'='*60}")
-    print(f"  ✅ UNSLOTH TRAINING COMPLETE")
+    print("  ✅ UNSLOTH TRAINING COMPLETE")
     print(f"  Model saved: {args.output_dir}")
     print(f"{'='*60}\n")
 

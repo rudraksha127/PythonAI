@@ -13,15 +13,13 @@ Covers:
 from __future__ import annotations
 
 import json
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.core.agents.sub_agent import SubAgent, SubAgentResult
+from src.core.agents.sub_agent import SubAgent
 from src.core.registry import get_registry
 from src.core.tools import register_all_tools
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 
@@ -90,8 +88,7 @@ class TestGetToolPool:
 
     def test_includes_mcp_tools(self, registry):
         """_get_tool_pool should include MCP tools when registered."""
-        from src.core.tool import Tool, ToolResult
-        from src.core.tool import InputSchema, Parameter
+        from src.core.tool import InputSchema, Tool, ToolResult
 
         class MockMCPTool(Tool):
             def __init__(self):

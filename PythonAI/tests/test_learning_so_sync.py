@@ -1,5 +1,4 @@
-import pytest
-from src.learning.so_sync import StackOverflowSyncer, _strip_html, _format_answer
+from src.learning.so_sync import StackOverflowSyncer, _format_answer, _strip_html
 
 
 def test_strip_html():
@@ -18,12 +17,12 @@ def test_format_answer():
 
 def test_syncer_dedup(tmp_path):
     syncer = StackOverflowSyncer(output_dir=tmp_path, cache_dir=tmp_path)
-    
+
     # Inject a known hash
     syncer._known_hashes.add("test_hash_123")
-    
+
     # It should correctly load known hashes next time
     syncer._save_known_hashes()
-    
+
     syncer2 = StackOverflowSyncer(output_dir=tmp_path, cache_dir=tmp_path)
     assert "test_hash_123" in syncer2._known_hashes

@@ -7,7 +7,6 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parent.parent.parent
 
 
@@ -25,7 +24,7 @@ def save_rows(path: Path, rows: list[dict[str, Any]]) -> None:
 def row_hash(row: dict[str, Any]) -> str:
     instruction = str(row.get("instruction", "")).strip()
     output = str(row.get("output", "")).strip()
-    return hashlib.sha256(f"{instruction}\n---\n{output}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"{instruction}\n---\n{output}".encode()).hexdigest()
 
 
 def output_len(row: dict[str, Any]) -> int:
@@ -56,17 +55,17 @@ def print_distribution(rows: list[dict[str, Any]], label: str = "") -> None:
     print(f"  Total rows: {len(rows)}")
 
     if categories:
-        print(f"  Categories (top 10):")
+        print("  Categories (top 10):")
         for cat, count in categories.most_common(10):
             print(f"    {cat}: {count} ({100 * count // len(rows)}%)")
 
     if versions:
-        print(f"  Versions (top 10):")
+        print("  Versions (top 10):")
         for ver, count in versions.most_common(10):
             print(f"    {ver}: {count} ({100 * count // len(rows)}%)")
 
     if types:
-        print(f"  Types (top 10):")
+        print("  Types (top 10):")
         for t, count in types.most_common(10):
             print(f"    {t}: {count} ({100 * count // len(rows)}%)")
 
@@ -159,7 +158,7 @@ def main() -> None:
     rows = merge(base_rows, addition_rows, args.min_output_chars, keep_old=args.keep_old)
     save_rows(ROOT / args.output, rows)
 
-    print(f"\nDistribution (merged):")
+    print("\nDistribution (merged):")
     print_distribution(rows)
     print(f"\nSaved: {args.output}")
 

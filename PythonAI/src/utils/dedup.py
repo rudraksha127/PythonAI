@@ -2,8 +2,9 @@
 MinHash LSH based deduplication for massive text collections.
 Helps remove redundant data from Common Crawl and other scrapes.
 """
-from typing import List, Set, Iterable
 import re
+from collections.abc import Iterable
+
 try:
     from datasketch import MinHash, MinHashLSH
 except ImportError:
@@ -22,7 +23,7 @@ class Deduplicator:
         # Fallback store for non-datasketch mode: map doc_id -> token set
         self._token_store: dict[str, set[str]] = {}
 
-    def _get_tokens(self, text: str) -> Set[str]:
+    def _get_tokens(self, text: str) -> set[str]:
         # Simple whitespace tokenizer
         return set(re.findall(r'\w+', text.lower()))
 
@@ -68,8 +69,8 @@ class Deduplicator:
         self._token_store[doc_id] = tokens
         self.doc_store.add(doc_id)
         return False
-        
-    def batch_filter(self, items: Iterable[dict], text_key: str = "text", id_key: str = "url") -> List[dict]:
+
+    def batch_filter(self, items: Iterable[dict], text_key: str = "text", id_key: str = "url") -> list[dict]:
         """
         Takes a batch of dicts, returns only unique ones, updating index in the process.
         """

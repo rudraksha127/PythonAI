@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+
 from src.data.api_dataset_gen import StackOverflowClient
 from src.utils.swarm import MCPTool
 
@@ -12,9 +13,9 @@ def handle_so_search(query: str, tags: str = "python", max_results: int = 3) -> 
     global _so_client
     if _so_client is None:
         _so_client = StackOverflowClient()
-        
+
     items = _so_client.search(query, max_results=max_results)
-    
+
     # Fetch top answer for each result
     results = []
     for item in items[:max_results]:
@@ -26,10 +27,10 @@ def handle_so_search(query: str, tags: str = "python", max_results: int = 3) -> 
             "body": item.get("body", ""),
             "top_answer": answers[0].get("body", "") if answers else "",
         })
-    
+
     if not results:
         return {"success": False, "error": f"No Stack Overflow answers found for '{query}'"}
-        
+
     return {"success": True, "results": results}
 
 so_search_tool = MCPTool(

@@ -26,7 +26,6 @@ from pathlib import Path
 import pytest
 
 from src.utils.validation import (
-    ConfigValidation,
     DANGEROUS_CODE_PATTERNS,
     ValidationResult,
     get_env_bool,
@@ -42,7 +41,6 @@ from src.utils.validation import (
     validate_question,
     validate_training_record,
 )
-
 
 # ═══════════════════════════════════════════════
 #  ValidationResult

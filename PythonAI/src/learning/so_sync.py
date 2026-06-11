@@ -22,20 +22,19 @@ Usage:
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import html
+import io
 import json
 import logging
 import re
 import time
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-from urllib.error import URLError, HTTPError
-import gzip
-import io
 
 logger = logging.getLogger("pythonai.learning.so_sync")
 
@@ -400,7 +399,7 @@ def sync_stackoverflow(
         Stats dict with fetched/saved counts.
     """
     syncer = StackOverflowSyncer(api_key=api_key)
-    
+
     if not tags:
         tags = [
             "python",

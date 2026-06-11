@@ -1,6 +1,7 @@
 from typing import Any
+
+from src.utils.llm import generate_parallel
 from src.utils.swarm import GenerationTask
-from src.utils.llm import generate_parallel, generate_with_provider
 
 CODE_SYSTEM_PROMPT = """You are the Code Agent — an elite Python specialist.
 Your responses must include:

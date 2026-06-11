@@ -16,12 +16,11 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any
-
 
 # ════════════════════════════════════════════
 # Enums
@@ -170,7 +169,7 @@ class DatasetRecord:
         return d
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "DatasetRecord":
+    def from_dict(cls, d: dict[str, Any]) -> DatasetRecord:
         return cls(**d)
 
 
@@ -220,7 +219,7 @@ class MetadataManager:
 
     # ── CRUD ─────────────────────────────────────────────────────
 
-    def register(self, record: DatasetRecord) -> "DatasetRecord":
+    def register(self, record: DatasetRecord) -> DatasetRecord:
         """Register a new dataset. If it exists, updates metadata fields (not status)."""
         existing = self._datasets.get(record.id)
         if existing:

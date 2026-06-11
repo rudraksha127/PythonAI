@@ -18,16 +18,13 @@ Usage:
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 from src.training.config import TrainingConfig
-
 
 # Metadata file name inside each checkpoint directory
 META_FILE = ".checkpoint_meta.json"

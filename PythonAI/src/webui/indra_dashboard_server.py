@@ -4,11 +4,11 @@ INDRA Dashboard Server
 FastAPI server to host the dashboard and provide metrics.
 """
 
+from pathlib import Path
+
+import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-import uvicorn
-from pathlib import Path
-import json
 
 app = FastAPI(title="INDRA Dashboard Server")
 

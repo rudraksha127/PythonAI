@@ -18,7 +18,6 @@ from typing import Any
 
 from tqdm import tqdm
 
-
 ROOT = Path(__file__).resolve().parent.parent.parent
 os.makedirs(ROOT / "extra_data", exist_ok=True)
 
@@ -303,10 +302,10 @@ def run(
     )
 
     print(f"\n{'='*60}")
-    print(f"COMPLETE!")
+    print("COMPLETE!")
     print(f"Total chunks: {len(all_chunks):,}")
     print(f"Output file : {output_path}")
-    print(f"\nPer dataset:")
+    print("\nPer dataset:")
     for ds, count in stats.items():
         label = HF_DATASETS[ds]['path']
         print(f"  {label:50s}: {count:>8,}")
@@ -331,11 +330,11 @@ def print_stats(chunks_file: str | Path = "data/raw/raw_chunks_hf.json") -> None
     with_code = sum(1 for c in chunks if c.get("codes"))
     avg_text_len = sum(len(c.get("text", "")) for c in chunks) / len(chunks)
 
-    print(f"\nHF Dataset Chunk Statistics:")
+    print("\nHF Dataset Chunk Statistics:")
     print(f"  Total chunks      : {len(chunks):,}")
     print(f"  With code examples : {with_code:,} ({100 * with_code // len(chunks)}%)")
     print(f"  Avg text length    : {avg_text_len:.0f} chars")
-    print(f"\n  Categories:")
+    print("\n  Categories:")
     for cat, count in categories.most_common():
         print(f"    {cat}: {count:,} ({100 * count // len(chunks)}%)")
 

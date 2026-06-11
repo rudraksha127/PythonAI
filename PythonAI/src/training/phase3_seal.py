@@ -27,21 +27,19 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import sys
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from src.training.seal_types import (
-    CurriculumState,
-    RewardRecord,
-    SealConfig,
-    SealActionType,
-    SelfEditAction,
-)
 from src.training.seal_curriculum import CurriculumGenerator
 from src.training.seal_inner_loop import SealInnerLoop
 from src.training.seal_meta_learner import MetaLearner, OuterLoopReward
+from src.training.seal_types import (
+    RewardRecord,
+    SealActionType,
+    SealConfig,
+    SelfEditAction,
+)
 
 logger = logging.getLogger("forgeai.seal")
 
@@ -55,7 +53,7 @@ class SealOrchestrator:
 
     def __init__(
         self,
-        config: Optional[SealConfig] = None,
+        config: SealConfig | None = None,
         capture_engine: Any = None,
     ):
         self.config = config or SealConfig()
@@ -71,8 +69,8 @@ class SealOrchestrator:
 
         # Cycle tracking
         self.current_cycle = 0
-        self.last_action: Optional[SelfEditAction] = None
-        self.last_inner_metrics: Optional[dict[str, Any]] = None
+        self.last_action: SelfEditAction | None = None
+        self.last_inner_metrics: dict[str, Any] | None = None
 
     # ═══════════════════════════════════════════════════════════
     # Main Entry Point
@@ -103,7 +101,7 @@ class SealOrchestrator:
         }
 
         # Phase 1: Generate curriculum action
-        logger.info(f"[SEAL] Phase 1/4: Generating curriculum...")
+        logger.info("[SEAL] Phase 1/4: Generating curriculum...")
         action = self.curriculum.generate_action()
         self.last_action = action
         result["action"] = json.loads(action.to_json())
@@ -119,7 +117,7 @@ class SealOrchestrator:
             return result
 
         # Phase 2: Inner loop (synthetic data + training)
-        logger.info(f"[SEAL] Phase 2/4: Executing inner loop...")
+        logger.info("[SEAL] Phase 2/4: Executing inner loop...")
         inner_metrics, synthetic_data = self.inner_loop.execute(action, cycle)
         self.last_inner_metrics = inner_metrics
         result["inner_metrics"] = inner_metrics
@@ -141,7 +139,7 @@ class SealOrchestrator:
         result["examples_trained"] = inner_metrics.get("examples_trained", 0)
 
         # Phase 3: Compute outer loop reward
-        logger.info(f"[SEAL] Phase 3/4: Computing outer loop reward...")
+        logger.info("[SEAL] Phase 3/4: Computing outer loop reward...")
         reward = self._compute_reward(action, inner_metrics)
         if reward is not None:
             result["reward"] = reward.to_dict()
@@ -155,7 +153,7 @@ class SealOrchestrator:
             self.curriculum.update_state(simulated)
 
         # Phase 4: Meta-learning (if enough data)
-        logger.info(f"[SEAL] Phase 4/4: Meta-learning...")
+        logger.info("[SEAL] Phase 4/4: Meta-learning...")
         meta_metrics = self.meta_learner.train()
         result["meta_metrics"] = meta_metrics
 
@@ -224,7 +222,7 @@ class SealOrchestrator:
         self,
         action: SelfEditAction,
         inner_metrics: dict[str, Any],
-    ) -> Optional[RewardRecord]:
+    ) -> RewardRecord | None:
         """Compute reward from capture engine data."""
         reward = self.reward_calc.compute_from_capture_engine(
             self.capture_engine,
@@ -521,7 +519,7 @@ def main() -> None:
 
     # Print summary
     print(f"\n{'='*60}")
-    print(f"  SEAL PHASE 3 — COMPLETE")
+    print("  SEAL PHASE 3 — COMPLETE")
     print(f"  Cycles requested: {args.cycles}")
     print(f"  Cycles completed: {sum(1 for r in results if r.get('status') == 'completed')}")
     print(f"  Curriculum actions: {[r.get('action', {}).get('action', '?') for r in results]}")

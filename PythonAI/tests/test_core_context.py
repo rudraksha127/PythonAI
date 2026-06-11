@@ -4,15 +4,13 @@ Unit tests for src.core.context — Context Management.
 
 from __future__ import annotations
 
-import pytest
-
 
 class TestContextExports:
     """Verify all expected exports exist and work."""
 
     def test_imports(self) -> None:
         """All expected names are importable."""
-        from src.core.context import ToolUseContext, ToolProgress, PermissionResult, make_context
+        from src.core.context import PermissionResult, ToolProgress, ToolUseContext, make_context
         assert ToolUseContext is not None
         assert ToolProgress is not None
         assert PermissionResult is not None

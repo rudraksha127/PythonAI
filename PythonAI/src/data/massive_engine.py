@@ -23,13 +23,12 @@ import os
 import random
 import time
 import xml.etree.ElementTree as ET
-from concurrent.futures import ProcessPoolExecutor
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-from src.data.massive_config import generate_all_configs, BASE_DATA_DIR
-
+from src.data.massive_config import BASE_DATA_DIR, generate_all_configs
 
 # ════════════════════════════════════════════════════
 # State persistence — tracks progress per source
@@ -58,7 +57,6 @@ def _save_state(state: dict[str, Any]) -> None:
 
 async def _handle_arxiv(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch arXiv papers via OAI-PMH for a specific category."""
-    import aiohttp
     params = config["params"]
     cat = params["category"]
     oai_url = params["oai_url"]
@@ -108,7 +106,6 @@ async def _handle_arxiv(session, config: dict, out_dir: Path, state: dict) -> in
 
 async def _handle_pubmed(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch PubMed papers via NCBI E-utilities."""
-    import aiohttp
     import xml.etree.ElementTree as ET
 
     query = config["params"]["query"]
@@ -167,7 +164,6 @@ async def _handle_pubmed(session, config: dict, out_dir: Path, state: dict) -> i
 
 async def _handle_crossref(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch scholarly works from CrossRef API."""
-    import aiohttp
 
     query = config["params"]["query"]
     rows = config["params"].get("rows", 100)
@@ -223,7 +219,6 @@ async def _handle_crossref(session, config: dict, out_dir: Path, state: dict) ->
 
 async def _handle_semantic_scholar(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch papers from Semantic Scholar API."""
-    import aiohttp
 
     query = config["params"]["query"]
     limit = config["params"].get("limit", 100)
@@ -277,7 +272,6 @@ async def _handle_semantic_scholar(session, config: dict, out_dir: Path, state: 
 
 async def _handle_github(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch GitHub repos by topic and language."""
-    import aiohttp
     from urllib.parse import quote
 
     query = config["params"]["query"]
@@ -335,7 +329,6 @@ async def _handle_github(session, config: dict, out_dir: Path, state: dict) -> i
 
 async def _handle_stackexchange(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch Q&A from Stack Exchange sites."""
-    import aiohttp
 
     site = config["params"]["site"]
     sort = config["params"].get("sort", "votes")
@@ -385,7 +378,6 @@ async def _handle_stackexchange(session, config: dict, out_dir: Path, state: dic
 
 async def _handle_openalex(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch research papers from OpenAlex API."""
-    import aiohttp
 
     search = config["params"]["search"]
     filter_str = config["params"].get("filter", "open_access.is_oa:true")
@@ -446,7 +438,6 @@ async def _handle_openalex(session, config: dict, out_dir: Path, state: dict) ->
 
 async def _handle_wikipedia(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch Wikipedia articles by category."""
-    import aiohttp
 
     category = config["params"]["category"]
     max_articles = config["params"].get("max_articles", 200)
@@ -505,7 +496,6 @@ async def _handle_wikipedia(session, config: dict, out_dir: Path, state: dict) -
 
 async def _handle_doaj(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch open access articles from DOAJ."""
-    import aiohttp
 
     query = config["params"]["query"]
     pageSize = config["params"].get("pageSize", 100)
@@ -553,7 +543,6 @@ async def _handle_doaj(session, config: dict, out_dir: Path, state: dict) -> int
 
 async def _handle_reddit(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch Reddit posts from a subreddit."""
-    import aiohttp
 
     subreddit = config["params"]["subreddit"]
     sort = config["params"].get("sort", "top")
@@ -614,7 +603,6 @@ async def _handle_reddit(session, config: dict, out_dir: Path, state: dict) -> i
 
 async def _handle_rss(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch RSS/Atom feeds."""
-    import aiohttp
     try:
         import feedparser
     except ImportError:
@@ -652,7 +640,6 @@ async def _handle_rss(session, config: dict, out_dir: Path, state: dict) -> int:
 
 async def _handle_pypi(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch Python package info from PyPI."""
-    import aiohttp
 
     pkg = config["params"]["package"]
     url = f"https://pypi.org/pypi/{pkg}/json"
@@ -681,7 +668,6 @@ async def _handle_pypi(session, config: dict, out_dir: Path, state: dict) -> int
 
 async def _handle_openlibrary(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch books from OpenLibrary API."""
-    import aiohttp
 
     query = config["params"]["query"]
     limit = config["params"].get("limit", 500)
@@ -712,7 +698,6 @@ async def _handle_openlibrary(session, config: dict, out_dir: Path, state: dict)
 
 async def _handle_gutendex(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch books from Project Gutenberg via Gutendex API."""
-    import aiohttp
 
     query = config["params"]["query"]
     limit = config["params"].get("limit", 200)
@@ -743,7 +728,6 @@ async def _handle_gutendex(session, config: dict, out_dir: Path, state: dict) ->
 
 async def _handle_biorxiv(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch preprints from bioRxiv/medRxiv."""
-    import aiohttp
     from datetime import timedelta
 
     server = config["params"]["server"]
@@ -784,7 +768,6 @@ async def _handle_biorxiv(session, config: dict, out_dir: Path, state: dict) -> 
 
 async def _handle_worldbank(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch economic indicators from World Bank API."""
-    import aiohttp
 
     indicator = config["params"]["indicator"]
     per_page = config["params"].get("per_page", 5000)
@@ -837,7 +820,6 @@ async def _handle_worldbank(session, config: dict, out_dir: Path, state: dict) -
 
 async def _handle_clinicaltrials(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch clinical trials from ClinicalTrials.gov API v2."""
-    import aiohttp
 
     condition = config["params"]["condition"]
     pageSize = config["params"].get("pageSize", 100)
@@ -901,7 +883,6 @@ async def _handle_clinicaltrials(session, config: dict, out_dir: Path, state: di
 
 async def _handle_fred(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch economic time series from FRED API."""
-    import aiohttp
 
     series_id = config["params"]["series_id"]
     frequency = config["params"].get("frequency", "q")
@@ -960,7 +941,6 @@ async def _handle_fred(session, config: dict, out_dir: Path, state: dict) -> int
 
 async def _handle_wikidata(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch entity data from Wikidata API."""
-    import aiohttp
 
     qid = config["params"]["qid"]
 
@@ -1022,7 +1002,6 @@ async def _handle_wikidata(session, config: dict, out_dir: Path, state: dict) ->
 
 async def _handle_europeana(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch cultural heritage records from Europeana API."""
-    import aiohttp
 
     query = config["params"]["query"]
     rows = config["params"].get("rows", 100)
@@ -1092,7 +1071,6 @@ async def _handle_musicbrainz(session, config: dict, out_dir: Path, state: dict)
       - tag:jazz       → /ws/2/tag/
       - (default)      → /ws/2/artist/
     """
-    import aiohttp
 
     query = config["params"]["query"]
     limit = config["params"].get("limit", 100)
@@ -1183,7 +1161,6 @@ async def _handle_datagovin(session, config: dict, out_dir: Path, state: dict) -
     Uses the catalog search endpoint to find datasets by sector:
       https://api.data.gov.in/catalog?api-key={key}&format=json&sector={sector}
     """
-    import aiohttp
 
     sector = config["params"]["sector"]
     limit = config["params"].get("limit", 1000)
@@ -1242,7 +1219,6 @@ async def _handle_datagovin(session, config: dict, out_dir: Path, state: dict) -
 
 async def _handle_opencorporates(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch company data from OpenCorporates API."""
-    import aiohttp
 
     q = config["params"]["q"]
     jurisdiction_code = config["params"].get("jurisdiction_code", "all")
@@ -1303,7 +1279,6 @@ async def _handle_opencorporates(session, config: dict, out_dir: Path, state: di
 
 async def _handle_gbif(session, config: dict, out_dir: Path, state: dict) -> int:
     """Fetch biodiversity occurrence data from GBIF API."""
-    import aiohttp
 
     label = config.get("name", "gbif_occurrence").replace("gbif_", "")
     limit = config.get("batch_size", 300)
@@ -1411,11 +1386,11 @@ def _append_jsonl(filepath: Path, records: list[dict]) -> None:
     filepath.parent.mkdir(parents=True, exist_ok=True)
     key = str(filepath)
     lines = [json.dumps(r, ensure_ascii=False) + "\n" for r in records]
-    
+
     if key not in _WRITE_BUFFER:
         _WRITE_BUFFER[key] = []
     _WRITE_BUFFER[key].extend(lines)
-    
+
     # Flush when buffer is large enough
     if len(_WRITE_BUFFER[key]) >= _BUFFER_FLUSH_SIZE:
         _flush_buffer(filepath)
@@ -1535,7 +1510,7 @@ class MassiveWorkerEngine:
         self._error_rate_window.append(success)
         if len(self._error_rate_window) > 100:
             self._error_rate_window = self._error_rate_window[-100:]
-        
+
         # Dynamic scaling: reduce concurrency if error rate > 30%
         if len(self._error_rate_window) >= 20:
             error_rate = 1 - (sum(self._error_rate_window) / len(self._error_rate_window))
@@ -1616,7 +1591,7 @@ class MassiveWorkerEngine:
         by_type: dict[str, list[dict]] = _dd(list)
         for c in self.configs:
             by_type[c["type"]].append(c)
-        
+
         # Interleave types for fairness while maintaining some locality
         ordered_configs: list[dict] = []
         type_iters = {t: iter(random.sample(configs, len(configs))) for t, configs in by_type.items()}
@@ -1712,12 +1687,13 @@ if __name__ == "__main__":
     async def main():
         # Setup websocket to dashboard
         try:
-            import websockets
             import json
             from datetime import datetime, timezone
-            
+
+            import websockets
+
             ws = await websockets.connect("ws://localhost:8765")
-            
+
             async def log(**kw):
                 msg = f"[{kw.get('level','info').upper()}] {kw.get('msg','')}"
                 print(msg)
@@ -1730,7 +1706,7 @@ if __name__ == "__main__":
                         }))
                     except Exception:
                         pass
-                        
+
             async def progress(**kw):
                 total = kw.get('total_collected', 0)
                 source = kw.get('source', '')
@@ -1742,7 +1718,7 @@ if __name__ == "__main__":
                         if "arxiv" in source: phase = "arXiv Papers"
                         elif "openalex" in source: phase = "OpenAlex Research"
                         elif "huggingface" in source: phase = "HuggingFace Datasets"
-                        
+
                         await ws.send(json.dumps({
                             "type": "PROGRESS",
                             "timestamp": datetime.now(timezone.utc).isoformat(),

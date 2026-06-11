@@ -16,11 +16,11 @@ from __future__ import annotations
 import json
 import re
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from src.data.metadata import DatasetRecord, DataDomain, MetadataManager
+from src.data.metadata import DataDomain, DatasetRecord, MetadataManager
 
 DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / ".arxiv_cache.json"
 

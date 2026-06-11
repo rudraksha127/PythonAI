@@ -9,8 +9,8 @@ from __future__ import annotations
 import json
 import time
 from typing import Any
-from urllib.request import Request, urlopen
 from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 
 def call_deepseek(
@@ -64,7 +64,7 @@ def call_deepseek(
         choice = body.get("choices", [{}])[0]
         message = choice.get("message", {})
         content = message.get("content", "")
-        
+
         # For deepseek-reasoner, extract reasoning content
         reasoning = message.get("reasoning_content", "")
 

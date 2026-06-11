@@ -26,7 +26,6 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-
 # ─── Data Access Layer ──────────────────────────────────────────────
 
 
@@ -282,7 +281,7 @@ def _build_empty_state() -> str:
 def _generate_demo_data() -> dict[str, Any]:
     """Generate synthetic demo data for previewing the dashboard."""
     import random
-    from datetime import date, timedelta
+    from datetime import date
 
     today = date.today()
     dates = [(today - timedelta(days=i)).isoformat() for i in range(84, -1, -1)]

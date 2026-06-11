@@ -2,25 +2,22 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
 from src.data.merger import (
     load_rows,
+    merge,
     output_len,
+    parse_args,
     print_distribution,
     row_hash,
     save_rows,
     valid_row,
-    merge,
-    parse_args,
 )
-
 
 # ══════════════════════════════════════════════════════════════════════
 # row_hash
@@ -412,7 +409,6 @@ class TestParseArgs:
 
     def test_default_values(self, monkeypatch):
         """Default values should be set correctly."""
-        import sys
         monkeypatch.setattr(sys, "argv", ["merger.py", "--add", "extra.json"])
         args = parse_args()
         assert args.base == "training_dataset.json"
@@ -424,7 +420,6 @@ class TestParseArgs:
 
     def test_custom_values(self, monkeypatch):
         """Custom values should override defaults."""
-        import sys
         monkeypatch.setattr(sys, "argv", [
             "merger.py", "--base", "custom_base.json", "--add", "new.json",
             "--output", "merged.json", "--min-output-chars", "50",
@@ -440,14 +435,12 @@ class TestParseArgs:
 
     def test_keep_old_default(self, monkeypatch):
         """keep_old should default to False."""
-        import sys
         monkeypatch.setattr(sys, "argv", ["merger.py", "--add", "extra.json"])
         args = parse_args()
         assert args.keep_old is False
 
     def test_min_output_chars_type(self, monkeypatch):
         """min_output_chars should be parsed as int."""
-        import sys
         monkeypatch.setattr(sys, "argv", ["merger.py", "--add", "x.json", "--min-output-chars", "120"])
         args = parse_args()
         assert isinstance(args.min_output_chars, int)

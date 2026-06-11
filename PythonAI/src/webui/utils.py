@@ -10,7 +10,6 @@ from typing import Any
 
 import streamlit as st
 
-
 # ═══════════════════════════════════════
 #  Registry Helper
 # ═══════════════════════════════════════

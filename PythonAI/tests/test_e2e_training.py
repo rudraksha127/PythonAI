@@ -5,8 +5,6 @@ Covers dataset construction, callbacks, BLEU scoring.
 
 from __future__ import annotations
 
-from typing import Any
-
 
 def test_training_examples_from_pairs() -> None:
     """build_examples_from_pairs should create Example objects correctly."""

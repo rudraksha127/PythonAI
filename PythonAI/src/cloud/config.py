@@ -9,8 +9,7 @@ All cloud features are optional and gracefully degrade when env vars are absent.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 
 @dataclass
@@ -47,7 +46,7 @@ class CloudConfig:
         return bool(self.stripe_secret_key and self.stripe_webhook_secret)
 
     @classmethod
-    def from_env(cls) -> "CloudConfig":
+    def from_env(cls) -> CloudConfig:
         """Load configuration from environment variables."""
         cfg = cls()
 
@@ -87,7 +86,7 @@ class CloudConfig:
 
 
 # Global singleton
-_cloud_config: Optional[CloudConfig] = None
+_cloud_config: CloudConfig | None = None
 
 
 def get_cloud_config() -> CloudConfig:

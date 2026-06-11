@@ -5,12 +5,12 @@ Converts raw datasets (text chunks, Q&A pairs) into INDRA-compatible
 chat format with domain and language tagging.
 """
 
+import hashlib
 import json
 import logging
 import re
-import hashlib
 from pathlib import Path
-from typing import Any, Dict, List, Set, Optional
+from typing import Any
 
 from src.training.indra_prompt import build_training_system_prompt
 
@@ -23,7 +23,7 @@ class INDRADataFormatter:
     def __init__(self, output_dir: str = "data/training/formatted"):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        self.seen_hashes: Set[str] = set()
+        self.seen_hashes: set[str] = set()
 
     def _get_hash(self, text: str) -> str:
         """MinHash-like simple hashing for deduplication"""
@@ -55,7 +55,7 @@ class INDRADataFormatter:
             return "medicine"
         return "general"
 
-    def format_pair(self, instruction: str, output: str, source: str = "unknown") -> Optional[Dict[str, Any]]:
+    def format_pair(self, instruction: str, output: str, source: str = "unknown") -> dict[str, Any] | None:
         """Format a single instruction-output pair into INDRA chat format"""
         if len(instruction) < 10 or len(output) < 30:
             return None
@@ -70,7 +70,7 @@ class INDRADataFormatter:
         domain = self.detect_domain(combo_text)
 
         system_prompt = build_training_system_prompt()
-        
+
         # Format in standard chat structure
         formatted = {
             "messages": [
@@ -94,7 +94,7 @@ class INDRADataFormatter:
             return ""
 
         try:
-            with open(input_file, 'r', encoding='utf-8') as f:
+            with open(input_file, encoding='utf-8') as f:
                 data = json.load(f)
         except Exception as e:
             logger.error(f"Failed to load {input_file}: {e}")
@@ -106,17 +106,17 @@ class INDRADataFormatter:
                 instr = item.get("instruction", item.get("prompt", item.get("question", "")))
                 out = item.get("output", item.get("response", item.get("answer", "")))
                 source = item.get("source", input_file.name)
-                
+
                 if instr and out:
                     fmt = self.format_pair(instr, out, source)
                     if fmt:
                         formatted_data.append(fmt)
-        
+
         out_path = self.output_dir / f"{output_name}.jsonl"
         with open(out_path, 'w', encoding='utf-8') as f:
             for item in formatted_data:
                 f.write(json.dumps(item, ensure_ascii=False) + "\n")
-                
+
         logger.info(f"Processed {len(formatted_data)} valid examples from {input_file.name}")
         return str(out_path)
 

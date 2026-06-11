@@ -8,18 +8,14 @@ Inspired by Claude Code's FileReadTool.
 from __future__ import annotations
 
 import os
-import traceback
 from typing import Any
 
 from ..tool import (
-    Tool,
-    ToolResult,
-    ToolUseContext,
     InputSchema,
     Parameter,
+    ToolResult,
+    ToolUseContext,
     ValidationResult,
-    PermissionResult,
-    PermissionDecision,
     build_tool,
 )
 
@@ -58,7 +54,7 @@ def _read_file_lines(filepath: str, offset: int = 1, limit: int | None = None,
             f"Use offset/limit to read portions, or use bash with tools like head/tail."
         )
 
-    with open(filepath, "r", encoding="utf-8", errors="replace") as f:
+    with open(filepath, encoding="utf-8", errors="replace") as f:
         all_lines = f.readlines()
 
     total_lines = len(all_lines)

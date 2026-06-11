@@ -11,91 +11,92 @@ Phases:
   Phase 3 — Advanced Engine (parallel tools, compaction, token budget)
 """
 
-from .tool import (
-    Tool,
-    ToolResult,
-    ToolUseContext,
-    PermissionResult,
-    ValidationResult,
-    ToolProgress,
-    build_tool,
-    TOOL_DEFAULTS,
-)
-from .registry import (
-    ToolRegistry,
-    get_all_tools,
-    get_agent_tools,
-    get_readonly_tools,
-    assemble_tool_pool,
-)
-from .executor import ToolCallingEngine, QueryConfig, QueryDeps, parse_tool_calls, partition_tool_calls
-
-# Provider System (Phase 2)
-from .providers import (
-    ModelRegistry,
-    ModelCapabilities,
-    ModelDescriptor,
-    ProviderDescriptor,
-    ProviderRouter,
-    RouteResult,
-    RouteStrategy,
-    ProviderProfile,
-    ProfileManager,
-    ProviderDiscovery,
-    get_model_info,
-    find_models_by_capability,
-    get_registry as get_provider_registry,
+# Agentic System (Phase 6)
+from .agents import (
+    AgentOrchestrator,
+    AgentSwarm,
+    PlanStep,
+    SubAgent,
+    SubAgentResult,
 )
 
 # Compact System (Phase 3)
 from .compact import (
-    microcompact_messages,
     auto_compact_if_needed,
     get_auto_compact_threshold,
+    microcompact_messages,
     reactive_compact_if_needed,
-)
-
-# MCP Protocol (Phase 4)
-from .mcp import (
-    MCPClient,
-    MCPConfigManager,
-    MCPServer,
-    MCPToolAdapter,
-    MCPToolInfo,
-    ServerConnection,
-    ConnectionState,
-    ServerConfig,
-    StdioConfig,
-    SSEConfig,
-    HTTPConfig,
-    TransportType,
-    MCPScope,
-    connect_stdio,
-    connect_sse,
-    call_tool,
-    list_tools,
-    find_mcp_configs,
-    discover_mcp_servers,
-    find_mcp_json_files,
-    create_mcp_app,
-    start_mcp_server,
-    wrap_mcp_tool,
 )
 
 # Token Budget (Phase 3)
 from .engine.token_budget import (
     BudgetTracker,
-    check_token_budget,
     ContinueDecision,
+    check_token_budget,
+)
+from .executor import QueryConfig, QueryDeps, ToolCallingEngine, parse_tool_calls, partition_tool_calls
+
+# MCP Protocol (Phase 4)
+from .mcp import (
+    ConnectionState,
+    HTTPConfig,
+    MCPClient,
+    MCPConfigManager,
+    MCPScope,
+    MCPServer,
+    MCPToolAdapter,
+    MCPToolInfo,
+    ServerConfig,
+    ServerConnection,
+    SSEConfig,
+    StdioConfig,
+    TransportType,
+    call_tool,
+    connect_sse,
+    connect_stdio,
+    create_mcp_app,
+    discover_mcp_servers,
+    find_mcp_configs,
+    find_mcp_json_files,
+    list_tools,
+    start_mcp_server,
+    wrap_mcp_tool,
 )
 
-# Agentic System (Phase 6)
-from .agents import (
-    SubAgent,
-    SubAgentResult,
-    AgentSwarm,
-    AgentOrchestrator,
-    PlanStep,
+# Provider System (Phase 2)
+from .providers import (
+    ModelCapabilities,
+    ModelDescriptor,
+    ModelRegistry,
+    ProfileManager,
+    ProviderDescriptor,
+    ProviderDiscovery,
+    ProviderProfile,
+    ProviderRouter,
+    RouteResult,
+    RouteStrategy,
+    find_models_by_capability,
+    get_model_info,
+)
+from .providers import (
+    get_registry as get_provider_registry,
+)
+from .registry import (
+    ToolRegistry,
+    assemble_tool_pool,
+    get_agent_tools,
+    get_all_tools,
+    get_readonly_tools,
+)
+from .tool import (
+    TOOL_DEFAULTS,
+    PermissionResult,
+    Tool,
+    ToolProgress,
+    ToolResult,
+    ToolUseContext,
+    ValidationResult,
+    build_tool,
 )
 
 # MCP convenience singletons

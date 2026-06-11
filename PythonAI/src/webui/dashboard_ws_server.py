@@ -8,19 +8,19 @@ to feed live metrics from the `massive_engine` state.
 import asyncio
 import json
 import os
-import sys
+import threading
 import time
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
+
+import uvicorn
 import websockets
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-import uvicorn
-import threading
 
 # Import API Keys logic to show provider status
 try:
-    from src.data.apikeys import resolve_all, PROVIDER_LABELS, PROVIDER_TIERS
+    from src.data.apikeys import PROVIDER_LABELS, PROVIDER_TIERS, resolve_all
 except ImportError:
     resolve_all = lambda: {}
     PROVIDER_LABELS = {}
@@ -87,12 +87,12 @@ async def handle_client(websocket):
                             SYSTEM_STATE["stats"]["arxiv_papers"] = max(SYSTEM_STATE["stats"]["arxiv_papers"], count)
                         elif phase == "OpenAlex Research":
                             SYSTEM_STATE["stats"]["openalex_works"] = max(SYSTEM_STATE["stats"]["openalex_works"], count)
-                            
+
                     # Relay to all other clients
                     for client in CLIENTS:
                         if client != websocket:
                             await client.send(message)
-            except Exception as e:
+            except Exception:
                 pass
     except websockets.exceptions.ConnectionClosed:
         pass
@@ -112,7 +112,7 @@ async def heartbeat_loop():
     print("[WS] Starting heartbeat loop on port 8765...")
     while True:
         await asyncio.sleep(2)
-        
+
         # 1. Calculate File Size
         try:
             total_size = sum(f.stat().st_size for f in BASE_DATA_DIR.rglob("*.jsonl")) / 1e9
@@ -120,7 +120,7 @@ async def heartbeat_loop():
         except Exception:
             total_size = 0.0
             total_files = 0
-            
+
         SYSTEM_STATE["stats"]["total_size_gb"] = total_size
         SYSTEM_STATE["stats"]["total_files"] = total_files
 
@@ -128,11 +128,11 @@ async def heartbeat_loop():
         try:
             if STATE_FILE.exists():
                 state_data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-                
+
                 # Approximate counts based on the state file's progress
                 arxiv = sum(s.get("total", 0) for k, s in state_data.items() if "arxiv" in k)
                 openalex = sum(s.get("total", 0) for k, s in state_data.items() if "openalex" in k)
-                
+
                 SYSTEM_STATE["stats"]["arxiv_papers"] = arxiv
                 SYSTEM_STATE["stats"]["openalex_works"] = openalex
         except Exception:
@@ -182,7 +182,7 @@ async def serve_dashboard():
 if __name__ == "__main__":
     # Start the WS server in a background thread
     threading.Thread(target=run_ws_thread, daemon=True).start()
-    
+
     # Start HTTP server on the main thread
     print("[HTTP] Starting web server on http://localhost:8080")
     uvicorn.run(app, host="0.0.0.0", port=8080, log_level="error")

@@ -9,7 +9,6 @@ import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
-
 ROOT = Path(__file__).resolve().parent.parent.parent
 os.makedirs(ROOT / "extra_data", exist_ok=True)
 

@@ -5,14 +5,13 @@ Parallel multi-API key rotation with automatic failover.
 Every agent picks the fastest available provider.
 """
 
-import os
 import asyncio
-import time
-import json
+import os
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Optional
 from dataclasses import dataclass, field
+
 from loguru import logger
 
 try:
@@ -22,7 +21,9 @@ except ImportError:
     pass
 
 import requests
+
 from src.utils.cost_tracker import tracker
+
 
 @dataclass
 class ProviderConfig:
@@ -138,7 +139,7 @@ PROVIDERS: dict[str, ProviderConfig] = {
 
 _provider_lock = threading.Lock()
 
-def _get_api_key(provider: ProviderConfig) -> Optional[str]:
+def _get_api_key(provider: ProviderConfig) -> str | None:
     if not provider.api_key_env:
         return None
     return os.environ.get(provider.api_key_env, "")

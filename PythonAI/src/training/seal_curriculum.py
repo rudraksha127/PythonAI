@@ -20,9 +20,8 @@ from __future__ import annotations
 import json
 import logging
 import random
-import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from src.training.seal_types import (
     CurriculumState,
@@ -174,8 +173,8 @@ class CurriculumGenerator:
 
     def __init__(
         self,
-        config: Optional[SealConfig] = None,
-        state: Optional[CurriculumState] = None,
+        config: SealConfig | None = None,
+        state: CurriculumState | None = None,
     ):
         self.config = config or SealConfig()
         self.state = state or CurriculumState()
@@ -208,7 +207,7 @@ class CurriculumGenerator:
                     f"difficulty={action.difficulty})")
         return action
 
-    def _generate_llm_action(self) -> Optional[SelfEditAction]:
+    def _generate_llm_action(self) -> SelfEditAction | None:
         """Generate a curriculum action using an LLM via Ollama."""
         try:
             import ollama
@@ -279,7 +278,6 @@ class CurriculumGenerator:
 
     def update_state(self, reward: Any) -> None:
         """Update the curriculum state with a reward record."""
-        from src.training.seal_types import RewardRecord
 
         if hasattr(reward, "to_dict"):
             record = reward
@@ -313,7 +311,7 @@ class CurriculumGenerator:
                     f"actions={self.state.total_actions_taken}, "
                     f"domains explored={len(self.state.domains_explored)}")
 
-    def save_state(self, state_dir: Optional[str] = None) -> str:
+    def save_state(self, state_dir: str | None = None) -> str:
         """Persist the curriculum state to disk."""
         path = Path(state_dir or self.config.state_dir)
         path.mkdir(parents=True, exist_ok=True)
@@ -326,7 +324,7 @@ class CurriculumGenerator:
         logger.info(f"[SEAL] Curriculum state saved: {state_file}")
         return str(state_file)
 
-    def load_state(self, state_dir: Optional[str] = None) -> bool:
+    def load_state(self, state_dir: str | None = None) -> bool:
         """Load curriculum state from disk. Returns True on success."""
         path = Path(state_dir or self.config.state_dir)
         state_file = path / "curriculum_state.json"

@@ -22,7 +22,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -153,7 +153,7 @@ class TrainingConfig:
             )
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "TrainingConfig":
+    def from_dict(cls, d: dict[str, Any]) -> TrainingConfig:
         """Create config from a (possibly partial) dict.
 
         Environment variables in string values (${VAR}) are resolved.
@@ -165,7 +165,7 @@ class TrainingConfig:
         return cls(**filtered)
 
     @classmethod
-    def from_file(cls, path: str | Path) -> "TrainingConfig":
+    def from_file(cls, path: str | Path) -> TrainingConfig:
         """Load config from a JSON or YAML file."""
         path = Path(path)
         if not path.exists():
@@ -190,7 +190,7 @@ class TrainingConfig:
         return cls.from_dict(data)
 
     @classmethod
-    def merge(cls, base: "TrainingConfig", overrides: dict[str, Any] | "TrainingConfig") -> "TrainingConfig":
+    def merge(cls, base: TrainingConfig, overrides: dict[str, Any] | TrainingConfig) -> TrainingConfig:
         """Merge two configs, with overrides taking precedence."""
         if isinstance(overrides, TrainingConfig):
             overrides = asdict(overrides)
@@ -212,7 +212,7 @@ class TrainingConfig:
         )
         return path
 
-    def update(self, **kwargs: Any) -> "TrainingConfig":
+    def update(self, **kwargs: Any) -> TrainingConfig:
         """Return a new config with the given fields updated."""
         d = self.to_dict()
         d.update(kwargs)

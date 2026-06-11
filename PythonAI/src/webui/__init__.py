@@ -16,12 +16,12 @@ Pages:
 
 from __future__ import annotations
 
-from .views.dashboard_home import render as render_home
-from .views.tools_dashboard import render as render_tools
-from .views.providers_dashboard import render as render_providers
-from .views.mcp_dashboard import render as render_mcp
 from .views.agent_workspace import render as render_agent_workspace
+from .views.dashboard_home import render as render_home
 from .views.forge_dashboard import render as render_forge
+from .views.mcp_dashboard import render as render_mcp
+from .views.providers_dashboard import render as render_providers
+from .views.tools_dashboard import render as render_tools
 
 __all__ = [
     "render_home",

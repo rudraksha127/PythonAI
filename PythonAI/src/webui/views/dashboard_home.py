@@ -7,7 +7,6 @@ and MCP server status into a single integrated dashboard.
 
 from __future__ import annotations
 
-import time
 from typing import Any
 
 import streamlit as st
@@ -153,7 +152,7 @@ def _render_mcp_status() -> None:
 
         if servers:
             for name, config in servers.items():
-                from src.core.mcp import StdioConfig, SSEConfig, HTTPConfig
+                from src.core.mcp import HTTPConfig, SSEConfig, StdioConfig
 
                 if isinstance(config, StdioConfig):
                     ttype = f"stdio ({config.command})"
@@ -188,7 +187,7 @@ def _render_engine_status() -> None:
     st.markdown('<div class="card-header">Execution Engine</div>', unsafe_allow_html=True)
 
     try:
-        from src.core.executor import ToolCallingEngine, QueryConfig
+        from src.core.executor import QueryConfig
 
         config = QueryConfig()
         st.markdown(f"- **Max tool rounds:** {config.max_tool_rounds}")

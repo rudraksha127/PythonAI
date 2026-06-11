@@ -10,7 +10,6 @@ import pytest
 
 from src.data.augmenter import (
     API_PROVIDERS,
-    ROOT,
     _call_api_for_qa,
     _parse_api_response,
     build_keyword_prompt,
@@ -21,12 +20,10 @@ from src.data.augmenter import (
     parse_args,
     parse_json_rows,
     print_quality_stats,
-    row_hash,
     save_json,
     select_chunks,
     valid_chunk,
 )
-
 
 # ══════════════════════════════════════════════════════════════════════
 # valid_chunk

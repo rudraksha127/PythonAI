@@ -1,6 +1,7 @@
 import subprocess
 import sys
 
+
 def execute_code(code_str: str, timeout: int = 5) -> tuple[str | None, str | None]:
     dangerous = ["import os", "import sys", "subprocess", "eval(", "exec("]
     if any(d in code_str for d in dangerous):

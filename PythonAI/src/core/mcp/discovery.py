@@ -10,21 +10,15 @@ from __future__ import annotations
 import json
 import logging
 import os
-import subprocess
 from pathlib import Path
-from typing import Any
 
-from .client import MCPClient, connect_sse, connect_stdio
-from .config import MCPConfigManager, find_mcp_configs, parse_mcp_json
+from .client import MCPClient
+from .config import MCPConfigManager, parse_mcp_json
 from .types import (
     ConnectionState,
-    HTTPConfig,
-    MCPScope,
-    SSEConfig,
     ServerConfig,
     ServerConnection,
     StdioConfig,
-    TransportType,
 )
 
 logger = logging.getLogger("pythonai.mcp.discovery")
@@ -66,7 +60,6 @@ def discover_mcp_servers(
 
     Returns dict of server_name -> ServerConnection (some may be FAILED).
     """
-    from .tool_adapter import MCPToolAdapter
 
     config_mgr = MCPConfigManager(project_dir)
     servers = config_mgr.get_servers()

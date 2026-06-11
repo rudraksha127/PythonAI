@@ -12,9 +12,8 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
 
-from src.cloud.supabase_client import get_async_supabase_client, get_supabase_service_client
+from src.cloud.supabase_client import get_supabase_service_client
 
 logger = logging.getLogger("forgeai.cloud.db")
 
@@ -23,7 +22,7 @@ class CloudDB:
     """Cloud database operations using Supabase."""
 
     @staticmethod
-    async def get_profile(user_id: str) -> Optional[dict]:
+    async def get_profile(user_id: str) -> dict | None:
         """Get a user's profile by ID."""
         service = get_supabase_service_client()
         if service is None:
@@ -63,7 +62,7 @@ class CloudDB:
             return []
 
     @staticmethod
-    async def upsert_project(user_id: str, project: dict) -> Optional[str]:
+    async def upsert_project(user_id: str, project: dict) -> str | None:
         """Create or update a project. Returns project ID."""
         service = get_supabase_service_client()
         if service is None:
@@ -84,7 +83,7 @@ class CloudDB:
             return None
 
     @staticmethod
-    async def upsert_training_run(user_id: str, run: dict) -> Optional[str]:
+    async def upsert_training_run(user_id: str, run: dict) -> str | None:
         """Record a training run in the cloud."""
         service = get_supabase_service_client()
         if service is None:
@@ -125,7 +124,7 @@ class CloudDB:
             return []
 
     @staticmethod
-    async def sync_signal(user_id: str, signal: dict) -> Optional[str]:
+    async def sync_signal(user_id: str, signal: dict) -> str | None:
         """Sync a captured signal to the cloud database."""
         service = get_supabase_service_client()
         if service is None:
@@ -195,7 +194,7 @@ class CloudDB:
 # ─── Convenience functions ───────────────────────────────────────
 
 
-async def get_or_create_profile(user_id: str, email: str, username: str) -> Optional[dict]:
+async def get_or_create_profile(user_id: str, email: str, username: str) -> dict | None:
     """Get a user profile or create one if it doesn't exist."""
     profile = await CloudDB.get_profile(user_id)
     if profile:
@@ -223,12 +222,12 @@ async def get_or_create_profile(user_id: str, email: str, username: str) -> Opti
         return None
 
 
-async def upsert_project(user_id: str, project: dict) -> Optional[str]:
+async def upsert_project(user_id: str, project: dict) -> str | None:
     """Convenience wrapper for CloudDB.upsert_project."""
     return await CloudDB.upsert_project(user_id, project)
 
 
-async def upsert_training_run(user_id: str, run: dict) -> Optional[str]:
+async def upsert_training_run(user_id: str, run: dict) -> str | None:
     """Convenience wrapper for CloudDB.upsert_training_run."""
     return await CloudDB.upsert_training_run(user_id, run)
 

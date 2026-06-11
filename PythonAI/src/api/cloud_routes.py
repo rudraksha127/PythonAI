@@ -24,12 +24,9 @@ Endpoints:
 
 from __future__ import annotations
 
-import json
 import logging
-from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 
 from src.cloud.auth import (
@@ -43,7 +40,7 @@ from src.cloud.auth import (
 )
 from src.cloud.config import get_cloud_config
 from src.cloud.db import CloudDB
-from src.cloud.status import get_cloud_status, get_stripe_status
+from src.cloud.status import get_cloud_status
 from src.cloud.stripe_billing import (
     StripeBillingError,
     construct_webhook_event,

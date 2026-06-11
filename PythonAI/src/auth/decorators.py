@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import functools
-import sys
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from src.auth.config import AuthConfig
-
 
 # ASCII-safe symbols (Windows terminal compatible)
 _LOCK = "[!]"

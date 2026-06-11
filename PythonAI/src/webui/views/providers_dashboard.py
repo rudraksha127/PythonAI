@@ -7,8 +7,6 @@ and API key configuration in real-time.
 
 from __future__ import annotations
 
-from typing import Any
-
 import streamlit as st
 
 
@@ -67,7 +65,7 @@ def _render_current_route() -> None:
     st.markdown("### Active Route")
 
     try:
-        from src.core.providers import ProviderRouter, ProfileManager
+        from src.core.providers import ProfileManager, ProviderRouter
 
         router = ProviderRouter()
         profile_mgr = ProfileManager()

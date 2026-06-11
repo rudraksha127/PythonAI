@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import re
 from typing import Any
 
 import ollama
+
 from src.rag.models import DEFAULT_MODEL
-from src.utils.sandbox import execute_code
 from src.utils.code_parser import extract_code_blocks
+from src.utils.sandbox import execute_code
+
 
 class AnswerVerifier:
     """
@@ -23,21 +24,21 @@ class AnswerVerifier:
         code_blocks = extract_code_blocks(answer_text)
         results = []
         all_passed = True
-        
+
         for i, code in enumerate(code_blocks[:3]): # Check at most 3 blocks
             output, error = execute_code(code, timeout=timeout)
-            
+
             # If skipped due to safety, we consider it neutral (not a fail)
             if error == "Skipped (safety)":
                 results.append({"status": "skipped", "output": error})
                 continue
-                
+
             if error:
                 all_passed = False
                 results.append({"status": "error", "output": error})
             else:
                 results.append({"status": "success", "output": output})
-                
+
         return {
             "all_passed": all_passed,
             "details": results,
@@ -83,13 +84,13 @@ Output ONLY a JSON object with this exact structure:
         Compute a confidence score (0.0 to 1.0) based on verification results.
         """
         score = 1.0
-        
+
         if fact_verification.get("hallucinations_found", False):
             score -= 0.4
-            
+
         if not code_verification.get("all_passed", True):
             # Penalize for broken code
             error_count = sum(1 for d in code_verification.get("details", []) if d.get("status") == "error")
             score -= (0.2 * error_count)
-            
+
         return max(0.0, min(1.0, score))

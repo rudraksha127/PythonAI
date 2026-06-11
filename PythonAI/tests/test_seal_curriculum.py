@@ -6,13 +6,12 @@ and random action exploration.
 
 from __future__ import annotations
 
+from src.training.seal_curriculum import CurriculumGenerator
 from src.training.seal_types import (
     CurriculumState,
     SealActionType,
-    SealConfig,
     SelfEditAction,
 )
-from src.training.seal_curriculum import CurriculumGenerator
 
 
 class TestCurriculumGenerator:

@@ -6,14 +6,14 @@ from unittest.mock import patch
 import pytest
 
 from src.auth.auth import (
-    hash_password,
-    verify_password,
+    check_auth,
     generate_token,
+    hash_password,
     login,
     logout,
-    check_auth,
+    verify_password,
 )
-from src.auth.config import AuthConfig, CONFIG_DIR
+from src.auth.config import AuthConfig
 from src.auth.decorators import requires_auth
 
 

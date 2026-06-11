@@ -19,8 +19,8 @@ from __future__ import annotations
 # ─── Zero-dependency modules (safe to import eagerly) ──────────
 from src.cloud.config import CloudConfig, get_cloud_config
 from src.cloud.tiers import (
-    PlanTier,
     PRICING_TIERS,
+    PlanTier,
     check_entitlement,
     format_limits_display,
     get_plan_features,

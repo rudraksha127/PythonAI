@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
-import sys
 from collections import defaultdict
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -13,26 +11,25 @@ import pytest
 
 from src.data.generator import (
     MODELS,
-    ROOT,
     URLS,
+    active,
+    build_prompts,
+    call_api,
+    calls,
     dedup_filter,
+    fails,
     load_latest_checkpoint,
+    process_chunk,
+    process_generation_task,
+    rate_limited,
     safe_json,
     save_checkpoint,
     score_pair,
-    build_prompts,
-    setup as generator_setup,
-    call_api,
-    process_generation_task,
-    process_chunk,
     seen_hashes,
-    active,
-    curr_idx,
-    calls,
-    fails,
-    rate_limited,
 )
-
+from src.data.generator import (
+    setup as generator_setup,
+)
 
 # ══════════════════════════════════════════════════════════════════════
 # safe_json

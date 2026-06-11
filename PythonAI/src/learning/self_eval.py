@@ -29,7 +29,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger("pythonai.learning.self_eval")
 
@@ -287,7 +287,7 @@ class SelfEvaluator:
         )
 
         elapsed_ms = (time.time() - start) * 1000
-        
+
         errors = []
         if overall < 0.5:
             llm_feedback = self._evaluate_with_llm(question, expected_answer, actual_answer)

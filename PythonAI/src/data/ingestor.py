@@ -6,20 +6,19 @@ Ingests scraped JSON data from D: drive into the Chroma DB and Knowledge Graph w
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 from typing import Any
 
-from tqdm import tqdm
-from sentence_transformers import SentenceTransformer
 import chromadb
+from sentence_transformers import SentenceTransformer
+from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
-from src.rag.rag_engine import DB_PATH, CHUNKS_FILE
 from src.rag.knowledge_graph import KnowledgeGraph
+from src.rag.rag_engine import CHUNKS_FILE, DB_PATH
 
 D_DRIVE_BASE = Path("D:/PythonAI_Data")
 SO_DIR = D_DRIVE_BASE / "stackoverflow"
@@ -116,7 +115,7 @@ def ingest_data() -> None:
             existing_chunks = json.loads(CHUNKS_FILE.read_text(encoding="utf-8"))
         except Exception:
             existing_chunks = []
-    
+
     # Filter out duplicates by ID
     existing_ids = {c.get("id") for c in existing_chunks if "id" in c}
     new_unique = [c for c in all_new_chunks if c.get("id") not in existing_ids]
@@ -130,7 +129,7 @@ def ingest_data() -> None:
     CHUNKS_FILE.write_text(json.dumps(existing_chunks, ensure_ascii=False), encoding="utf-8")
 
     # Ingest to Chroma
-    print(f"\n[Ingest] Vectorizing into ChromaDB...")
+    print("\n[Ingest] Vectorizing into ChromaDB...")
     embedder = SentenceTransformer("all-MiniLM-L6-v2")
     client = chromadb.PersistentClient(path=str(DB_PATH))
     collection = client.get_or_create_collection(
@@ -167,7 +166,7 @@ def ingest_data() -> None:
         )
 
     # Ingest to KG
-    print(f"\n[Ingest] Adding relationships to Knowledge Graph...")
+    print("\n[Ingest] Adding relationships to Knowledge Graph...")
     kg = KnowledgeGraph()
     try:
         kg.load()

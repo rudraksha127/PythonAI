@@ -13,7 +13,6 @@ Tests cover:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -24,7 +23,6 @@ from src.rag.cast_chunker import (
     chunk_code_file,
     chunk_code_source,
 )
-
 
 # ══════════════════════════════════════════════════════════════════════
 # CodeChunk dataclass tests
@@ -675,12 +673,12 @@ class DataProcessor:
         # Build deeply nested ifs
         nested = "if a:  # level 1\n"
         for i in range(2, 12):
-            nested += f"    " * (i - 1) + f"if b{i}:  # level {i}\n"
-        nested += f"    " * 11 + "pass\n"
+            nested += "    " * (i - 1) + f"if b{i}:  # level {i}\n"
+        nested += "    " * 11 + "pass\n"
         for i in range(11, 1, -1):
-            nested += f"    " * (i - 2) + "elif x:"
+            nested += "    " * (i - 2) + "elif x:"
             for j in range(50):
-                nested += f"\n" + f"    " * (i - 1) + f"    y{j} = {j}"
+                nested += "\n" + "    " * (i - 1) + f"    y{j} = {j}"
             nested += "\n"
 
         source = f"""

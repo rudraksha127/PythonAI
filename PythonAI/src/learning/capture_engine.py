@@ -34,9 +34,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet
 
 
 class SignalType(str, Enum):
@@ -59,33 +59,33 @@ class TrainingSignal:
     file_path: str
     line_number: int
     language: str
-    framework: Optional[str]
+    framework: str | None
     project_type: str  # "web", "data", "ml", "cli", "library", etc.
-    
+
     # The AI suggestion
     suggestion: str
     suggestion_metadata: dict = field(default_factory=dict)  # model, temperature, etc.
-    
+
     # Context (surrounding code)
     context_before: str = ""
     context_after: str = ""
     full_context: str = ""
-    
+
     # Developer's final code (if different from suggestion)
-    final_code: Optional[str] = None
+    final_code: str | None = None
     edit_distance: float = 0.0  # How much was edited (0.0 = identical, 1.0 = completely different)
-    
+
     # Verifiable signals
-    test_passed: Optional[bool] = None
-    lint_passed: Optional[bool] = None
-    compilation_passed: Optional[bool] = None
-    
+    test_passed: bool | None = None
+    lint_passed: bool | None = None
+    compilation_passed: bool | None = None
+
     # Additional metadata
-    git_sha: Optional[str] = None
-    branch_name: Optional[str] = None
-    pr_number: Optional[int] = None
-    developer_id: Optional[str] = None  # Anonymized hash
-    
+    git_sha: str | None = None
+    branch_name: str | None = None
+    pr_number: int | None = None
+    developer_id: str | None = None  # Anonymized hash
+
     # Unique ID
     signal_id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
@@ -117,7 +117,7 @@ class TrainingSignal:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "TrainingSignal":
+    def from_dict(cls, data: dict[str, Any]) -> TrainingSignal:
         return cls(
             signal_id=data.get("signal_id", str(uuid.uuid4())),
             signal_type=SignalType(data["signal_type"]),
@@ -151,27 +151,27 @@ def _compute_edit_distance(original: str, final: str) -> float:
         return 1.0 if final else 0.0
     if not final:
         return 1.0
-    
+
     # Simple Levenshtein-based normalized distance
     len_orig = len(original)
     len_final = len(final)
     max_len = max(len_orig, len_final)
-    
+
     # Use simple diff for efficiency
     orig_lines = original.strip().splitlines()
     final_lines = final.strip().splitlines()
-    
+
     total_lines = max(len(orig_lines), len(final_lines))
     if total_lines == 0:
         return 0.0
-    
+
     diff_count = 0
     for i in range(max(len(orig_lines), len(final_lines))):
         orig_line = orig_lines[i] if i < len(orig_lines) else ""
         final_line = final_lines[i] if i < len(final_lines) else ""
         if orig_line.strip() != final_line.strip():
             diff_count += 1
-    
+
     return diff_count / total_lines
 
 
@@ -191,7 +191,7 @@ class CaptureEngine:
     def __init__(
         self,
         db_path: str | Path | None = None,
-        encryption_key: Optional[str] = None,
+        encryption_key: str | None = None,
         project_name: str = "default",
     ):
         if db_path is None:
@@ -201,7 +201,7 @@ class CaptureEngine:
 
         self.project_name = project_name
         self.session_id = str(uuid.uuid4())
-        
+
         # Encryption
         if encryption_key:
             self.fernet = Fernet(encryption_key)
@@ -314,10 +314,10 @@ class CaptureEngine:
         context_before: str = "",
         context_after: str = "",
         full_context: str = "",
-        suggestion_metadata: Optional[dict] = None,
-        framework: Optional[str] = None,
+        suggestion_metadata: dict | None = None,
+        framework: str | None = None,
         project_type: str = "general",
-        developer_id: Optional[str] = None,
+        developer_id: str | None = None,
     ) -> str:
         """Capture an accept signal."""
         signal = TrainingSignal(
@@ -352,11 +352,11 @@ class CaptureEngine:
         context_before: str = "",
         context_after: str = "",
         full_context: str = "",
-        suggestion_metadata: Optional[dict] = None,
-        framework: Optional[str] = None,
+        suggestion_metadata: dict | None = None,
+        framework: str | None = None,
         project_type: str = "general",
-        rejection_reason: Optional[str] = None,
-        developer_id: Optional[str] = None,
+        rejection_reason: str | None = None,
+        developer_id: str | None = None,
     ) -> str:
         """Capture a reject signal."""
         signal = TrainingSignal(
@@ -390,10 +390,10 @@ class CaptureEngine:
         context_before: str = "",
         context_after: str = "",
         full_context: str = "",
-        suggestion_metadata: Optional[dict] = None,
-        framework: Optional[str] = None,
+        suggestion_metadata: dict | None = None,
+        framework: str | None = None,
         project_type: str = "general",
-        developer_id: Optional[str] = None,
+        developer_id: str | None = None,
     ) -> str:
         """Capture an edit signal (developer modified suggestion before accepting)."""
         edit_distance = _compute_edit_distance(original_suggestion, final_code)
@@ -424,7 +424,7 @@ class CaptureEngine:
         self,
         signal_id: str,
         passed: bool,
-        test_output: Optional[str] = None,
+        test_output: str | None = None,
     ):
         """Update a signal with test execution result (verifiable reward)."""
         conn = sqlite3.connect(str(self.db_path))
@@ -447,9 +447,9 @@ class CaptureEngine:
         context_before: str = "",
         context_after: str = "",
         full_context: str = "",
-        framework: Optional[str] = None,
+        framework: str | None = None,
         project_type: str = "general",
-        developer_id: Optional[str] = None,
+        developer_id: str | None = None,
     ) -> str:
         """Capture a PR merge signal (high-confidence positive example)."""
         signal = TrainingSignal(
@@ -592,10 +592,10 @@ class CaptureEngine:
         signals_used: int,
         acceptance_rate_before: float,
         acceptance_rate_after: float,
-        train_loss: Optional[float] = None,
-        eval_loss: Optional[float] = None,
-        adapter_path: Optional[str] = None,
-        metrics: Optional[dict[str, Any]] = None,
+        train_loss: float | None = None,
+        eval_loss: float | None = None,
+        adapter_path: str | None = None,
+        metrics: dict[str, Any] | None = None,
     ):
         """Record a training run with before/after acceptance rate."""
         conn = sqlite3.connect(str(self.db_path))
@@ -658,10 +658,10 @@ class CaptureEngine:
 
     def get_signals(
         self,
-        signal_type: Optional[SignalType | str] = None,
-        language: Optional[str] = None,
-        start_date: Optional[float] = None,
-        end_date: Optional[float] = None,
+        signal_type: SignalType | str | None = None,
+        language: str | None = None,
+        start_date: float | None = None,
+        end_date: float | None = None,
         limit: int = 1000,
     ) -> list[TrainingSignal]:
         """Query signals with optional filters."""
@@ -771,7 +771,7 @@ class CaptureEngine:
 
             # Build training example
             context = data["full_context"] or f"{data['context_before']}\n{data['context_after']}"
-            
+
             # Use final_code for edits, suggestion for accepts/PR merges
             output = data["final_code"] if data["signal_type"] == "edit" else data["suggestion"]
 
@@ -806,7 +806,7 @@ class CaptureEngine:
         cursor = conn.cursor()
 
         cutoff = time.time() - (days * 86400)
-        
+
         cursor.execute("""
         SELECT 
             DATE(timestamp, 'unixepoch') as date,

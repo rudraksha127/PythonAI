@@ -8,8 +8,7 @@ Maps Stripe price IDs to ForgeAI plan tiers and their feature sets.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 
 class PlanTier:

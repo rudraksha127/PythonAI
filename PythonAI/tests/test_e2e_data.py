@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import io
 from contextlib import redirect_stdout
-from typing import Any
 
 
 def test_data_build_prompts() -> None:

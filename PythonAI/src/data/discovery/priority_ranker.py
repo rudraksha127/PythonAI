@@ -19,12 +19,11 @@ Usage:
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any
 
-from src.data.metadata import DatasetRecord, DataDomain
-
+from src.data.metadata import DataDomain, DatasetRecord
 
 # ── Domain gap weights (how much we need data in each domain) ─────────
 # Higher = bigger gap to fill
@@ -392,7 +391,7 @@ def print_ranking(scored: list[ScoredDataset]) -> None:
 
 if __name__ == "__main__":
     # Demo: create some sample records and rank them
-    from src.data.metadata import DatasetRecord, DataDomain, DownloadProtocol
+    from src.data.metadata import DataDomain, DatasetRecord, DownloadProtocol
 
     samples = [
         DatasetRecord(
