@@ -23,13 +23,12 @@ from __future__ import annotations
 
 from typing import Any
 
-
 # ──────────────────────────────────────────────────────────────────────
 # 1. AUTH SYSTEM
 # ──────────────────────────────────────────────────────────────────────
 
 
-def test_auth_stage() -> dict[str, Any]:
+def test_auth_stage() -> None:
     """Exercise password hashing, tokens, config, login/logout, decorator."""
     from src.auth.auth import (
         check_auth,
@@ -139,8 +138,7 @@ def test_auth_stage() -> dict[str, Any]:
     _FakeArgs.no_auth = True
     assert _dummy(_FakeArgs()) == 99, "--no-auth not working"
     _r["passed"] += 1
-
-    return stage
+    _record_stage("🔐 Auth System", _r["tests"], _r["passed"], _r["failed"])
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -148,7 +146,7 @@ def test_auth_stage() -> dict[str, Any]:
 # ──────────────────────────────────────────────────────────────────────
 
 
-def test_data_stage() -> dict[str, Any]:
+def test_data_stage() -> None:
     """Exercise prompt building, chunk validation, quality stats, dedup, merging.
 
     Tests imported from tests/test_e2e_data.py
@@ -173,8 +171,7 @@ def test_data_stage() -> dict[str, Any]:
     _r["tests"] += 1
     e2e_data.test_data_quality_stats_does_not_crash()
     _r["passed"] += 1
-
-    return stage
+    _record_stage("📊 Data Pipeline", _r["tests"], _r["passed"], _r["failed"])
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -182,7 +179,7 @@ def test_data_stage() -> dict[str, Any]:
 # ──────────────────────────────────────────────────────────────────────
 
 
-def test_training_stage() -> dict[str, Any]:
+def test_training_stage() -> None:
     """Exercise dataset construction, callbacks, BLEU scoring.
 
     Tests imported from tests/test_e2e_training.py
@@ -207,8 +204,7 @@ def test_training_stage() -> dict[str, Any]:
     _r["tests"] += 1
     e2e_training.test_training_compute_bleu()
     _r["passed"] += 1
-
-    return stage
+    _record_stage("🔧 Training Pipeline", _r["tests"], _r["passed"], _r["failed"])
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -216,7 +212,7 @@ def test_training_stage() -> dict[str, Any]:
 # ──────────────────────────────────────────────────────────────────────
 
 
-def test_rag_stage() -> dict[str, Any]:
+def test_rag_stage() -> None:
     """Exercise SimpleBM25, MMR, citation formatting, and query expansion template."""
     from src.rag.rag_engine import (
         SimpleBM25,
@@ -290,8 +286,7 @@ def test_rag_stage() -> dict[str, Any]:
     assert "Dict Internals" in formatted
     assert format_sources([]) == "", "empty sources not empty"
     _r["passed"] += 1
-
-    return stage
+    _record_stage("🧠 RAG Engine", _r["tests"], _r["passed"], _r["failed"])
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -299,7 +294,7 @@ def test_rag_stage() -> dict[str, Any]:
 # ──────────────────────────────────────────────────────────────────────
 
 
-def test_swarm_stage() -> dict[str, Any]:
+def test_swarm_stage() -> None:
     """Exercise task decomposition, AgentSwarm execution, MCP, monitoring."""
     from src.utils.swarm import (
         AgentSwarm,
@@ -308,7 +303,6 @@ def test_swarm_stage() -> dict[str, Any]:
         MCPTool,
         RetryStrategy,
         SwarmMonitor,
-        SwarmStats,
         TaskDecomposer,
         TaskResult,
     )
@@ -429,8 +423,7 @@ def test_swarm_stage() -> dict[str, Any]:
     assert RetryStrategy.LINEAR.value == "linear"
     assert RetryStrategy.EXPONENTIAL.value == "exponential"
     _r["passed"] += 1
-
-    return stage
+    _record_stage("🐝 Agent Swarm", _r["tests"], _r["passed"], _r["failed"])
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -438,7 +431,7 @@ def test_swarm_stage() -> dict[str, Any]:
 # ──────────────────────────────────────────────────────────────────────
 
 
-def test_cli_stage() -> dict[str, Any]:
+def test_cli_stage() -> None:
     """Exercise CLI argument parsing for all subcommands and flags.
 
     Tests imported from tests/test_e2e_cli.py
@@ -467,8 +460,7 @@ def test_cli_stage() -> dict[str, Any]:
     _r["tests"] += 1
     e2e_cli.test_cli_eval_probe_clean_dataset_augment_merge()
     _r["passed"] += 1
-
-    return stage
+    _record_stage("🖥️  CLI Parsing", _r["tests"], _r["passed"], _r["failed"])
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -476,7 +468,7 @@ def test_cli_stage() -> dict[str, Any]:
 # ──────────────────────────────────────────────────────────────────────
 
 
-def test_integration_flow() -> dict[str, Any]:
+def test_integration_flow() -> None:
     """Exercise a realistic cross-stage scenario.
 
     Tests imported from tests/test_e2e_integration.py
@@ -489,13 +481,23 @@ def test_integration_flow() -> dict[str, Any]:
     _r["tests"] += 1
     e2e_integration.test_integration_cross_stage_pipeline()
     _r["passed"] += 1
-
-    return stage
+    _record_stage("🔗 Integration Flow", _r["tests"], _r["passed"], _r["failed"])
 
 
 # ──────────────────────────────────────────────────────────────────────
-# MAIN
+# MAIN — standalone runner (not used by pytest)
 # ──────────────────────────────────────────────────────────────────────
+
+
+_STAGE_RESULTS: dict[str, dict[str, int]] = {}
+
+
+def _record_stage(name: str, tests: int, passed: int, failed: int) -> None:
+    _STAGE_RESULTS[name] = {"tests": tests, "passed": passed, "failed": failed}
+
+
+def _get_stage_result(name: str) -> dict[str, int]:
+    return _STAGE_RESULTS.get(name, {"tests": 0, "passed": 0, "failed": 0})
 
 
 def main() -> int:
@@ -520,16 +522,18 @@ def main() -> int:
 
     for name, func in stages:
         try:
-            result = func()
+            func()
+            result = _get_stage_result(name)
             passed = result["passed"]
             failed = result["failed"]
-            total_tests += result["tests"]
+            tests = result["tests"]
+            total_tests += tests
             total_passed += passed
             total_failed += failed
 
             status = "✅" if failed == 0 else "❌"
             print(f"\n  {status}  {name}")
-            print(f"      Tests: {result['tests']:2d} | Passed: {passed:2d} | Failed: {failed:2d}")
+            print(f"      Tests: {tests:2d} | Passed: {passed:2d} | Failed: {failed:2d}")
 
             if failed > 0:
                 failed_stages.append(name)
