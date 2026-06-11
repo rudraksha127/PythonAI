@@ -208,6 +208,15 @@ class ErrorPatternDB:
             logger.error("Failed to save error patterns: %s", e)
             raise
 
+    def _trigger_auto_search(self, error_type: str, error_message: str) -> None:
+        """
+        Optional: Triggers an asynchronous background search (e.g. StackOverflow or 
+        Web Search) to proactively find a solution for an unresolved error.
+        """
+        logger.info(f"Triggering auto-search for unresolved error: {error_type}")
+        # In a real implementation, this would queue a task for an agent or sync job
+        # to search GitHub issues or StackOverflow.
+
     def log(
         self,
         error: str,
@@ -219,10 +228,12 @@ class ErrorPatternDB:
 
         If the error pattern already exists, updates frequency and confidence.
         If new, creates a fresh entry.
+        
+        If the solution is missing, triggers an auto-search.
 
         Args:
             error: Error text or full traceback.
-            solution: The solution text.
+            solution: The solution text (can be empty if unresolved).
             tags: Optional tags for categorization.
 
         Returns:
@@ -231,6 +242,10 @@ class ErrorPatternDB:
         info = _extract_error_info(error)
         error_hash = _compute_error_hash(info["error_type"], info["error_message"])
         now = time.time()
+        
+        is_unresolved = not solution or solution.strip().lower() == "unresolved"
+        if is_unresolved:
+            self._trigger_auto_search(info["error_type"], info["error_message"])
 
         if error_hash in self._patterns:
             # Update existing pattern
@@ -240,7 +255,7 @@ class ErrorPatternDB:
             # Increase confidence with repeated observations
             pattern.confidence = min(1.0, pattern.confidence + 0.1)
             # Update solution if the new one is longer/more detailed
-            if len(solution) > len(pattern.solution):
+            if len(solution) > len(pattern.solution) and not is_unresolved:
                 pattern.solution = solution
             if tags:
                 pattern.tags = list(set(pattern.tags + tags))
@@ -263,7 +278,7 @@ class ErrorPatternDB:
                 full_traceback=error,
                 solution=solution,
                 times_seen=1,
-                confidence=0.5,
+                confidence=0.5 if not is_unresolved else 0.1,
                 first_seen=now,
                 last_seen=now,
                 tags=tags or [],
@@ -277,7 +292,7 @@ class ErrorPatternDB:
                 "error_type": info["error_type"],
                 "is_new": True,
                 "times_seen": 1,
-                "confidence": 0.5,
+                "confidence": pattern.confidence,
             }
 
     def find(

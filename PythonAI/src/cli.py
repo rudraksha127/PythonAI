@@ -1480,6 +1480,22 @@ def phase1_cmd(args: argparse.Namespace) -> int:
     return 1
 
 
+def learn_cmd(args: argparse.Namespace) -> int:
+    """Learning Engine CLI hooks."""
+    from src.utils.models import project_python
+    
+    if args.action == "daemon":
+        return run([str(project_python()), "-m", "src.learning.daemon", "--interval", str(args.interval)])
+    
+    if args.action == "sync-so":
+        return run([str(project_python()), "-c", "from src.learning.so_sync import sync_stackoverflow; print(sync_stackoverflow(pages=1))"])
+        
+    if args.action == "eval":
+        return run([str(project_python()), "-c", "from src.learning.self_eval import run_self_evaluation; print(run_self_evaluation(sample_size=10))"])
+        
+    return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the argument parser (exported for testing)."""
     parser = argparse.ArgumentParser(
@@ -1582,6 +1598,16 @@ def build_parser() -> argparse.ArgumentParser:
     webui_parser.add_argument("--port", type=int, default=8501, help="Port to run the Web UI on (default: 8501)")
     webui_parser.add_argument("--daemon", action="store_true", help="Run in daemon/background mode (Windows: start new window)")
     webui_parser.set_defaults(func=webui_run)
+
+    learn_parser = sub.add_parser("learn", help="Run learning module tasks (daemon, sync-so, eval).")
+    learn_sub = learn_parser.add_subparsers(dest="action", required=True)
+    
+    learn_daemon = learn_sub.add_parser("daemon", help="Run autonomous learning daemon in foreground.")
+    learn_daemon.add_argument("--interval", type=int, default=24, help="Run interval in hours")
+    
+    learn_sync = learn_sub.add_parser("sync-so", help="Sync trending StackOverflow Q&A manually.")
+    learn_eval = learn_sub.add_parser("eval", help="Run self-evaluation on RAG answers.")
+    learn_parser.set_defaults(func=learn_cmd)
 
     apikeys_parser = sub.add_parser("apikeys", help="Manage API keys for dataset generation.")
     apikeys_sub = apikeys_parser.add_subparsers(dest="action", required=True)

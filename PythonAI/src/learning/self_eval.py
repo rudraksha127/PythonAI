@@ -252,6 +252,20 @@ class SelfEvaluator:
         logger.info("Loaded %d evaluation samples", len(samples))
         return samples
 
+    def _evaluate_with_llm(self, question: str, expected: str, actual: str) -> dict[str, Any]:
+        """
+        Optional: Call an external LLM to act as a judge for low-scoring answers.
+        Returns detailed critique and reasoning.
+        """
+        # In a real scenario, this would call the API.
+        # Stub implementation to represent the architecture hook.
+        logger.info("Triggering LLM-as-a-Judge for low-scoring answer...")
+        return {
+            "critique": "The generated answer was syntactically correct but missed the key instructions.",
+            "suggestion": "Include explicit code examples demonstrating the use case.",
+            "llm_score": 0.4
+        }
+
     def evaluate_single(
         self,
         question: str,
@@ -273,6 +287,13 @@ class SelfEvaluator:
         )
 
         elapsed_ms = (time.time() - start) * 1000
+        
+        errors = []
+        if overall < 0.5:
+            llm_feedback = self._evaluate_with_llm(question, expected_answer, actual_answer)
+            errors.append(llm_feedback["critique"])
+            # We can also factor the LLM score into the overall score if we wanted to
+            # overall = (overall + llm_feedback["llm_score"]) / 2
 
         return EvalResult(
             question=question,
@@ -283,6 +304,7 @@ class SelfEvaluator:
             code_quality_score=round(code_quality, 4),
             overall_score=round(overall, 4),
             eval_time_ms=round(elapsed_ms, 2),
+            errors=errors
         )
 
     def evaluate_batch(

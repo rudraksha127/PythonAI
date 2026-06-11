@@ -384,18 +384,112 @@ def sync_stackoverflow(
     sort: str = "votes",
     min_score: int = 5,
     api_key: str | None = None,
+    tags: list[str] | None = None,
 ) -> dict[str, Any]:
     """
     Convenience function: sync trending Python Q&A from StackOverflow.
 
     Args:
-        pages: Number of pages to fetch (30 Q/page).
+        pages: Number of pages to fetch per tag (30 Q/page).
         sort: Sort order ('votes', 'activity', 'creation').
         min_score: Minimum question score.
         api_key: Optional SO API key for higher rate limits.
+        tags: List of tags to fetch. Defaults to specialized Python tags.
 
     Returns:
         Stats dict with fetched/saved counts.
     """
     syncer = StackOverflowSyncer(api_key=api_key)
-    return syncer.sync(pages=pages, sort=sort, min_score=min_score)
+    
+    if not tags:
+        tags = [
+            "python",
+            "python-3.x",
+            "python-asyncio",
+            "pandas",
+            "fastapi",
+            "django",
+            "pytest"
+        ]
+
+    overall_stats = {
+        "fetched": 0,
+        "with_answers": 0,
+        "saved": 0,
+        "duplicates_skipped": 0,
+        "errors": 0,
+    }
+
+    for tag in tags:
+        logger.info(f"Syncing StackOverflow tag: {tag}")
+        questions = syncer.fetch_questions(pages=pages, sort=sort, min_score=min_score, tags=tag)
+        overall_stats["fetched"] += len(questions)
+
+        entries: list[dict[str, Any]] = []
+
+        for q in questions:
+            answer_data = q.get("accepted_answer")
+            if not answer_data or not answer_data.get("body"):
+                continue
+
+            overall_stats["with_answers"] += 1
+
+            # Dedup
+            content_hash = hashlib.sha256(
+                f"{q['question_id']}".encode()
+            ).hexdigest()[:16]
+
+            if content_hash in syncer._known_hashes:
+                overall_stats["duplicates_skipped"] += 1
+                continue
+
+            try:
+                title = html.unescape(q.get("title", ""))
+                question_body = _strip_html(q.get("body", ""))
+                answer_body = _format_answer(answer_data.get("body", ""))
+
+                if not answer_body or len(answer_body) < 30:
+                    continue
+
+                entry = {
+                    "instruction": title,
+                    "input": question_body[:1000] if question_body != title else "",
+                    "output": answer_body,
+                    "source": "stackoverflow",
+                    "category": "qa",
+                    "metadata": {
+                        "question_id": q["question_id"],
+                        "score": q.get("score", 0),
+                        "answer_score": answer_data.get("score", 0),
+                        "tags": q.get("tags", []),
+                        "view_count": q.get("view_count", 0),
+                        "link": q.get("link", ""),
+                        "content_hash": content_hash,
+                        "fetched_tag": tag,
+                    },
+                }
+
+                entries.append(entry)
+                syncer._known_hashes.add(content_hash)
+
+            except Exception as e:
+                logger.warning("Error processing question %s: %s", q.get("question_id"), e)
+                overall_stats["errors"] += 1
+
+        # Write to JSONL
+        if entries:
+            output_file = syncer.output_dir / "stackoverflow_sync.jsonl"
+            try:
+                with open(output_file, "a", encoding="utf-8") as f:
+                    for entry in entries:
+                        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+                overall_stats["saved"] += len(entries)
+                logger.info("Saved %d SO entries for tag '%s'", len(entries), tag)
+            except OSError as e:
+                logger.error("Failed to write SO data: %s", e)
+                overall_stats["errors"] += 1
+
+    # Persist hashes
+    syncer._save_known_hashes()
+
+    return overall_stats

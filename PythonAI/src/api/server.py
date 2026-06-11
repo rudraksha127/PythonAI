@@ -1403,6 +1403,11 @@ if _CLOUD_AVAILABLE and cloud_router is not None:
     app.include_router(cloud_router)
     logger.info("Cloud routes registered")
 
+# ── Include Learning Routes ────────────────────────────────────
+from src.api.learning_routes import router as learning_router
+app.include_router(learning_router)
+logger.info("Learning routes registered")
+
 
 # ═══════════════════════════════════════
 # Main entry point

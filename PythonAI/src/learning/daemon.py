@@ -46,6 +46,18 @@ def main():
             # 2. Ingest New Data into God Mode DB
             run_cmd([python_exe, "-m", "src.data.ingestor"])
 
+            # 3. Check for new Python Documentation
+            print("\n[DAEMON] Checking for Python documentation updates...")
+            run_cmd([python_exe, "-c", "from src.learning.doc_watcher import watch_docs; print(watch_docs())"])
+
+            # 4. Sync Advanced StackOverflow Tags
+            print("\n[DAEMON] Syncing trending StackOverflow Q&A...")
+            run_cmd([python_exe, "-c", "from src.learning.so_sync import sync_stackoverflow; print(sync_stackoverflow(pages=1))"])
+
+            # 5. Run RAG Self-Evaluation
+            print("\n[DAEMON] Running RAG Self-Evaluation...")
+            run_cmd([python_exe, "-c", "from src.learning.self_eval import run_self_evaluation; print(run_self_evaluation(sample_size=10))"])
+
             print(f"\n[DAEMON] Cycle complete. Sleeping for {args.interval} hours...")
             time.sleep(args.interval * 3600)
 
