@@ -11,7 +11,7 @@ import logging
 import subprocess
 import time
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Callable, Dict, List, Any
 from dataclasses import dataclass, field, asdict
 from enum import Enum
@@ -165,7 +165,7 @@ class AntiGravityOrchestrator:
                               size_bytes: int = 0, num_items: int = 0,
                               error: Optional[str] = None):
         """Update tracking status for a data source"""
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         if name not in self.source_statuses:
             self.source_statuses[name] = DataSourceStatus(
                 name=name, source_type=source_type,
@@ -508,7 +508,7 @@ class AntiGravityOrchestrator:
         """Return data formatted for web dashboard"""
         summary = self.get_collection_summary()
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "total_size_gb": round(summary["total_size_bytes"] / 1e9, 2),
             "sources_count": len(summary["sources"]),
             "phases_completed": summary["phases_completed"],

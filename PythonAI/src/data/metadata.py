@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import time
 from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -212,7 +212,7 @@ class MetadataManager:
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
         data = {
             "schema_version": "1.0",
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
             "dataset_count": len(self._datasets),
             "datasets": [d.to_dict() for d in self._datasets.values()],
         }

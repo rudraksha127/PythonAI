@@ -4,7 +4,7 @@ Estimates token counts using tiktoken (for OpenAI) or character length heuristic
 """
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from loguru import logger
 
 try:
@@ -48,7 +48,7 @@ class CostTracker:
         cost = (in_tokens / 1000.0) * rates["in"] + (out_tokens / 1000.0) * rates["out"]
         
         record = {
-            "timestamp": datetime.now(datetime.UTC).isoformat() if hasattr(datetime, "UTC") else datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "provider": provider,
             "in_tokens": in_tokens,
             "out_tokens": out_tokens,
