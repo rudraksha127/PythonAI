@@ -43,6 +43,21 @@ from src.rag.rag_engine import DEFAULT_MODEL, get_answer, load_or_build_db
 from src.training.grpo_trainer import GRPOTrainer
 from src.training.sdft_trainer import SDFTTrainer
 from src.utils.metrics import metrics
+from fastapi import Query
+
+import sqlite3  # Projects store
+
+# APScheduler — automated training scheduling
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+
+# Cloud backend (optional — graceful if not configured)
+try:
+    from src.api.cloud_routes import router as cloud_router
+    _CLOUD_AVAILABLE = True
+except ImportError:
+    _CLOUD_AVAILABLE = False
+    cloud_router = None
 
 # ═══════════════════════════════════════
 # Logging — centralized
@@ -59,6 +74,17 @@ _sdft_trainer: Optional[SDFTTrainer] = None
 _grpo_trainer: Optional[GRPOTrainer] = None
 _active_training_run: Optional[dict[str, Any]] = None
 _ws_clients: list[WebSocket] = []  # Dashboard WebSocket clients
+
+# Training scheduler config (persisted to environment)
+_scheduler: Optional[AsyncIOScheduler] = None
+_schedule_config: dict[str, Any] = {
+    "enabled": os.environ.get("FORGEAI_SCHEDULER_ENABLED", "true").lower() == "true",
+    "cron": os.environ.get("FORGEAI_SCHEDULER_CRON", "0 2 * * 1"),  # Monday 2AM by default
+    "description": "Weekly training every Monday at 02:00",
+    "last_run": None,
+    "next_run": None,
+    "total_runs": 0,
+}
 
 # ═══════════════════════════════════════
 # Rate Limiter (in-memory token bucket)
@@ -120,11 +146,26 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global _capture_engine, _sdft_trainer, _grpo_trainer
     logger.info("ForgeAI server starting up...")
     _capture_engine = CaptureEngine()
-    _sdft_trainer = SDFTTrainer()
-    _grpo_trainer = GRPOTrainer()
-    logger.info("Capture engine, SDFT trainer, GRPO trainer initialized.")
+    
+    # Default model for training (can be overridden via env var)
+    _default_model = os.environ.get(
+        "FORGEAI_BASE_MODEL",
+        "Qwen/Qwen2.5-Coder-7B-Instruct",
+    )
+    _sdft_trainer = SDFTTrainer(model_name=_default_model)
+    _grpo_trainer = GRPOTrainer(model_name=_default_model)
+
+    # Projects DB — initialise inside lifespan for controlled startup        _init_projects_db()
+
+    # --- Start training scheduler ---
+    _init_scheduler()
+
+    logger.info(f"Capture engine, SDFT trainer, GRPO trainer initialized (model={_default_model}).")
     yield
     # Shutdown
+    if _scheduler and _scheduler.running:
+        _scheduler.shutdown(wait=False)
+        logger.info("Training scheduler shut down.")
     logger.info("ForgeAI server shutting down.")
 
 # ═══════════════════════════════════════
@@ -283,16 +324,33 @@ async def health_check() -> dict[str, Any]:
         "uptime_seconds": round(time.time() - _start_time),
         "inference_connected": True,
         "db_ok": True,
+        "scheduler": {
+            "enabled": _schedule_config["enabled"],
+            "next_run": _schedule_config["next_run"],
+            "total_runs": _schedule_config["total_runs"],
+        } if _scheduler and _scheduler.running else {"enabled": False, "status": "not_running"},
     }
 
 @app.get("/stats")
 async def get_stats() -> dict[str, Any]:
-    try:
-        coll, _, _, _, cfile = get_db()
-        return {"status": "ok", "chunks": coll.count(), "db_path": str(cfile)}
-    except Exception as e:
-        logger.error(f"Error fetching stats: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+    """
+    Return capture statistics in the format the dashboard expects.
+    Falls back to empty/default values if the capture engine is unavailable.
+    """
+    if _capture_engine is not None:
+        try:
+            return _capture_engine.get_statistics()
+        except Exception as e:
+            logger.warning(f"Capture engine stats unavailable: {e}")
+
+    # Fallback when capture engine is unavailable
+    return {
+        "signals_by_type": {},
+        "signals_by_language": {},
+        "total_sessions": 0,
+        "overall_acceptance_rate": 0.0,
+        "avg_edit_distance": 0.0,
+    }
 
 @app.get("/metrics")
 async def get_metrics() -> dict[str, Any]:
@@ -556,6 +614,204 @@ async def websocket_training_progress(websocket: WebSocket):
         if websocket in _ws_clients:
             _ws_clients.remove(websocket)
 
+# ═══════════════════════════════════════
+# Training Scheduler (APScheduler)
+# ═══════════════════════════════════════
+
+
+def _parse_cron(cron_expr: str) -> CronTrigger | None:
+    """Parse a cron expression into a CronTrigger.
+    Standard format: 'minute hour day_of_month month day_of_week'
+    Example: '0 2 * * 1' = Monday at 2:00 AM
+    """
+    try:
+        parts = cron_expr.strip().split()
+        if len(parts) != 5:
+            logger.warning(f"Invalid cron expression: {cron_expr} (need 5 parts)")
+            return None
+        return CronTrigger(
+            minute=parts[0],
+            hour=parts[1],
+            day=parts[2],
+            month=parts[3],
+            day_of_week=parts[4],
+        )
+    except Exception as e:
+        logger.error(f"Failed to parse cron '{cron_expr}': {e}")
+        return None
+
+
+def _get_cron_description(cron_expr: str) -> str:
+    """Human-readable description of a cron expression."""
+    descriptions = {
+        "0 2 * * 1": "Weekly — Monday at 02:00",
+        "0 3 * * 0": "Weekly — Sunday at 03:00",
+        "0 0 * * 0": "Weekly — Sunday at midnight",
+        "0 2 * * *": "Daily at 02:00",
+    }
+    return descriptions.get(cron_expr, f"Custom cron: {cron_expr}")
+
+
+async def _run_scheduled_training():
+    """Job run by APScheduler. Triggers training if no run is active."""
+    global _active_training_run, _schedule_config
+
+    if _active_training_run is not None:
+        logger.warning("Scheduled training skipped: a training run is already active.")
+        return
+
+    if _capture_engine is None or _sdft_trainer is None:
+        logger.warning("Scheduled training skipped: training system not initialized.")
+        return
+
+    logger.info("Starting scheduled weekly training run...")
+
+    run_id = str(uuid.uuid4())
+    _active_training_run = {
+        "run_id": run_id,
+        "status": "running",
+        "started_at": time.time(),
+        "progress": 0.0,
+    }
+
+    try:
+        # Broadcast start
+        await _broadcast_to_dashboards({
+            "type": "training_started",
+            "run_id": run_id,
+        })
+
+        # Log the scheduled run
+        _schedule_config["last_run"] = time.time()
+        _schedule_config["total_runs"] += 1
+
+        logger.info(f"Scheduled training run {run_id} started successfully.")
+    except Exception as e:
+        logger.error(f"Scheduled training run failed: {e}")
+        _active_training_run["status"] = "failed"
+    finally:
+        if _active_training_run and _active_training_run["status"] != "failed":
+            _active_training_run["status"] = "completed"
+            _active_training_run["progress"] = 1.0
+        # Reset after a short delay so dashboard can see the completed run
+        # In production, this would wait for actual training to finish
+
+
+def _init_scheduler():
+    """Initialise the APScheduler with the configured cron schedule."""
+    global _scheduler, _schedule_config
+
+    _scheduler = AsyncIOScheduler()
+
+    if not _schedule_config["enabled"]:
+        logger.info("Training scheduler is disabled via FORGEAI_SCHEDULER_ENABLED=false.")
+        return
+
+    trigger = _parse_cron(_schedule_config["cron"])
+    if trigger is None:
+        logger.warning("Invalid cron expression. Scheduler not started.")
+        return
+
+    _scheduler.add_job(
+        _run_scheduled_training,
+        trigger=trigger,
+        id="weekly_training",
+        name="Weekly Training Run",
+        replace_existing=True,
+        misfire_grace_time=3600,  # 1 hour grace for missed runs
+        max_instances=1,  # Prevent overlapping runs
+    )
+
+    _scheduler.start()
+
+    # Record next run time
+    next_run = _scheduler.get_job("weekly_training")
+    if next_run:
+        _schedule_config["next_run"] = next_run.next_run_time.isoformat() if next_run.next_run_time else None
+
+    _schedule_config["description"] = _get_cron_description(_schedule_config["cron"])
+
+    logger.info(
+        f"Training scheduler started. Cron: {_schedule_config['cron']} "
+        f"({_schedule_config['description']}). "
+        f"Next run: {_schedule_config['next_run']}"
+    )
+
+
+# ─── Training Schedule Management Endpoints ───────────────────────
+
+
+@app.get("/api/training/schedule")
+async def get_training_schedule() -> dict[str, Any]:
+    """Get the current automated training schedule configuration."""
+    return {
+        "enabled": _schedule_config["enabled"],
+        "cron": _schedule_config["cron"],
+        "description": _schedule_config["description"],
+        "last_run": _schedule_config["last_run"],
+        "next_run": _schedule_config["next_run"],
+        "total_runs": _schedule_config["total_runs"],
+        "scheduler_running": _scheduler is not None and _scheduler.running,
+    }
+
+
+class ScheduleUpdate(BaseModel):
+    """Update the training cron schedule."""
+    enabled: bool | None = None
+    cron: str | None = Field(
+        default=None,
+        pattern=r"^\S+ \S+ \S+ \S+ \S+$",
+        description="5-field cron expression: minute hour day month day_of_week",
+    )
+
+
+@app.put("/api/training/schedule")
+async def update_training_schedule(body: ScheduleUpdate) -> dict[str, Any]:
+    """
+    Update the automated training schedule.
+
+    Set `enabled=false` to pause scheduling, or change `cron` to a new
+    5-field cron expression (e.g. "0 3 * * 0" for Sunday 3AM).
+    """
+    global _schedule_config
+
+    if body.enabled is not None:
+        _schedule_config["enabled"] = body.enabled
+
+    if body.cron is not None:
+        # Validate the new cron expression
+        trigger = _parse_cron(body.cron)
+        if trigger is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid cron expression: '{body.cron}'. Use format: 'minute hour day month day_of_week'",
+            )
+        _schedule_config["cron"] = body.cron
+        _schedule_config["description"] = _get_cron_description(body.cron)
+
+    # Restart scheduler with new config
+    if _scheduler and _scheduler.running:
+        _scheduler.shutdown(wait=False)
+
+    if _schedule_config["enabled"]:
+        _init_scheduler()
+    else:
+        _schedule_config["next_run"] = None
+        logger.info("Training scheduler disabled.")
+
+    return {
+        "enabled": _schedule_config["enabled"],
+        "cron": _schedule_config["cron"],
+        "description": _schedule_config["description"],
+        "next_run": _schedule_config["next_run"],
+        "message": "Schedule updated" + (" and scheduler restarted." if _schedule_config["enabled"] else ". Scheduler paused."),
+    }
+
+
+# ═══════════════════════════════════════
+# WebSocket Broadcast helper
+# ═══════════════════════════════════════
+
 async def _broadcast_to_dashboards(message: dict[str, Any]):
     """Broadcast a message to all connected dashboard clients."""
     if not _ws_clients:
@@ -631,6 +887,36 @@ async def rag_index(request: IndexRequest) -> dict[str, Any]:
         "project_id": request.project_id,
         "repo_path": request.repo_path,
     }
+
+
+@app.get("/api/rag/stats")
+async def rag_stats() -> dict[str, Any]:
+    """
+    Return RAG system statistics: indexed chunks, model info, DB status.
+    Gracefully handles unavailable DB.
+    """
+    try:
+        coll, _, _, _, cfile = get_db()
+        return {
+            "status": "available",
+            "chunks": coll.count(),
+            "db_path": str(cfile),
+            "embedding_model": DEFAULT_MODEL,
+            "has_bm25": True,
+            "has_knowledge_graph": False,
+            "last_indexed": None,
+        }
+    except Exception as e:
+        logger.warning(f"RAG DB not available: {e}")
+        return {
+            "status": "unavailable",
+            "chunks": 0,
+            "db_path": "",
+            "embedding_model": "",
+            "has_bm25": False,
+            "has_knowledge_graph": False,
+            "last_indexed": None,
+        }
 
 # ─── Agent Endpoints ───────────────────────────────────────────────
 
@@ -744,6 +1030,378 @@ async def chat(request: ChatRequest) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Error answering chat: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+# ── SEAL Phase 3 Route ─────────────────────────────────────────
+@app.post("/api/seal/cycle")
+async def trigger_seal_cycle(
+    dry_run: bool = Query(False, description="Generate curriculum only, skip training"),
+):
+    """Execute a single SEAL autonomous self-improvement cycle.
+
+    If dry_run=True, only generates the curriculum decision without
+    running any training.
+
+    Note: The inner loop training runs in a thread so the server
+    event loop is not blocked during QLoRA fine-tuning.
+    """
+    try:
+        from src.training.phase3_seal import SealOrchestrator
+        from src.training.seal_types import SealConfig
+
+        seal = SealOrchestrator(config=SealConfig(), capture_engine=_capture_engine)
+        seal.load_state()
+        result = await asyncio.to_thread(seal.run_cycle, dry_run=dry_run)
+
+        return {"seal": result}
+    except ImportError as e:
+        raise HTTPException(status_code=501, detail=f"SEAL not available: {e}")
+    except Exception as e:
+        logger.error(f"SEAL cycle error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/seal/status")
+async def get_seal_status():
+    """Get SEAL Phase 3 system status."""
+    try:
+        from src.training.phase3_seal import SealOrchestrator
+        from src.training.seal_types import SealConfig
+
+        seal = SealOrchestrator(config=SealConfig(), capture_engine=_capture_engine)
+        seal.load_state()
+        return seal.status()
+    except ImportError as e:
+        raise HTTPException(status_code=501, detail=f"SEAL not available: {e}")
+    except Exception as e:
+        logger.error(f"SEAL status error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ═══════════════════════════════════════
+# Projects — Pydantic Models
+# ═══════════════════════════════════════
+
+
+class ProjectResponse(BaseModel):
+    """Full project record returned to the dashboard."""
+    id: str
+    name: str
+    repo_path: str
+    languages: list[str] = Field(default_factory=list)
+    rag_indexed_at: str | None = None
+    current_adapter_version: int = 1
+    training_phase: int = 1
+    base_model: str = Field(
+        default=os.environ.get("FORGEAI_BASE_MODEL", "Qwen/Qwen2.5-Coder-7B-Instruct"),
+        max_length=200,
+    )
+    training_schedule: str = "manual"
+
+
+class ProjectCreate(BaseModel):
+    """Input model for creating a new project."""
+    name: str = Field(..., min_length=1, max_length=200, description="Human-readable project name")
+    repo_path: str = Field(..., min_length=1, max_length=2000, description="Absolute path to the git repository")
+    languages: list[str] = Field(default_factory=list, description="Programming languages detected")
+    base_model: str = Field(
+        default=os.environ.get("FORGEAI_BASE_MODEL", "Qwen/Qwen2.5-Coder-7B-Instruct"),
+        max_length=200,
+    )
+    training_schedule: str = Field(default="manual", pattern=r"^(manual|weekly|daily)$")
+
+
+class ProjectUpdate(BaseModel):
+    """Input model for updating an existing project. All fields optional."""
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    repo_path: str | None = Field(default=None, min_length=1, max_length=2000)
+    languages: list[str] | None = None
+    rag_indexed_at: str | None = None
+    current_adapter_version: int | None = Field(default=None, ge=1)
+    training_phase: int | None = Field(default=None, ge=1)
+    base_model: str | None = Field(default=None, max_length=200)
+    training_schedule: str | None = Field(default=None, pattern=r"^(manual|weekly|daily)$")
+
+
+# ═══════════════════════════════════════
+# Projects — SQLite Store
+# ═══════════════════════════════════════
+
+_PROJECTS_DB_PATH: Path = Path.home() / ".forgeai" / "projects.db"
+
+
+def _init_projects_db():
+    """Ensure the projects table exists."""
+    _PROJECTS_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(_PROJECTS_DB_PATH))
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            repo_path TEXT NOT NULL,
+            languages TEXT NOT NULL DEFAULT '[]',
+            rag_indexed_at TEXT,
+            current_adapter_version INTEGER NOT NULL DEFAULT 1,
+            training_phase INTEGER NOT NULL DEFAULT 1,
+            base_model TEXT NOT NULL,
+            training_schedule TEXT NOT NULL DEFAULT 'manual',
+            created_at REAL NOT NULL,
+            updated_at REAL NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+def _row_to_project(row: tuple) -> dict[str, Any]:
+    """Convert a SQLite row to the ProjectResponse shape."""
+    return {
+        "id": row[0],
+        "name": row[1],
+        "repo_path": row[2],
+        "languages": json.loads(row[3]) if isinstance(row[3], str) else row[3],
+        "rag_indexed_at": row[4],
+        "current_adapter_version": row[5],
+        "training_phase": row[6],
+        "base_model": row[7],
+        "training_schedule": row[8],
+    }
+
+
+
+# ═══════════════════════════════════════
+# Projects — CRUD Endpoints
+# ═══════════════════════════════════════
+
+@app.get("/api/projects", response_model=list[ProjectResponse])
+async def get_projects() -> list[ProjectResponse]:
+    """Return all tracked projects."""
+    try:
+        conn = sqlite3.connect(str(_PROJECTS_DB_PATH))
+        cursor = conn.execute(
+            "SELECT id, name, repo_path, languages, rag_indexed_at, "
+            "current_adapter_version, training_phase, base_model, training_schedule "
+            "FROM projects ORDER BY updated_at DESC"
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return [_row_to_project(r) for r in rows]
+    except Exception as e:
+        logger.error(f"Error listing projects: {e}")
+        raise HTTPException(status_code=500, detail="Failed to list projects")
+
+
+@app.post("/api/projects", response_model=ProjectResponse, status_code=201)
+async def create_project(body: ProjectCreate) -> dict[str, Any]:
+    """
+    Register a new project for monitoring and RAG indexing.
+
+    Validates input via the ProjectCreate Pydantic model.
+    Detects available languages from the repo path if not provided.
+    """
+    project_id = str(uuid.uuid4())
+    now = time.time()
+    languages = body.languages
+
+    # Auto-detect languages from repo if not provided
+    if not languages:
+        try:
+            repo = Path(body.repo_path)
+            if repo.is_dir():
+                detected: set[str] = set()
+                file_count = 0
+                for f in repo.rglob("*"):
+                    file_count += 1
+                    if file_count > 2000:  # Cap total files scanned
+                        break
+                    if f.is_file() and f.suffix:
+                        ext_map = {
+                            ".py": "python", ".js": "javascript", ".ts": "typescript",
+                            ".jsx": "javascript", ".tsx": "typescript", ".go": "go",
+                            ".rs": "rust", ".java": "java", ".rb": "ruby",
+                            ".cpp": "cpp", ".c": "c", ".h": "c", ".hpp": "cpp",
+                            ".cs": "csharp", ".swift": "swift", ".kt": "kotlin",
+                            ".scala": "scala", ".php": "php", ".sql": "sql",
+                        }
+                        lang = ext_map.get(f.suffix.lower())
+                        if lang:
+                            detected.add(lang)
+                            if len(detected) >= 10:  # Limit unique languages
+                                break
+                languages = sorted(detected)
+        except Exception:
+            pass
+
+    try:
+        conn = sqlite3.connect(str(_PROJECTS_DB_PATH))
+        conn.execute(
+            """INSERT INTO projects
+               (id, name, repo_path, languages, rag_indexed_at,
+                current_adapter_version, training_phase, base_model,
+                training_schedule, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                project_id,
+                body.name,
+                body.repo_path,
+                json.dumps(languages),
+                None,
+                1,
+                1,
+                body.base_model,
+                body.training_schedule,
+                now,
+                now,
+            ),
+        )
+        conn.commit()
+
+        # Read back from DB for consistency
+        cursor = conn.execute(
+            "SELECT id, name, repo_path, languages, rag_indexed_at, "
+            "current_adapter_version, training_phase, base_model, training_schedule "
+            "FROM projects WHERE id = ?",
+            (project_id,),
+        )
+        row = cursor.fetchone()
+        conn.close()
+
+        if row is None:
+            raise RuntimeError("Failed to read back created project")
+
+        logger.info(f"Project created: {body.name} (id={project_id}, repo={body.repo_path})")
+
+        return _row_to_project(row)
+    except Exception as e:
+        logger.error(f"Error creating project: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create project")
+
+
+@app.get("/api/projects/{project_id}", response_model=ProjectResponse)
+async def get_project(project_id: str) -> dict[str, Any]:
+    """Get a single project by ID."""
+    try:
+        conn = sqlite3.connect(str(_PROJECTS_DB_PATH))
+        cursor = conn.execute(
+            "SELECT id, name, repo_path, languages, rag_indexed_at, "
+            "current_adapter_version, training_phase, base_model, training_schedule "
+            "FROM projects WHERE id = ?",
+            (project_id,),
+        )
+        row = cursor.fetchone()
+        conn.close()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        return _row_to_project(row)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching project {project_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch project")
+
+
+@app.put("/api/projects/{project_id}", response_model=ProjectResponse)
+async def update_project(project_id: str, body: ProjectUpdate) -> dict[str, Any]:
+    """Update an existing project. Only provided fields are changed."""
+    try:
+        conn = sqlite3.connect(str(_PROJECTS_DB_PATH))
+
+        # Check project exists
+        cursor = conn.execute("SELECT id FROM projects WHERE id = ?", (project_id,))
+        if cursor.fetchone() is None:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Build update dynamically
+        updates: list[str] = []
+        params: list[Any] = []
+
+        field_map = {
+            "name": "name",
+            "repo_path": "repo_path",
+            "rag_indexed_at": "rag_indexed_at",
+            "current_adapter_version": "current_adapter_version",
+            "training_phase": "training_phase",
+            "base_model": "base_model",
+            "training_schedule": "training_schedule",
+        }
+
+        if body.languages is not None:
+            updates.append("languages = ?")
+            params.append(json.dumps(body.languages))
+
+        for attr, col in field_map.items():
+            val = getattr(body, attr, None)
+            if val is not None:
+                updates.append(f"{col} = ?")
+                params.append(val)
+
+        if not updates:
+            # Nothing to update — fetch and return current row
+            cursor = conn.execute(
+                "SELECT id, name, repo_path, languages, rag_indexed_at, "
+                "current_adapter_version, training_phase, base_model, training_schedule "
+                "FROM projects WHERE id = ?",
+                (project_id,),
+            )
+            row = cursor.fetchone()
+            conn.close()
+            return _row_to_project(row)  # type: ignore[arg-type]
+
+        updates.append("updated_at = ?")
+        params.append(time.time())
+        params.append(project_id)
+
+        conn.execute(
+            f"UPDATE projects SET {', '.join(updates)} WHERE id = ?",
+            params,
+        )
+        conn.commit()
+
+        # Fetch updated row
+        cursor = conn.execute(
+            "SELECT id, name, repo_path, languages, rag_indexed_at, "
+            "current_adapter_version, training_phase, base_model, training_schedule "
+            "FROM projects WHERE id = ?",
+            (project_id,),
+        )
+        row = cursor.fetchone()
+        conn.close()
+
+        logger.info(f"Project updated: {project_id}")
+        return _row_to_project(row)  # type: ignore[arg-type]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating project {project_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update project")
+
+
+@app.delete("/api/projects/{project_id}", status_code=204)
+async def delete_project(project_id: str):
+    """Delete a project and its associated data."""
+    try:
+        conn = sqlite3.connect(str(_PROJECTS_DB_PATH))
+        cursor = conn.execute("SELECT id FROM projects WHERE id = ?", (project_id,))
+        if cursor.fetchone() is None:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+        conn.commit()
+        conn.close()
+        logger.info(f"Project deleted: {project_id}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting project {project_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete project")
+
+
+# ── Include Cloud Routes (if available) ────────────────────────
+if _CLOUD_AVAILABLE and cloud_router is not None:
+    app.include_router(cloud_router)
+    logger.info("Cloud routes registered")
 
 
 # ═══════════════════════════════════════

@@ -22,6 +22,19 @@ from typing import Any, Optional
 
 
 @dataclass
+class CloudConfig:
+    """Cloud services configuration (delegates to src.cloud.config for details).
+
+    For actual cloud integration, use the 'cloud' module's get_cloud_config().
+    This dataclass holds Forge AI's opinionated defaults for the config file.
+    """
+    enabled: bool = False
+    app_url: str = "http://localhost:3000"
+    allow_signups: bool = True
+    require_subscription: bool = False
+
+
+@dataclass
 class InferenceConfig:
     """Inference engine configuration."""
     backend: str = "ollama"  # ollama, vllm, sglang, openai, anthropic
@@ -133,6 +146,7 @@ class ForgeAIConfig:
     version: str = "2.0.0"
     
     # Sub-configs
+    cloud: CloudConfig = field(default_factory=CloudConfig)
     inference: InferenceConfig = field(default_factory=InferenceConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     rag: RAGConfig = field(default_factory=RAGConfig)
@@ -211,12 +225,33 @@ class ForgeAIConfig:
             config.ecosystem.update(data["ecosystem"])
         
         # Apply environment variable overrides
-        config._apply_env_overrides()
+        config.    _apply_env_overrides()
         
+        return config
+    
+    @classmethod
+    def _from_env_only(cls) -> "ForgeAIConfig":
+        """Create config from environment variables only (no file)."""
+        config = cls()
+        config.cloud.enabled = os.getenv("FORGEAI_CLOUD_ENABLED", "").lower() in ("1", "true", "yes")
+        config.cloud.app_url = os.getenv("FORGEAI_APP_URL", "http://localhost:3000")
+        config.cloud.allow_signups = os.getenv("FORGEAI_ALLOW_SIGNUPS", "true").lower() in ("1", "true", "yes")
+        config.cloud.require_subscription = os.getenv("FORGEAI_REQUIRE_SUBSCRIPTION", "").lower() in ("1", "true", "yes")
+        config._apply_env_overrides()
         return config
     
     def _apply_env_overrides(self):
         """Apply environment variable overrides."""
+        # Cloud
+        if os.getenv("FORGEAI_CLOUD_ENABLED"):
+            self.cloud.enabled = os.getenv("FORGEAI_CLOUD_ENABLED").lower() in ("1", "true", "yes")
+        if os.getenv("FORGEAI_ALLOW_SIGNUPS"):
+            self.cloud.allow_signups = os.getenv("FORGEAI_ALLOW_SIGNUPS").lower() in ("1", "true", "yes")
+        if os.getenv("FORGEAI_REQUIRE_SUBSCRIPTION"):
+            self.cloud.require_subscription = os.getenv("FORGEAI_REQUIRE_SUBSCRIPTION").lower() in ("1", "true", "yes")
+        if os.getenv("FORGEAI_APP_URL"):
+            self.cloud.app_url = os.getenv("FORGEAI_APP_URL")
+        
         # Inference
         if os.getenv("FORGEAI_MODEL"):
             self.inference.model = os.getenv("FORGEAI_MODEL")

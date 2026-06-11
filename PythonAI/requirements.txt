@@ -21,6 +21,7 @@ aiohttp>=3.9.0
 huggingface_hub>=0.20.0
 loguru>=0.7.0
 rich>=13.0.0
+apscheduler>=3.10.0
 websockets>=12.0
 pyarrow>=14.0.0
 fastapi>=0.110.0
@@ -67,3 +68,19 @@ trl>=0.7.0
 # Install via: pip install 'unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git'
 # Requires CUDA. CPU training falls back to standard pipeline automatically.
 # unsloth>=2025.0.0
+
+# ═══════════════════════════════════════════════════════════════
+# ForgeAI Cloud — Supabase + Stripe (Optional)
+# ═══════════════════════════════════════════════════════════════
+# Uncomment and set env vars when using cloud features:
+#   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+#   STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET
+
+# Supabase Python SDK
+supabase>=2.8.0
+
+# Stripe payment processing
+stripe>=4.2.0
+
+# Pydantic config + email validation (pydantic[email] covers base dep)
+pydantic[email]>=2.0.0

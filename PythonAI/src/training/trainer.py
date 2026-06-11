@@ -26,7 +26,7 @@ try:
     from unsloth import FastLanguageModel, is_bfloat16_supported
     from unsloth.chat_templates import get_chat_template
     _HAS_UNSLOTH = True
-except ImportError:
+except (ImportError, NotImplementedError, RuntimeError):
     pass
 
 from transformers import (

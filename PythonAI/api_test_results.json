@@ -1,0 +1,41 @@
+{
+  "health": {
+    "ERROR": "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+  },
+  "stats": {
+    "ERROR": "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+  },
+  "metrics": {
+    "ERROR": "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+  },
+  "event_accept": {
+    "ERROR": "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+  },
+  "event_reject": {
+    "ERROR": "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+  },
+  "acceptance_rate": {
+    "ERROR": "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+  },
+  "training_status": {
+    "ERROR": "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+  },
+  "training_trigger": {
+    "ERROR": "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+  },
+  "seal_cycle": {
+    "ERROR": "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+  },
+  "seal_status": {
+    "ERROR": "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+  },
+  "rag_search": {
+    "ERROR": "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+  },
+  "rag_index": {
+    "ERROR": "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+  },
+  "ask": {
+    "ERROR": "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+  }
+}

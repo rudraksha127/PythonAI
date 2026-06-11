@@ -9,6 +9,60 @@ from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
+def evaluate(
+    adapter_path: str | Path,
+    prompts: list[str] | None = None,
+    max_new_tokens: int = 96,
+    batch: bool = False,
+    reference_json: str | None = None,
+) -> dict:
+    """Evaluate a trained adapter and return summary metrics.
+
+    This is the main entry point used by the training pipeline.
+    Loads the adapter, runs inference on test prompts, and returns
+    quality metrics (BLEU, ROUGE-L) when reference outputs are provided.
+
+    Args:
+        adapter_path: Path to the PEFT adapter directory.
+        prompts: Optional list of test prompts. Uses DEFAULT_PROMPTS if None.
+        max_new_tokens: Maximum tokens to generate per prompt (default: 96).
+        batch: Run all prompts in a single batch for faster evaluation.
+        reference_json: Optional path to a JSON file with reference outputs
+            for computing BLEU/ROUGE-L scores.
+
+    Returns:
+        Dict with evaluation results including per-prompt outputs and metrics.
+            Keys: "outputs", "avg_bleu", "avg_rouge_l", "num_prompts"
+    """
+    if prompts is None:
+        prompts = DEFAULT_PROMPTS
+
+    outputs = generate(Path(adapter_path), prompts, max_new_tokens, batch=batch)
+
+    # Compute BLEU/ROUGE-L if reference outputs are provided
+    reference_map: dict[str, str] = {}
+    if reference_json:
+        ref_path = Path(reference_json)
+        if ref_path.exists():
+            reference_map = load_reference_map(ref_path)
+
+    for item in outputs:
+        reference = reference_map.get(item["prompt"], "")
+        if reference:
+            item["bleu_score"] = round(compute_bleu(reference, item["output"]), 3)
+            item["rouge_l"] = round(compute_rouge_l(reference, item["output"]), 3)
+
+    bleu_scores = [o["bleu_score"] for o in outputs if "bleu_score" in o]
+    rouge_scores = [o["rouge_l"] for o in outputs if "rouge_l" in o]
+
+    return {
+        "outputs": outputs,
+        "avg_bleu": sum(bleu_scores) / len(bleu_scores) if bleu_scores else None,
+        "avg_rouge_l": sum(rouge_scores) / len(rouge_scores) if rouge_scores else None,
+        "num_prompts": len(outputs),
+    }
+
+
 DEFAULT_PROMPTS = [
     "Explain Python context managers like a senior engineer. Include one pitfall.",
     "Review this code and suggest a safer version:\n\n```python\nitems = []\nfor i in range(3):\n    items.append(lambda: i)\n```",

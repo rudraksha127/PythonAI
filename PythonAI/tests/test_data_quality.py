@@ -632,7 +632,7 @@ class TestQualityPipeline:
 
     def test_custom_text_field(self):
         """Custom text_field should be used."""
-        records = [{"content": "A" * 200}]
+        records = [{"content": "Python is a versatile programming language used for web development, data science, and automation. " * 4}]
         pipe = QualityPipeline(min_text_length=50, text_field="content")
         stats = pipe.run_records(records)
         assert stats["total_output"] == 1
@@ -663,8 +663,8 @@ class TestQualityPipelineFile:
         """Valid JSONL file should process correctly."""
         f = tmp_path / "data.jsonl"
         with open(f, "w") as fp:
-            fp.write(json.dumps({"text": "A" * 300}) + "\n")
-            fp.write(json.dumps({"text": "B" * 300}) + "\n")
+            fp.write(json.dumps({"text": "Python is a versatile programming language used for web development. " * 7}) + "\n")
+            fp.write(json.dumps({"text": "Java is a class-based object-oriented programming language. " * 7}) + "\n")
 
         pipe = QualityPipeline(min_text_length=50)
         stats = pipe.run_file(str(f))
@@ -675,9 +675,9 @@ class TestQualityPipelineFile:
         """File with both valid and invalid JSON lines should handle gracefully."""
         f = tmp_path / "mixed.jsonl"
         with open(f, "w") as fp:
-            fp.write(json.dumps({"text": "A" * 300}) + "\n")
+            fp.write(json.dumps({"text": "Python is a versatile programming language used for web development. " * 7}) + "\n")
             fp.write("not valid json\n")
-            fp.write(json.dumps({"text": "B" * 300}) + "\n")
+            fp.write(json.dumps({"text": "Java is a class-based object-oriented programming language. " * 7}) + "\n")
 
         pipe = QualityPipeline(min_text_length=50)
         stats = pipe.run_file(str(f))
