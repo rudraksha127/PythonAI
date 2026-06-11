@@ -61,6 +61,37 @@
           "type": "string",
           "default": "",
           "description": "Anonymized developer identifier. Leave empty for auto-generated."
+        },
+        "forgeai.serverUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:7337",
+          "description": "ForgeAI FastAPI server URL for autocomplete requests."
+        },
+        "forgeai.autoCompleteEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable real-time AI autocomplete ghost text."
+        },
+        "forgeai.autoCompleteMaxTokens": {
+          "type": "integer",
+          "default": 128,
+          "minimum": 16,
+          "maximum": 512,
+          "description": "Maximum tokens to generate per autocomplete request."
+        },
+        "forgeai.autoCompleteTemperature": {
+          "type": "number",
+          "default": 0.1,
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Temperature for autocomplete generation (low for code)."
+        },
+        "forgeai.autoCompleteDebounceMs": {
+          "type": "integer",
+          "default": 150,
+          "minimum": 0,
+          "maximum": 2000,
+          "description": "Debounce delay in ms before firing an autocomplete request."
         }
       }
     }

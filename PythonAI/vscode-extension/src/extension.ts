@@ -22,8 +22,8 @@ export function activate(context: vscode.ExtensionContext): void {
   captureEngine.initialize().then(() => {
     console.log("[ForgeAI] CaptureEngine initialized.");
 
-    // Register inline completion provider with signal tracking
-    completionProvider = new ForgeAICompletionProvider(captureEngine!);
+    // Register inline completion provider with signal tracking and config
+    completionProvider = new ForgeAICompletionProvider(captureEngine!, config);
     context.subscriptions.push(completionProvider);
 
     // Show stats command
@@ -40,12 +40,15 @@ export function activate(context: vscode.ExtensionContext): void {
       })
     );
 
-    // Watch for config changes
+    // Watch for config changes — also update the completion provider
     context.subscriptions.push(
       onConfigChanged((newConfig: ForgeAIConfig) => {
         if (!newConfig.enabled && captureEngine) {
           captureEngine.close();
           captureEngine = null;
+        }
+        if (completionProvider) {
+          completionProvider.updateConfig(newConfig);
         }
         console.log("[ForgeAI] Configuration updated.");
       })

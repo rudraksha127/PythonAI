@@ -10,6 +10,11 @@ export interface ForgeAIConfig {
   captureRejects: boolean;
   captureEdits: boolean;
   developerId: string;
+  serverUrl: string;
+  autoCompleteEnabled: boolean;
+  autoCompleteMaxTokens: number;
+  autoCompleteTemperature: number;
+  autoCompleteDebounceMs: number;
 }
 
 function expandPath(p: string): string {
@@ -31,6 +36,11 @@ export function loadConfig(): ForgeAIConfig {
     captureRejects: forgeaiConfig.get<boolean>("captureRejects", true),
     captureEdits: forgeaiConfig.get<boolean>("captureEdits", true),
     developerId: forgeaiConfig.get<string>("developerId", ""),
+    serverUrl: forgeaiConfig.get<string>("serverUrl", "http://127.0.0.1:7337"),
+    autoCompleteEnabled: forgeaiConfig.get<boolean>("autoCompleteEnabled", true),
+    autoCompleteMaxTokens: forgeaiConfig.get<number>("autoCompleteMaxTokens", 128),
+    autoCompleteTemperature: forgeaiConfig.get<number>("autoCompleteTemperature", 0.1),
+    autoCompleteDebounceMs: forgeaiConfig.get<number>("autoCompleteDebounceMs", 150),
   };
 }
 
