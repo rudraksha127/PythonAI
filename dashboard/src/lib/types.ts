@@ -176,7 +176,85 @@ export interface WsTrainingStarted {
   run_id: string;
 }
 
-export type WsMessage = WsEventCaptured | WsTrainingProgress | WsTrainingStarted;
+export interface WsSyncStatus {
+  type: "sync_status";
+  status: string;
+  last_sync: number;
+  total_syncs: number;
+}
+
+export type WsMessage = WsEventCaptured | WsTrainingProgress | WsTrainingStarted | WsSyncStatus;
+
+// ─── Improvement Heatmap (REQ-DASH-003) ────────────────────────
+
+export interface HeatmapLanguage {
+  name: string;
+  signal_count: number;
+  signal_pct: number;
+  rate_before: number;
+  rate_after: number;
+  delta: number;
+}
+
+export interface HeatmapPattern {
+  name: string;
+  key: string;
+  count: number;
+  percentage: number;
+  rate_before: number;
+  rate_after: number;
+  delta: number;
+}
+
+export interface HeatmapWeeklyPoint {
+  period: string;
+  date: string;
+  acceptance_rate: number;
+  accepts: number;
+  rejects: number;
+  edits: number;
+  total: number;
+}
+
+export interface HeatmapSlots {
+  overall_delta: number;
+  baseline_rate: number;
+  current_rate: number;
+  target_rate: number;
+  heat_index: number;
+  training_run_count: number;
+  language_count: number;
+  total_signals_used: number;
+}
+
+export interface HeatmapTrend {
+  week: number;
+  rate: number;
+}
+
+export interface LanguageWeeklyTrend {
+  language: string;
+  trend: HeatmapTrend[];
+}
+
+export interface HeatmapTrainingRun {
+  run_id: string;
+  timestamp: number;
+  delta: number;
+  signals_used: number;
+  model: string;
+}
+
+export interface ImprovementHeatmapData {
+  version: string;
+  timestamp: number;
+  languages: HeatmapLanguage[];
+  patterns: HeatmapPattern[];
+  weekly_data: HeatmapWeeklyPoint[];
+  slots: HeatmapSlots;
+  language_weekly_trend: LanguageWeeklyTrend[];
+  training_runs: HeatmapTrainingRun[];
+}
 
 // ─── UI State ───────────────────────────────────────────────────
 

@@ -9,6 +9,7 @@ import type {
   EventResponse,
   RagStats,
   SealStats,
+  ImprovementHeatmapData,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:7337";
@@ -160,6 +161,85 @@ export async function searchRag(
     method: "POST",
     body: JSON.stringify({ query, project_id: projectId }),
   });
+}
+
+// ─── Ecosystem ──────────────────────────────────────────────
+
+export interface EcosystemMetrics {
+  version: string;
+  timestamp: number;
+  total_signals: number;
+  server: {
+    uptime_seconds: number;
+    status: string;
+    inference_connected: boolean;
+    db_ok: boolean;
+  };
+  statistics: {
+    signals_by_type: Record<string, number>;
+    signals_by_language: Record<string, number>;
+    total_sessions: number;
+    overall_acceptance_rate: number;
+    avg_edit_distance: number;
+  };
+  training: {
+    active_run: Record<string, unknown> | null;
+    history: Array<Record<string, unknown>>;
+    schedule: {
+      enabled: boolean;
+      cron: string;
+      description: string;
+      next_run: string | null;
+      total_runs: number;
+    };
+  };
+  signal_distribution: Array<{ name: string; value: number; percentage: number }>;
+  sync_daemon?: {
+    running: boolean;
+    last_sync_time: number | null;
+    total_syncs: number;
+    fail_count: number;
+    consecutive_fails: number;
+    interval: number;
+    last_sync_result: string | null;
+    started_at: number | null;
+  };
+}
+
+export interface EcosystemFetchResponse {
+  success: boolean;
+  data: EcosystemMetrics | null;
+  cached: boolean;
+  error?: string;
+  hint?: string;
+}
+
+export async function getEcosystemMetrics(): Promise<EcosystemFetchResponse> {
+  return fetchApi<EcosystemFetchResponse>("/api/forgeai/ecosystem-metrics");
+}
+
+// ─── Improvement Heatmap (REQ-DASH-003) ─────────────────────
+// NOTE: uses try/catch envelope rather than throwing, because
+// the heatmap is a non-critical visual feature — the UI should
+// gracefully degrade rather than throw an unhandled rejection.
+
+export async function getImprovementHeatmap(): Promise<{
+  success: boolean;
+  data: ImprovementHeatmapData | null;
+  error?: string;
+}> {
+  try {
+    const data = await fetchApi<ImprovementHeatmapData>(
+      "/api/metrics/improvement-heatmap"
+    );
+    return { success: true, data };
+  } catch (e) {
+    return {
+      success: false,
+      data: null,
+      error: e instanceof Error ? e.message : "Failed to fetch heatmap data",
+    };
+  }
 }
 
 // ─── WebSocket ─────────────────────────────────────────────

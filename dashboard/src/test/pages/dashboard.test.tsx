@@ -49,6 +49,19 @@ vi.mock("lucide-react", () => {
     Terminal: icon("terminal"),
     RefreshCw: icon("refresh-cw"),
     TrendingDown: icon("trending-down"),
+    Target: icon("target"),
+    DollarSign: icon("dollar-sign"),
+    Users: icon("users"),
+    Sliders: icon("sliders"),
+    Calculator: icon("calculator"),
+    Database: icon("database"),
+    Search: icon("search"),
+    Network: icon("network"),
+    Flame: icon("flame"),
+    ChevronDown: icon("chevron-down"),
+    ChevronUp: icon("chevron-up"),
+    Clock: icon("clock"),
+    Server: icon("server"),
   };
 });
 
@@ -57,6 +70,13 @@ vi.mock("@/lib/api", () => ({
   getAcceptanceRate: vi.fn(),
   getTrainingStatus: vi.fn(),
   getCaptureStats: vi.fn(),
+  getRagStats: vi.fn().mockResolvedValue(null),
+  getSealStats: vi.fn().mockResolvedValue(null),
+  getImprovementHeatmap: vi.fn().mockResolvedValue({
+    success: false,
+    data: null,
+    error: "No server",
+  }),
 }));
 
 import DashboardPage from "@/app/page";
@@ -111,7 +131,9 @@ describe("Dashboard Page", () => {
       expect(screen.getByText("Dashboard")).toBeTruthy();
     });
 
-    expect(screen.getByText("Acceptance Rate")).toBeTruthy();
+    // Acceptance Rate appears in both StatsCard and ROI Calculator
+    const acceptRates = screen.getAllByText("Acceptance Rate");
+    expect(acceptRates.length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Training Runs")).toBeTruthy();
     // "Languages" appears as both a StatsCard title and section heading
     expect(screen.getAllByText("Languages").length).toBeGreaterThanOrEqual(1);

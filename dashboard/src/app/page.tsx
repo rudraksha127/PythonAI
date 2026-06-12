@@ -19,6 +19,8 @@ import type {
   SealStats,
 } from "@/lib/types";
 import { formatNumber, formatTimeAgo } from "@/lib/utils";
+import ImprovementHeatmap from "@/components/ImprovementHeatmap";
+import RoiCalculator from "@/components/RoiCalculator";
 import {
   TrendingUp,
   Brain,
@@ -859,6 +861,12 @@ export default function DashboardPage() {
           <LanguagesBar stats={stats} />
         </div>
       </div>
+
+      {/* Model Improvement Heatmap (REQ-DASH-003) */}
+      <ImprovementHeatmap />
+
+      {/* ROI Calculator (REQ-DASH-004) */}
+      <RoiCalculator />
 
       {/* Quick Actions */}
       <div className="flex items-center gap-3 pt-2">
