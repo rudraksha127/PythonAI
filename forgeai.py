@@ -466,7 +466,8 @@ def cmd_dashboard(args):
         print("Dashboard not available. Install streamlit: pip install streamlit")
 
 
-def main():
+def build_parser() -> argparse.ArgumentParser:
+    """Build the argument parser (exported for testing)."""
     parser = argparse.ArgumentParser(
         description="ForgeAI — Self-Improving Developer AI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -479,9 +480,18 @@ Examples:
   %(prog)s agent "fix the authentication bug"
   %(prog)s config show
   %(prog)s config init
+  %(prog)s --completion bash          # Generate bash completion script
+  %(prog)s --completion zsh           # Generate zsh completion script
+  %(prog)s --completion fish          # Generate fish completion script
 
 Research: MIT SEAL · cAST (EMNLP 2025) · GRPO (DeepSeek 2025) · SDFT (MIT 2026)
         """,
+    )
+    parser.add_argument(
+        "--completion",
+        choices=["bash", "zsh", "fish"],
+        default=None,
+        help="Print shell tab-completion script and exit",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -559,6 +569,35 @@ Research: MIT SEAL · cAST (EMNLP 2025) · GRPO (DeepSeek 2025) · SDFT (MIT 202
     # Dashboard command
     dashboard_parser = subparsers.add_parser("dashboard", help="Start dashboard")
     dashboard_parser.set_defaults(func=cmd_dashboard)
+
+    return parser
+
+
+def main():
+    parser = build_parser()
+
+    # ── Auto-Complete Mode ────────────────────────────────────────
+    try:
+        from src.completion import handle_auto_complete
+
+        handle_auto_complete(parser)
+    except ImportError:
+        pass
+
+    # ── Handle --completion ───────────────────────────────────────
+    if "--completion" in sys.argv:
+        try:
+            idx = sys.argv.index("--completion")
+            if idx + 1 < len(sys.argv):
+                shell = sys.argv[idx + 1]
+                from src.completion import print_completion
+
+                script = print_completion(parser, shell, sys.argv[0])
+                print(script)
+                sys.exit(0)
+        except (ValueError, ImportError) as e:
+            print(f"Completion script generation failed: {e}", file=sys.stderr)
+            sys.exit(1)
 
     args = parser.parse_args()
 
