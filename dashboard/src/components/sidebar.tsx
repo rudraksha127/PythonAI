@@ -17,6 +17,7 @@ import {
   Layers,
   Server,
   BarChart3,
+  Code,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/monitor", label: "Monitor", icon: Cpu },
   { href: "/projects", label: "Projects", icon: GitBranch },
   { href: "/agent", label: "Agent", icon: Bot },
+  { href: "/review", label: "Review", icon: Code },
   { href: "/ecosystem", label: "Ecosystem", icon: Server },
   { href: "/benchmark", label: "Benchmark", icon: Activity },
   { href: "/settings", label: "Settings", icon: Settings },

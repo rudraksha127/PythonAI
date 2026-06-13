@@ -207,6 +207,121 @@ def cmd_config(args):
         print(f"  Logs: {config.expand_path(config.paths.logs_dir)}")
 
 
+def cmd_review(args):
+    """Code review commands."""
+    from src.review import GitAnalyzer, ReviewEngine, ReviewRequest
+
+    if args.action == "code":
+        if not args.file:
+            print("Error: --file <path> is required for code review")
+            sys.exit(1)
+
+        path = Path(args.file)
+        if not path.exists():
+            print(f"Error: File not found: {path}")
+            sys.exit(1)
+
+        code = path.read_text(encoding="utf-8")
+        lang = args.language or GitAnalyzer.detect_language(args.file)
+
+        print(f"\nReviewing {args.file} ({lang})...")
+        print("=" * 60)
+
+        engine = ReviewEngine()
+        request = ReviewRequest(code=code, language=lang, file_path=args.file)
+        result = engine.review_code(request)
+
+        print(f"\nScore: {result.score}/10")
+        print(f"Summary: {result.summary}")
+        print()
+
+        if result.issues:
+            print(f"Issues ({len(result.issues)}):")
+            for i, issue in enumerate(result.issues, 1):
+                loc = f"L{issue.line}" if issue.line else ""
+                print(f"  {i}. [{issue.severity.upper()}] [{issue.category}] {loc}")
+                print(f"     {issue.message}")
+                if issue.suggestion:
+                    print(f"     -> {issue.suggestion}")
+                print()
+
+        if result.strengths:
+            print("Strengths:")
+            for s in result.strengths:
+                print(f"  + {s}")
+            print()
+
+        if result.suggestions:
+            print("Suggestions:")
+            for s in result.suggestions:
+                print(f"  -> {s}")
+            print()
+
+    elif args.action == "git":
+        repo = args.repo or Path.cwd()
+        print(f"\nAnalyzing git changes in {repo}...")
+        print("=" * 60)
+
+        analyzer = GitAnalyzer(repo_path=repo)
+
+        if args.commit:
+            changes = analyzer.get_diff(commit_range=args.commit)
+        elif args.staged:
+            changes = analyzer.get_diff(staged=True)
+        else:
+            changes = analyzer.get_uncommitted_changes()
+
+        if not changes:
+            print("No changes to review.")
+            return
+
+        print(f"\nFound {len(changes)} changed files")
+        for c in changes:
+            print(f"  {c.change_type:10s} {c.file_path} ({c.language})")
+
+        engine = ReviewEngine()
+        result = engine.review_git_changes(analyzer, changes)
+
+        print(f"\nOverall Score: {result.overall_score}/10")
+        print(f"Total Issues: {result.total_issues}")
+        print(f"  Critical: {result.critical_count}")
+        print(f"  Errors: {result.error_count}")
+        print(f"\n{result.summary}")
+        print()
+
+        for review in result.reviews:
+            if review.issues:
+                print(f"\n{'─' * 50}")
+                print(f"File: {review.file_path} (Score: {review.score}/10)")
+                for issue in review.issues[:10]:
+                    loc = f"L{issue.line}" if issue.line else ""
+                    print(f"  [{issue.severity.upper()}] {loc}: {issue.message[:100]}")
+                if len(review.issues) > 10:
+                    print(f"  ... and {len(review.issues) - 10} more issues")
+
+        if args.output:
+            import json
+
+            output_data = {
+                "overall_score": result.overall_score,
+                "total_issues": result.total_issues,
+                "critical_count": result.critical_count,
+                "summary": result.summary,
+                "reviews": [
+                    {
+                        "file_path": r.file_path,
+                        "score": r.score,
+                        "summary": r.summary,
+                        "issues": [i.model_dump() if hasattr(i, "model_dump") else i.__dict__ for i in r.issues],
+                        "strengths": r.strengths,
+                    }
+                    for r in result.reviews
+                ],
+            }
+            Path(args.output).write_text(json.dumps(output_data, indent=2), encoding="utf-8")
+            print(f"\nResults saved to: {args.output}")
+
+
 def cmd_dashboard(args):
     """Dashboard commands."""
     print("Starting ForgeAI Dashboard...")
@@ -280,6 +395,22 @@ Research: MIT SEAL · cAST (EMNLP 2025) · GRPO (DeepSeek 2025) · SDFT (MIT 202
         "action", choices=["show", "init", "paths"], help="Action"
     )
     config_parser.set_defaults(func=cmd_config)
+
+    # Review command
+    review_parser = subparsers.add_parser("review", help="Code review commands")
+    review_sub = review_parser.add_subparsers(dest="action", required=True)
+
+    review_code = review_sub.add_parser("code", help="Review a code file")
+    review_code.add_argument("--file", "-f", required=True, help="Path to the code file")
+    review_code.add_argument("--language", "-l", default="", help="Language (auto-detected from extension)")
+    review_code.set_defaults(func=cmd_review)
+
+    review_git = review_sub.add_parser("git", help="Review git changes")
+    review_git.add_argument("--repo", "-r", default="", help="Repository path (default: current dir)")
+    review_git.add_argument("--commit", "-c", default="", help="Commit range (e.g. HEAD~3..HEAD)")
+    review_git.add_argument("--staged", action="store_true", help="Review staged changes only")
+    review_git.add_argument("--output", "-o", default="", help="Save results to JSON file")
+    review_git.set_defaults(func=cmd_review)
 
     # Dashboard command
     dashboard_parser = subparsers.add_parser("dashboard", help="Start dashboard")
