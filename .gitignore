@@ -80,3 +80,19 @@ powershell/
 # ── Git submodules (if any) ────────────────────────
 nul
 .ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# ── Archives ────────────────────────────────────────
+PythonAI/ZIP\ FILES/
+*.zip
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+*.tar
+
+# ── Runtime logs ────────────────────────────────────
+*.err.log
+*.out.log
+*.err
