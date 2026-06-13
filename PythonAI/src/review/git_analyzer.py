@@ -185,7 +185,7 @@ class GitAnalyzer:
                 new_path = parts[3].lstrip("b/") if len(parts) > 3 else ""
                 file_path = new_path or old_path
                 ext = Path(file_path).suffix.lower()
-                language = EXT_MAP.get(ext, "unknown")
+                language = _EXT_MAP.get(ext, "unknown")
 
                 current_file = GitChange(
                     file_path=file_path,

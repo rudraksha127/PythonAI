@@ -322,6 +322,137 @@ def cmd_review(args):
             print(f"\nResults saved to: {args.output}")
 
 
+def cmd_battle(args):
+    """Model Battle Arena commands."""
+    from src.battle import BattleConfig, BattleEngine, BattleRequest
+
+    if args.interactive or not args.prompt:
+        # Interactive mode
+        print("\n🔥 Model Battle Arena - Interactive Mode")
+        print("=" * 60)
+        print("Enter prompts to compare across providers. Type 'exit' to quit.\n")
+
+        engine = BattleEngine()
+
+        # Get available providers
+        try:
+            from src.core.providers import ProviderRouter
+            router = ProviderRouter()
+            providers = router.get_available_providers()
+            print("Available providers:")
+            for p in providers:
+                print(f"  {p.id:15s} - {p.label}")
+            print()
+        except ImportError:
+            pass
+
+        while True:
+            try:
+                prompt = input("Prompt: ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print("\n[Bye] Exiting battle mode.")
+                break
+            if not prompt or prompt.lower() in ("exit", "quit"):
+                break
+
+            if args.providers and args.models:
+                configs = [
+                    BattleConfig(provider=p, model=m)
+                    for p, m in zip(args.providers, args.models or args.providers)
+                ]
+            else:
+                configs = []
+
+            req = BattleRequest(
+                prompt=prompt,
+                system_prompt=args.system or None,
+                providers=configs,
+                auto_select=args.auto or not configs,
+                auto_count=args.count,
+            )
+
+            result = engine.run_battle(req)
+            _print_battle_result(result)
+
+        return
+
+    # Single prompt mode
+    engine = BattleEngine()
+
+    if args.providers and args.models:
+        configs = []
+        for i, p in enumerate(args.providers):
+            m = args.models[i] if i < len(args.models) else args.models[0]
+            configs.append(BattleConfig(
+                provider=p,
+                model=m,
+                temperature=args.temperature,
+                max_tokens=args.max_tokens,
+            ))
+        # Deduplicate (in case same provider/model was specified multiple times)
+        seen = set()
+        unique_configs = []
+        for c in configs:
+            key = (c.provider, c.model)
+            if key not in seen:
+                seen.add(key)
+                unique_configs.append(c)
+        configs = unique_configs
+    else:
+        configs = []
+
+    req = BattleRequest(
+        prompt=args.prompt,
+        system_prompt=args.system or None,
+        providers=configs,
+        auto_select=args.auto or not configs,
+        auto_count=args.count,
+    )
+
+    result = engine.run_battle(req)
+    _print_battle_result(result)
+
+
+def _print_battle_result(result):
+    """Print battle results in a formatted table."""
+    print(f"\n{'=' * 70}")
+    print(f"🔥 MODEL BATTLE RESULTS")
+    print(f"{'=' * 70}")
+    print(f"Prompt: {result.prompt[:80]}..." if len(result.prompt) > 80 else f"Prompt: {result.prompt}")
+    print(f"Total time: {result.total_latency_ms:.0f}ms")
+    print()
+
+    # Header
+    print(f"{'Provider':20s} {'Model':20s} {'Latency':12s} {'Input':8s} {'Output':8s} {'Cost':12s} {'Status'}")
+    print(f"{'-' * 20} {'-' * 20} {'-' * 12} {'-' * 8} {'-' * 8} {'-' * 12} {'-' * 8}")
+
+    for r in result.results:
+        status = "OK" if not r.error else "ERR"
+        latency = f"{r.latency_ms:.0f}ms" if not r.error else "-"
+        cost = f"${r.cost_usd:.6f}" if not r.error else "-"
+        inp = str(r.token_count_input) if not r.error else "-"
+        out = str(r.token_count_output) if not r.error else "-"
+        label = r.label[:19]
+        model = r.model[:19]
+        print(f"{label:20s} {model:20s} {latency:12s} {inp:8s} {out:8s} {cost:12s} {status:8s}")
+
+    if result.winner:
+        print(f"\n🏆 Winner: {result.winner}")
+
+    # Show winner's content
+    for r in result.results:
+        if r.label == result.winner and r.content:
+            print(f"\n{'─' * 70}")
+            print(f"WINNER RESPONSE ({r.label}):")
+            print(f"{'─' * 70}")
+            print(r.content[:2000])
+            if len(r.content) > 2000:
+                print(f"\n... (response truncated, {len(r.content)} total chars)")
+            break
+
+    print()
+
+
 def cmd_dashboard(args):
     """Dashboard commands."""
     print("Starting ForgeAI Dashboard...")
@@ -411,6 +542,19 @@ Research: MIT SEAL · cAST (EMNLP 2025) · GRPO (DeepSeek 2025) · SDFT (MIT 202
     review_git.add_argument("--staged", action="store_true", help="Review staged changes only")
     review_git.add_argument("--output", "-o", default="", help="Save results to JSON file")
     review_git.set_defaults(func=cmd_review)
+
+    # Battle command
+    battle_parser = subparsers.add_parser("battle", help="Model Battle Arena - compare LLM providers")
+    battle_parser.add_argument("prompt", nargs="?", default="", help="Prompt to send to all providers")
+    battle_parser.add_argument("--providers", "-p", nargs="*", default=[], help="Provider IDs (e.g. openai anthropic ollama)")
+    battle_parser.add_argument("--models", "-m", nargs="*", default=[], help="Model IDs (e.g. gpt-4o claude-sonnet-4 qwen2.5-coder)")
+    battle_parser.add_argument("--auto", action="store_true", help="Auto-select top providers")
+    battle_parser.add_argument("--count", "-n", type=int, default=3, help="Number of providers for auto-select")
+    battle_parser.add_argument("--system", "-s", default="", help="System prompt")
+    battle_parser.add_argument("--temperature", "-t", type=float, default=0.7, help="Temperature (0.0-2.0)")
+    battle_parser.add_argument("--max-tokens", type=int, default=1024, help="Max tokens per response")
+    battle_parser.add_argument("--interactive", "-i", action="store_true", help="Interactive mode")
+    battle_parser.set_defaults(func=cmd_battle)
 
     # Dashboard command
     dashboard_parser = subparsers.add_parser("dashboard", help="Start dashboard")
