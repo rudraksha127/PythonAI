@@ -15,17 +15,22 @@ import {
   Zap,
   Cpu,
   Layers,
+  Server,
+  BarChart3,
 } from "lucide-react";
 import { useState } from "react";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/progress", label: "Progress", icon: Activity },
-  { href: "/monitor", label: "Monitor", icon: Cpu },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/training", label: "Training", icon: Layers },
   { href: "/seal", label: "SEAL", icon: Brain },
+  { href: "/progress", label: "Progress", icon: Activity },
+  { href: "/monitor", label: "Monitor", icon: Cpu },
   { href: "/projects", label: "Projects", icon: GitBranch },
   { href: "/agent", label: "Agent", icon: Bot },
+  { href: "/ecosystem", label: "Ecosystem", icon: Server },
+  { href: "/benchmark", label: "Benchmark", icon: Activity },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

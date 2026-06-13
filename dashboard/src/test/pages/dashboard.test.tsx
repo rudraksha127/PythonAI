@@ -77,6 +77,11 @@ vi.mock("@/lib/api", () => ({
     data: null,
     error: "No server",
   }),
+  getSignalPatterns: vi.fn().mockResolvedValue({
+    success: false,
+    data: null,
+    error: "No server",
+  }),
 }));
 
 import DashboardPage from "@/app/page";

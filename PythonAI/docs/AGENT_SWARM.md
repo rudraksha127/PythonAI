@@ -36,29 +36,29 @@ Copy-paste into Codebuff to continue:
 Enhance the agent swarm system. Here's what I need:
 
 ### 1. AgentSwarm Improvements (src/utils/swarm.py)
-- Add retry logic with exponential backoff for failed tasks (max 3 retries)
-- Add task timeout per individual task (not just per chunk)
-- Add progress tracking with ETA per task type
-- Add result caching to avoid regenerating identical prompts
-- Add priority queue support (high priority tasks execute first)
+- [x] Add retry logic with exponential backoff for failed tasks (max 3 retries)
+- [x] Add task timeout per individual task (not just per chunk)
+- [ ] Add progress tracking with ETA per task type
+- [x] Add result caching to avoid regenerating identical prompts
+- [x] Add priority queue support (high priority tasks execute first)
 
 ### 2. New Capabilities
-- Add MCP tool integration — let agents call external tools during generation
-- Add multi-step agent workflows (research → draft → review → finalize)
-- Add agent specialization by API (assign code-review tasks to best API)
-- Add RAG-assisted generation (agents can query vector DB for context)
+- [x] Add MCP tool integration — let agents call external tools during generation
+- [ ] Add multi-step agent workflows (research → draft → review → finalize)
+- [ ] Add agent specialization by API (assign code-review tasks to best API)
+- [ ] Add RAG-assisted generation (agents can query vector DB for context)
 
 ### 3. Monitoring & Observability
-- Add per-API success/failure rate tracking
-- Add cost estimation (token usage × API pricing)
-- Add real-time dashboard in terminal
-- Log all API responses to disk for debugging
+- [ ] Add per-API success/failure rate tracking
+- [x] Add cost estimation (token usage × API pricing)
+- [ ] Add real-time dashboard in terminal
+- [ ] Log all API responses to disk for debugging
 
 ### 4. Quality Assurance
-- Add cross-API consistency checks (same prompt → different APIs → compare)
-- Add automated quality scoring with configurable thresholds
-- Add human review queue (export low-quality pairs for manual review)
-- Add automatic re-generation for pairs below quality threshold
+- [ ] Add cross-API consistency checks (same prompt → different APIs → compare)
+- [x] Add automated quality scoring with configurable thresholds
+- [ ] Add human review queue (export low-quality pairs for manual review)
+- [ ] Add automatic re-generation for pairs below quality threshold
 ```
 
 ---

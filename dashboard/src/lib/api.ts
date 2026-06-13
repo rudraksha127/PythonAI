@@ -8,6 +8,8 @@ import type {
   EventPayload,
   EventResponse,
   RagStats,
+  RagCacheStats,
+  RagBackendInfo,
   SealStats,
   ImprovementHeatmapData,
 } from "./types";
@@ -138,6 +140,18 @@ export async function getRagStats(): Promise<RagStats> {
   return fetchApi<RagStats>("/api/rag/stats");
 }
 
+export async function getRagCacheStats(): Promise<RagCacheStats> {
+  return fetchApi<RagCacheStats>("/api/rag/cache");
+}
+
+export async function getRagBackendInfo(): Promise<RagBackendInfo> {
+  return fetchApi<RagBackendInfo>("/api/rag/backend");
+}
+
+export async function clearRagCache(): Promise<{ cleared: number; message: string }> {
+  return fetchApi<{ cleared: number; message: string }>("/api/rag/cache/clear", { method: "POST" });
+}
+
 export async function indexProject(
   projectId: string,
   repoPath: string,
@@ -218,6 +232,27 @@ export async function getEcosystemMetrics(): Promise<EcosystemFetchResponse> {
   return fetchApi<EcosystemFetchResponse>("/api/forgeai/ecosystem-metrics");
 }
 
+// ─── Signal Pattern Analysis (REQ-DASH-005) ─────────────────
+
+export async function getSignalPatterns(): Promise<{
+  success: boolean;
+  data: import("./types").SignalPatternData | null;
+  error?: string;
+}> {
+  try {
+    const data = await fetchApi<import("./types").SignalPatternData>(
+      "/api/metrics/signal-patterns"
+    );
+    return { success: true, data };
+  } catch (e) {
+    return {
+      success: false,
+      data: null,
+      error: e instanceof Error ? e.message : "Failed to fetch signal patterns",
+    };
+  }
+}
+
 // ─── Improvement Heatmap (REQ-DASH-003) ─────────────────────
 // NOTE: uses try/catch envelope rather than throwing, because
 // the heatmap is a non-critical visual feature — the UI should
@@ -240,6 +275,58 @@ export async function getImprovementHeatmap(): Promise<{
       error: e instanceof Error ? e.message : "Failed to fetch heatmap data",
     };
   }
+}
+
+// ─── TTS (Test-Time Scaling) ────────────────────────────────────
+
+export async function getTtsStatus(): Promise<import("./types").TtsStatusResponse> {
+  return fetchApi<import("./types").TtsStatusResponse>("/api/tts/status");
+}
+
+export async function updateTtsConfig(
+  config: Partial<import("./types").TtsConfig>
+): Promise<{ status: string; config: import("./types").TtsConfig }> {
+  return fetchApi<{ status: string; config: import("./types").TtsConfig }>("/api/tts/config", {
+    method: "PUT",
+    body: JSON.stringify(config),
+  });
+}
+
+export async function resetTtsStats(): Promise<{ status: string }> {
+  return fetchApi<{ status: string }>("/api/tts/reset-stats", { method: "POST" });
+}
+
+// ─── RAG Benchmark Reports ──────────────────────────────────────
+
+export interface BenchmarkReportListItem {
+  filename: string;
+  path: string;
+  timestamp: number;
+  size_bytes: number;
+}
+
+export interface BenchmarkListResponse {
+  success: boolean;
+  reports: BenchmarkReportListItem[];
+  error?: string;
+}
+
+export interface BenchmarkReportResponse {
+  success: boolean;
+  report: import("./types").BenchmarkReport | null;
+  error?: string;
+}
+
+export async function getBenchmarkReports(): Promise<BenchmarkListResponse> {
+  return fetchApi<BenchmarkListResponse>("/api/benchmark/reports");
+}
+
+export async function getBenchmarkReport(
+  filename: string
+): Promise<BenchmarkReportResponse> {
+  return fetchApi<BenchmarkReportResponse>(
+    `/api/benchmark/report/${encodeURIComponent(filename)}`
+  );
 }
 
 // ─── WebSocket ─────────────────────────────────────────────

@@ -58,8 +58,28 @@ class SealOrchestrator:
     ):
         self.config = config or SealConfig()
 
+        # Initialize TTS LLM call if TTS is enabled
+        tts_llm_call = None
+        if self.config.tts_enabled:
+            try:
+                from src.training.time_scaling import create_ollama_llm_call
+
+                tts_llm_call = create_ollama_llm_call(
+                    model=self.config.curriculum_model,
+                )
+                logger.info(
+                    f"[SEAL] TTS curriculum generation enabled "
+                    f"(model={self.config.curriculum_model}, "
+                    f"rollouts={self.config.tts_num_rollouts})"
+                )
+            except Exception as e:
+                logger.warning(f"[SEAL] Could not initialize TTS LLM call: {e}. TTS disabled.")
+
         # Sub-components
-        self.curriculum = CurriculumGenerator(config)
+        self.curriculum = CurriculumGenerator(
+            config,
+            tts_llm_call=tts_llm_call,
+        )
         self.inner_loop = SealInnerLoop(config, capture_engine)
         self.meta_learner = MetaLearner(config)
         self.reward_calc = OuterLoopReward()
@@ -362,6 +382,12 @@ class SealOrchestrator:
                 "total_rewards": len(self.meta_learner.reward_history),
             },
             "best_action": state.best_action,
+            "tts": {
+                "enabled": self.config.tts_enabled,
+                "model": self.config.curriculum_model,
+                "num_rollouts": self.config.tts_num_rollouts,
+                "num_pdr_rollouts": self.config.tts_num_pdr_rollouts,
+            },
             "config": self.config.to_dict(),
         }
 
@@ -381,10 +407,11 @@ Examples:
   python -m src.training.phase3_seal --cycles 3
 
   # Dry run (curriculum generation only, no training)
-  python -m src.training.phase3_seal --dry-run
-
-  # Full system with capture engine
+  python -m src.training.phase3_seal --dry-run    # Full system with capture engine
   python -m src.training.phase3_seal --cycles 5 --capture --meta
+
+    # With TTS for higher-quality curriculum generation
+  python -m src.training.phase3_seal --tts --cycles 3 --dry-run
 
   # Show status
   python -m src.training.phase3_seal --status
@@ -417,6 +444,24 @@ Examples:
     )
     parser.add_argument("--no-meta", action="store_true", default=None, help="Disable meta-learning")
     parser.add_argument("--meta-lora-rank", type=int, default=0, help="LoRA rank for meta-learning")
+
+    # Test-Time Scaling
+    parser.add_argument(
+        "--tts", action="store_true", default=None,
+        help="Enable TTS (PDR+RTV) for higher-quality curriculum generation"
+    )
+    parser.add_argument(
+        "--no-tts", action="store_true", default=None,
+        help="Disable TTS curriculum generation"
+    )
+    parser.add_argument(
+        "--tts-rollouts", type=int, default=0,
+        help="Number of parallel curriculum rollouts for TTS (default: 3)"
+    )
+    parser.add_argument(
+        "--tts-pdr-rollouts", type=int, default=0,
+        help="Number of PDR refinement rollouts for TTS (default: 1)"
+    )
 
     # Integration
     parser.add_argument("--capture", action="store_true", help="Integrate with capture engine for real signals")
@@ -460,6 +505,14 @@ def main() -> None:
         config_dict["meta_enabled"] = False
     if args.meta_lora_rank > 0:
         config_dict["meta_lora_rank"] = args.meta_lora_rank
+    if args.tts is True:
+        config_dict["tts_enabled"] = True
+    if args.no_tts is True:
+        config_dict["tts_enabled"] = False
+    if args.tts_rollouts > 0:
+        config_dict["tts_num_rollouts"] = args.tts_rollouts
+    if args.tts_pdr_rollouts > 0:
+        config_dict["tts_num_pdr_rollouts"] = args.tts_pdr_rollouts
     if args.state_dir:
         config_dict["state_dir"] = args.state_dir
 

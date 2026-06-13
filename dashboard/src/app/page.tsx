@@ -21,6 +21,10 @@ import type {
 import { formatNumber, formatTimeAgo } from "@/lib/utils";
 import ImprovementHeatmap from "@/components/ImprovementHeatmap";
 import RoiCalculator from "@/components/RoiCalculator";
+import SignalPatternAnalysis from "@/components/SignalPatternAnalysis";
+import LiveEventFeed from "@/components/LiveEventFeed";
+import LightRagMetrics from "@/components/LightRagMetrics";
+import TtsStatus from "@/components/TtsStatus";
 import {
   TrendingUp,
   Brain,
@@ -39,6 +43,8 @@ import {
   Activity,
   Play,
 } from "lucide-react";
+import type { EcosystemMetrics } from "@/lib/api";
+import { getEcosystemMetrics } from "@/lib/api";
 import {
   LineChart,
   Line,
@@ -698,19 +704,21 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<CaptureStats | null>(null);
   const [ragStats, setRagStats] = useState<RagStats | null>(null);
   const [sealStats, setSealStats] = useState<SealStats | null>(null);
+  const [ecosystemData, setEcosystemData] = useState<EcosystemMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const [h, rate, train, s, rag, seal] = await Promise.all([
+        const [h, rate, train, s, rag, seal, eco] = await Promise.all([
           getHealth().catch(() => null),
           getAcceptanceRate().catch(() => ({ data: [], training_markers: [] })),
           getTrainingStatus().catch(() => ({ active_run: null, history: [] })),
           getCaptureStats().catch(() => null),
           getRagStats().catch(() => null),
           getSealStats().catch(() => null),
+          getEcosystemMetrics().catch(() => ({ success: false, data: null, cached: false })),
         ]);
         setHealth(h);
         setRateData(rate.data);
@@ -718,6 +726,7 @@ export default function DashboardPage() {
         setStats(s);
         setRagStats(rag);
         setSealStats(seal);
+        if (eco.success && eco.data) setEcosystemData(eco.data);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load dashboard data"
@@ -858,15 +867,38 @@ export default function DashboardPage() {
         <div className="space-y-4">
           <SealStatus seal={sealStats} onCycleComplete={() => getSealStats().then(setSealStats).catch(() => {})} />
           <RagStatus rag={ragStats} />
+          <LightRagMetrics existingStats={ragStats} />
           <LanguagesBar stats={stats} />
         </div>
       </div>
+
+      {/* Live Event Feed (REQ-DASH-005 Real-Time Events) */}
+      {ecosystemData?.sync_daemon && (
+        <LiveEventFeed
+          syncInfo={{
+            running: ecosystemData.sync_daemon.running,
+            lastSyncTime: ecosystemData.sync_daemon.last_sync_time,
+            totalSyncs: ecosystemData.sync_daemon.total_syncs,
+            failCount: ecosystemData.sync_daemon.fail_count,
+            consecutiveFails: ecosystemData.sync_daemon.consecutive_fails,
+            lastSyncResult: ecosystemData.sync_daemon.last_sync_result,
+            startedAt: ecosystemData.sync_daemon.started_at,
+            interval: ecosystemData.sync_daemon.interval,
+          }}
+        />
+      )}
 
       {/* Model Improvement Heatmap (REQ-DASH-003) */}
       <ImprovementHeatmap />
 
       {/* ROI Calculator (REQ-DASH-004) */}
       <RoiCalculator />
+
+      {/* Signal Pattern Analysis (REQ-DASH-005) */}
+      <SignalPatternAnalysis />
+
+      {/* Test-Time Scaling (PDR+RTV) Pipeline */}
+      <TtsStatus />
 
       {/* Quick Actions */}
       <div className="flex items-center gap-3 pt-2">

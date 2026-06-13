@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { MessageSquare, Search, Plus, Settings, Brain, Palette, Calendar, BookOpen, Image, ListTodo, Mail, Library, ChevronLeft, Sparkles, LayoutDashboard } from "lucide-react";
+import { MessageSquare, Search, Plus, Settings, Brain, Palette, Calendar, BookOpen, Image, ListTodo, Mail, Library, ChevronLeft, Sparkles, LayoutDashboard, BarChart3 } from "lucide-react";
 
 interface SidebarProps {
   onToggle: () => void;
@@ -83,6 +83,17 @@ export default function Sidebar({ onToggle, onOpenTheme, onOpenBrain }: SidebarP
         >
           <LayoutDashboard size={14} />
           Dashboard
+        </Link>
+        <Link
+          to="/forgeai"
+          className={`flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors ${
+            isActivePath("/forgeai")
+              ? "text-[var(--accent)] bg-[var(--accent)]/10"
+              : "text-zinc-400 hover:text-[var(--fg)] hover:bg-[var(--panel)]"
+          }`}
+        >
+          <BarChart3 size={14} />
+          ForgeAI
         </Link>
         <Link
           to="/settings"

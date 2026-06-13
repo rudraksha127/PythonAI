@@ -12,6 +12,9 @@ authors = [
     { name = "PythonAI Team" },
 ]
 requires-python = ">=3.10"
+dependencies = [
+    "cryptography>=42.0.0",
+]
 keywords = ["ai", "rag", "agents", "llm", "python", "multi-agent"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -24,6 +27,14 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.optional-dependencies]
+sqlcipher = [
+    "rotki-pysqlcipher3>=2.1.0",
+]
+full = [
+    "pythonai[sqlcipher]",
 ]
 
 [tool.setuptools.packages.find]

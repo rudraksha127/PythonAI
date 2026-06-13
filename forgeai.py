@@ -26,6 +26,16 @@ import sys
 from pathlib import Path
 
 
+# ── Path Setup ────────────────────────────────────────────────────
+# Ensure PythonAI/ is on sys.path so `from src.*` imports resolve
+# regardless of which directory the user runs forgeai.py from.
+_forgeai_root = Path(__file__).resolve().parent
+_pythonai_src = _forgeai_root / "PythonAI"
+if _pythonai_src.is_dir() and str(_pythonai_src) not in sys.path:
+    sys.path.insert(0, str(_pythonai_src))
+# ─────────────────────────────────────────────────────────────────
+
+
 def cmd_capture(args):
     """Capture engine commands."""
     from src.learning.capture_engine import CaptureEngine

@@ -66,5 +66,16 @@ Thumbs.db
 *.log
 logs/
 
+# ── Cloned reference repos (not project code) ────
+arsenal/
+hermes-agent-main/
+skills-main/
+superview-sh-main/
+Claude_Code_npm-main/
+codebuff-main/
+open-claude-main/
+Hermes-studio--main/
+
 # ── Git submodules (if any) ────────────────────────
 nul
+.ruff_cache/

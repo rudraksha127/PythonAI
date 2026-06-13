@@ -27,35 +27,35 @@ Copy-paste into Codebuff to continue:
 Enhance the RAG engine. Here's what I need:
 
 ### 1. Better Search (src/rag/rag_engine.py)
-- Add BM25 keyword search alongside dense embedding for true hybrid search
-- Add metadata filtering: `--version 3.10` only searches Python 3.10 docs
-- Add category filter: `--category debugging` limits search to error patterns
-- Show search result snippets with highlighted matched terms
+- [x] Add BM25 keyword search alongside dense embedding for true hybrid search
+- [x] Add metadata filtering: `--version 3.10` only searches Python 3.10 docs
+- [x] Add category filter: `--category debugging` limits search to error patterns
+- [ ] Show search result snippets with highlighted matched terms
 
 ### 2. RAG Quality Improvements
-- Add MMR (Maximum Marginal Relevance) to diversify search results
-- Add re-ranking step using cross-encoder model for better result ordering
-- Add query expansion (generate 2-3 related queries, merge results)
-- Add citation numbers in output (e.g., [1], [2]) linked to sources
+- [x] Add MMR (Maximum Marginal Relevance) to diversify search results
+- [ ] Add re-ranking step using cross-encoder model for better result ordering
+- [x] Add query expansion (generate 2-3 related queries, merge results)
+- [x] Add citation numbers in output (e.g., [1], [2]) linked to sources
 
 ### 3. Interactive Mode Features
-- Add /save command to export conversation to markdown file
-- Add /model command to switch between different Ollama models
-- Add /explain command to show which docs were retrieved and why
-- Add context window limit warning when conversation is too long
-- Add search result count display (e.g., "Found 5 relevant docs")
+- [ ] Add /save command to export conversation to markdown file
+- [ ] Add /model command to switch between different Ollama models
+- [ ] Add /explain command to show which docs were retrieved and why
+- [ ] Add context window limit warning when conversation is too long
+- [ ] Add search result count display (e.g., "Found 5 relevant docs")
 
 ### 4. Code Execution Safety
-- Add a configurable sandbox mode using a temporary directory
-- Add execution timeout option via --exec-timeout CLI arg
-- Add option to disable code execution entirely (--no-exec)
-- Add output size limit to prevent huge outputs
+- [ ] Add a configurable sandbox mode using a temporary directory
+- [x] Add execution timeout option via --exec-timeout CLI arg
+- [x] Add option to disable code execution entirely (--no-exec)
+- [ ] Add output size limit to prevent huge outputs
 
 ### 5. Database Management
-- Add --rebuild CLI flag for easy database rebuild
-- Add --stats CLI flag to show database statistics (chunks by version/category)
-- Add incremental update support (append new chunks without full rebuild)
-- Add export/import database as JSON for portability
+- [x] Add --rebuild CLI flag for easy database rebuild
+- [x] Add --stats CLI flag to show database statistics (chunks by version/category)
+- [ ] Add incremental update support (append new chunks without full rebuild)
+- [ ] Add export/import database as JSON for portability
 ```
 
 ---

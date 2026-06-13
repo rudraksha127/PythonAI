@@ -23,6 +23,12 @@ from src.rag.models import DEFAULT_MODEL, list_configured_models, list_ollama_mo
 from src.rag.reasoning import ReasoningEngine
 from src.rag.verifier import AnswerVerifier
 
+# LightRAG backend (optional — graceful if not installed)
+from src.rag.lightrag_wrapper import LightRAGAdapter, create_lightrag_backend, detect_backend as _detect_backend
+
+RAG_BACKEND = _detect_backend()
+_lightrag_instance: LightRAGAdapter | None = None
+
 ROOT = Path(__file__).resolve().parent.parent.parent
 
 # ═══════════════════════════════
@@ -888,10 +894,29 @@ def extract_code_blocks(text: str) -> list[str]:
     return [block.strip() for block in matches]
 
 
+def get_lightrag() -> LightRAGAdapter | None:
+    """Get or create the global LightRAG instance."""
+    global _lightrag_instance
+    if _lightrag_instance is None and RAG_BACKEND == "lightrag":
+        _lightrag_instance = create_lightrag_backend()
+    return _lightrag_instance
+
+
 def load_or_build_db(
     force_rebuild: bool = False,
+    backend: str | None = None,
 ) -> tuple[Any, SentenceTransformer, SimpleBM25 | None, list[str], KnowledgeGraph, Path]:
 
+    active_backend = backend or RAG_BACKEND
+
+    # LightRAG backend — return a minimal tuple, actual work done on query
+    if active_backend == "lightrag":
+        lr = get_lightrag()
+        if lr and lr.is_available():
+            logger.info(f"LightRAG backend active (dir={lr.get_stats()['working_dir']})")
+        return None, None, None, [], None, Path("")  # type: ignore[return-value]
+
+    # Original ChromaDB backend
     chunks_file = (
         ROOT / "data" / "raw" / "raw_chunks_godmode.json"
         if (ROOT / "data" / "raw" / "raw_chunks_godmode.json").exists()

@@ -1,8 +1,0 @@
-chore: auto-fix Ruff lint issues and fix standalone smoke test runner
-
-- Auto-fixed 1,484 safe Ruff lint issues (import sorting, whitespace,
-  unused imports, deprecated typing patterns) across src/ and tests/
-- Added PYTHONPATH (sys.path) handling to test_smoke_e2e.py so the
-  standalone runner can import src modules when run directly
-- Added sys.stdout.reconfigure(encoding='utf-8') to fix UnicodeEncodeError
-  with emoji characters on Windows cp1252 console

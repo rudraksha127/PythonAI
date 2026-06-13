@@ -205,52 +205,126 @@ function TrainingHistoryTable({ runs }: { runs: TrainingRun[] }) {
         </div>
       </div>
 
-      {/* Delta chart */}
-      <div className="card p-5">
-        <h3 className="text-sm font-semibold text-text-primary mb-4">
-          Acceptance Rate Delta per Run
-        </h3>
-        <div className="h-48">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={[...runs].reverse().map((r, i) => ({
-                name: `#${runs.length - i}`,
-                delta: r.acceptance_delta * 100,
-                fill: r.acceptance_delta >= 0 ? "#22C55E" : "#EF4444",
-              }))}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272C" />
-              <XAxis
-                dataKey="name"
-                tick={{ fill: "#71717A", fontSize: 11 }}
-                tickLine={false}
-                axisLine={{ stroke: "#27272C" }}
-              />
-              <YAxis
-                tick={{ fill: "#71717A", fontSize: 11 }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v) => `${v}%`}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: "#18181C",
-                  border: "1px solid #27272C",
-                  borderRadius: "8px",
-                  fontSize: 12,
-                }}
-                formatter={(value: number) => [`${value.toFixed(2)}%`, "Delta"]}
-              />
-              <Bar dataKey="delta" radius={[3, 3, 0, 0]}>
-                {[...runs].reverse().map((r, i) => (
-                  <Cell
-                    key={`cell-${i}`}
-                    fill={r.acceptance_delta >= 0 ? "#22C55E" : "#EF4444"}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Charts row: Delta chart + Loss curve */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Delta chart */}
+        <div className="card p-5">
+          <h3 className="text-sm font-semibold text-text-primary mb-4">
+            Acceptance Rate Delta per Run
+          </h3>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={[...runs].reverse().map((r, i) => ({
+                  name: `#${runs.length - i}`,
+                  delta: r.acceptance_delta * 100,
+                  fill: r.acceptance_delta >= 0 ? "#22C55E" : "#EF4444",
+                }))}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#27272C" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: "#71717A", fontSize: 11 }}
+                  tickLine={false}
+                  axisLine={{ stroke: "#27272C" }}
+                />
+                <YAxis
+                  tick={{ fill: "#71717A", fontSize: 11 }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => `${v}%`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "#18181C",
+                    border: "1px solid #27272C",
+                    borderRadius: "8px",
+                    fontSize: 12,
+                  }}
+                  formatter={(value: number) => [`${value.toFixed(2)}%`, "Delta"]}
+                />
+                <Bar dataKey="delta" radius={[3, 3, 0, 0]}>
+                  {[...runs].reverse().map((r, i) => (
+                    <Cell
+                      key={`cell-${i}`}
+                      fill={r.acceptance_delta >= 0 ? "#22C55E" : "#EF4444"}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Loss curve (REQ-DASH-002) */}
+        <div className="card p-5">
+          <h3 className="text-sm font-semibold text-text-primary mb-4">
+            Training Loss Progression
+          </h3>
+          <div className="h-48">
+            {(() => {
+              const lossData = [...runs]
+                .reverse()
+                .filter((r) => r.train_loss !== null)
+                .map((r, i) => ({
+                  name: `#${runs.length - i}`,
+                  loss: r.train_loss as number,
+                }));
+
+              if (lossData.length < 2) {
+                return (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-xs text-text-muted">
+                      {lossData.length === 1
+                        ? "Need at least 2 runs with loss data to plot a curve"
+                        : "No training loss data available yet"}
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={lossData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#27272C" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fill: "#71717A", fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={{ stroke: "#27272C" }}
+                    />
+                    <YAxis
+                      tick={{ fill: "#71717A", fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={false}
+                      domain={["auto", "auto"]}
+                      tickFormatter={(v) => v.toFixed(3)}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "#18181C",
+                        border: "1px solid #27272C",
+                        borderRadius: "8px",
+                        fontSize: 12,
+                      }}
+                      formatter={(value: number) => [value.toFixed(4), "Train Loss"]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="loss"
+                      stroke="#F59E0B"
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: "#F59E0B" }}
+                      activeDot={{ r: 5, fill: "#F59E0B" }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              );
+            })()}
+          </div>
+          <p className="text-[10px] text-text-muted text-center mt-2">
+            Lower loss indicates better model fit. Yellow line shows training loss across runs.
+          </p>
         </div>
       </div>
 

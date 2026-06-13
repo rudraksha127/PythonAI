@@ -180,6 +180,10 @@ if AUTH_ENABLED:
         "/api/auth/features",
         "/api/auth/settings",
         "/api/auth/integrations/presets",
+        "/api/forgeai/health",
+        "/api/forgeai/status",
+        "/api/forgeai/metrics",
+        "/api/forgeai/fetch",
         "/api/health",
         "/api/version",
         "/login",
@@ -869,6 +873,12 @@ app.include_router(setup_contacts_routes())
 from companion import setup_companion_routes
 
 app.include_router(setup_companion_routes())
+
+# ========= FORGEAI ECOSYSTEM INTEGRATION =========
+from routes.forgeai_routes import router as forgeai_router
+
+app.include_router(forgeai_router)
+logger.info("ForgeAI ecosystem integration routes registered")
 
 # ========= ROUTES (kept in app.py) =========
 

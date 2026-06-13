@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { cn, formatNumber, formatTimeAgo } from "@/lib/utils";
 import LiveEventFeed from "@/components/LiveEventFeed";
+import ArchitectureFlow from "@/components/ArchitectureFlow";
 
 // ═══════════════════════════════════════════════════════════════════
 // Types
@@ -104,10 +105,10 @@ const SERVICES: ServiceInfo[] = [
   {
     name: "Hermes Studio",
     description: "Hermes web UI — React/TanStack Router",
-    port: 5173,
-    url: "http://localhost:5173",
+    port: 3002,
+    url: "http://localhost:3002",
     icon: Layers,
-    healthEndpoint: "http://localhost:5173/health",
+    healthEndpoint: "http://localhost:3002/health",
   },
   {
     name: "Claude Code npm",
@@ -116,6 +117,14 @@ const SERVICES: ServiceInfo[] = [
     url: "",
     icon: Terminal,
     healthEndpoint: undefined,
+  },
+  {
+    name: "Superview-sh",
+    description: "Competitor intelligence — Claude Code skills & templates",
+    port: -1,
+    url: "",
+    icon: Activity,
+    healthEndpoint: undefined, // git repo, no HTTP
   },
 ];
 
@@ -568,6 +577,9 @@ export default function EcosystemPage() {
           </p>
         </div>
       )}
+
+      {/* ═══ Architecture Overview ═══ */}
+      <ArchitectureFlow serviceStatuses={serviceStatuses} />
 
       {/* ═══ Summary Bar ═══ */}
       <SummaryBar healthy={healthyCount} total={totalServices} />

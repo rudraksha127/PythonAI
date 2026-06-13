@@ -84,3 +84,42 @@ stripe>=4.2.0
 
 # Pydantic config + email validation (pydantic[email] covers base dep)
 pydantic[email]>=2.0.0
+
+# ═══════════════════════════════════════════════════════════════
+# 🌌 GITHUB ARSENAL — Priority Tool Integrations
+# Source: Readme/git.txt (300+ tools, pip-installable subset)
+# ═══════════════════════════════════════════════════════════════
+
+# ─── Priority 1: IMMEDIATE — Fix Current Problems ─────────────
+outlines>=0.1.0                # #9  Guaranteed JSON from any LLM
+distilabel>=1.0.0              # #93 Synthetic data generation pipeline
+ragas>=0.2.0                   # #138 RAG evaluation framework
+deepeval>=1.0.0                # #139 pytest for LLMs
+
+# ─── Priority 2: SHORT TERM — This Month ──────────────────────
+lightrag-hku>=0.1.0            # #66 Graph + Vector hybrid RAG
+mem0ai>=0.1.0                  # #119 Persistent AI memory layer
+langfuse>=2.0.0                # #148 LLM observability platform
+crawl4ai>=0.4.0                # #196 Async web crawler for LLMs
+duckduckgo-search>=6.0.0       # #269 Free web search API
+
+# ─── Priority 3: MEDIUM TERM — Next Month ─────────────────────
+crewai>=0.80.0                 # #44 Role-based multi-agent framework
+graphiti-core>=0.4.0           # #109 Temporal knowledge graph
+argilla>=2.0.0                 # #94/130 Data labeling for AI
+
+# ─── Priority 4: ADVANCED — This Quarter ──────────────────────
+dspy>=2.0.0                    # #6 Programming (not prompting) LMs
+llama-index>=0.11.0            # #5 Data framework for LLM apps
+guardrails-ai>=0.5.0           # #251 Input/output validation
+firecrawl-py>=1.0.0            # #195 LLM-optimized web crawling
+
+# ─── Additional Arsenal (Already satisfied or lightweight) ────
+networkx>=3.0                  # #112 Pure Python graph library
+cleanlab>=2.0                  # #132 Fix data quality issues
+trafilatura>=1.0               # #199 Web content extraction
+
+# ─── Optional GPU-only (uncomment if CUDA available) ──────────
+# vllm>=0.6.0                  # #23 High-throughput LLM serving
+# sglang>=0.3.0                # #24 5x faster than vLLM
+# unsloth>=2025.0.0            # #81 2x faster, 50% less memory

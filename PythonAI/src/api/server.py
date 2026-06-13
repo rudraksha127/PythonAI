@@ -43,10 +43,13 @@ from pydantic import BaseModel, Field, field_validator
 
 from src.cli import VERSION
 from src.learning.capture_engine import CaptureEngine
+from src.memory.mem0_wrapper import ForgeAIMemory, create_memory_backend as _create_memory_backend
+from src.rag.lightrag_wrapper import LightRAGAdapter, create_lightrag_backend
 from src.rag.models import list_ollama_models, resolve_model
-from src.rag.rag_engine import DEFAULT_MODEL, get_answer, load_or_build_db
+from src.rag.rag_engine import DEFAULT_MODEL, RAG_BACKEND, get_answer, get_lightrag, load_or_build_db
 from src.training.grpo_trainer import GRPOTrainer
 from src.training.sdft_trainer import SDFTTrainer
+from src.training.time_scaling import TTSConfig, TestTimeScalingPipeline, create_ollama_llm_call
 from src.utils.metrics import metrics
 
 # Cloud backend (optional — graceful if not configured)
@@ -62,6 +65,8 @@ except ImportError:
 # Logging — centralized
 # ═══════════════════════════════════════
 from src.utils.logging_config import setup_logging
+from src.integrations.arsenal_scanner import get_arsenal_stats
+
 
 setup_logging()
 logger = logging.getLogger("forgeai.api")
@@ -74,6 +79,28 @@ _sdft_trainer: SDFTTrainer | None = None
 _grpo_trainer: GRPOTrainer | None = None
 _active_training_run: dict[str, Any] | None = None
 _ws_clients: list[WebSocket] = []  # Dashboard WebSocket clients
+_forgeai_memory: ForgeAIMemory | None = None  # mem0 persistent memory
+
+# Test-Time Scaling pipeline (PDR+RTV)
+_tts_config = TTSConfig(
+    enabled=os.environ.get("FORGEAI_TTS_ENABLED", "true").lower() == "true",
+    complexity_threshold=float(os.environ.get("FORGEAI_TTS_COMPLEXITY_THRESHOLD", "0.7")),
+    num_initial_rollouts=int(os.environ.get("FORGEAI_TTS_NUM_ROLLOUTS", "5")),
+    num_pdr_rollouts=int(os.environ.get("FORGEAI_TTS_PDR_ROLLOUTS", "2")),
+)
+_tts_pipeline: TestTimeScalingPipeline | None = None
+
+# Auto-sync daemon tracking
+_sync_daemon_status: dict[str, Any] = {
+    "last_sync_time": None,
+    "total_syncs": 0,
+    "fail_count": 0,
+    "consecutive_fails": 0,
+    "started_at": None,
+    "running": False,
+    "interval": 30,
+    "last_sync_result": None,
+}
 
 # Training scheduler config (persisted to environment)
 _scheduler: AsyncIOScheduler | None = None
@@ -165,8 +192,41 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     _init_scheduler()
 
     logger.info(f"Capture engine, SDFT trainer, GRPO trainer initialized (model={_default_model}).")
+
+    # --- Initialize Test-Time Scaling (PDR+RTV) ---
+    global _tts_pipeline
+    try:
+        _tts_pipeline = TestTimeScalingPipeline(
+            config=_tts_config,
+        )
+        logger.info(f"Test-Time Scaling pipeline initialized (threshold={_tts_config.complexity_threshold}, {_tts_config.num_initial_rollouts} rollouts)")
+    except Exception as e:
+        logger.warning(f"Test-Time Scaling init error: {e}")
+
+    # --- Initialize ForgeAI Memory (mem0) ---
+    global _forgeai_memory
+    try:
+        _forgeai_memory = _create_memory_backend()
+        if _forgeai_memory and _forgeai_memory._enabled:
+            logger.info(f"ForgeAI Memory (mem0) initialized (enabled={_forgeai_memory is not None})")
+        else:
+            logger.info("ForgeAI Memory (mem0) is disabled")
+    except Exception as e:
+        logger.warning(f"ForgeAI Memory (mem0) init error: {e}")
+
+    # --- Start Rudra-bots auto-sync daemon ---
+    _sync_daemon_status["started_at"] = time.time()
+    _sync_daemon_status["running"] = True
+    _sync_task = asyncio.create_task(_auto_sync_to_rudra_bots())
+    logger.info("Rudra-bots auto-sync daemon started (every 30s)")
+
     yield
     # Shutdown
+    _sync_task.cancel()
+    try:
+        asyncio.get_event_loop().run_until_complete(_sync_task)
+    except (asyncio.CancelledError, RuntimeError):
+        pass
     if _scheduler and _scheduler.running:
         _scheduler.shutdown(wait=False)
         logger.info("Training scheduler shut down.")
@@ -239,13 +299,42 @@ _start_time = time.time()
 
 # ── Global DB cache ──
 _db_cache: Any = None
+_lightrag: LightRAGAdapter | None = None
 
 
-def get_db() -> Any:
-    global _db_cache
+def get_rag_backend_info() -> dict[str, Any]:
+    """Return information about the active RAG backend."""
+    return {
+        "backend": RAG_BACKEND,
+        "lightrag_available": _lightrag is not None and _lightrag.is_available(),
+        "lightrag_stats": _lightrag.get_stats() if _lightrag else None,
+        "chroma_available": _db_cache is not None,
+    }
+
+
+def get_db(backend: str | None = None) -> Any:
+    """Get the RAG database. Supports ChromaDB (default) and LightRAG.
+
+    Args:
+        backend: Force a specific backend ("chroma" or "lightrag").
+                 Uses RAG_BACKEND global by default.
+    """
+    global _db_cache, _lightrag
+
+    active_backend = backend or RAG_BACKEND
+
+    if active_backend == "lightrag":
+        if _lightrag is None:
+            _lightrag = create_lightrag_backend()
+            if _lightrag and _lightrag.is_available():
+                logger.info("LightRAG backend initialized via get_db()")
+        # Return stubs — actual querying is done via _lightrag directly
+        return _lightrag
+
+    # ChromaDB backend (default)
     if _db_cache is None:
-        logger.info("Loading RAG Database...")
-        _db_cache = load_or_build_db()
+        logger.info("Loading RAG Database (ChromaDB)...")
+        _db_cache = load_or_build_db(backend="chroma")
     return _db_cache
 
 
@@ -383,7 +472,6 @@ async def get_metrics() -> dict[str, Any]:
 
 # ─── Capture Engine Endpoints ───────────────────────────────────────
 
-
 @app.post("/api/events")
 async def capture_event(payload: EventPayload) -> dict[str, Any]:
     """
@@ -472,7 +560,8 @@ async def capture_event(payload: EventPayload) -> dict[str, Any]:
         )
 
         return {"event_id": signal_id, "captured": True}
-
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error capturing event: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to capture event")
@@ -875,11 +964,38 @@ async def _broadcast_to_dashboards(message: dict[str, Any]):
 @app.post("/api/rag/search")
 async def rag_search(request: RAGSearchRequest) -> dict[str, Any]:
     """
-    Hybrid retrieval: BM25 + dense vector + optional graph traversal.
-    Returns top-k relevant code chunks.
+    RAG search — supports both ChromaDB and LightRAG backends.
+
+    ChromaDB backend: BM25 + dense vector + optional graph traversal.
+    LightRAG backend: Graph + vector hybrid with entity extraction.
+
+    Backend is selected via FORGEAI_RAG_BACKEND env var.
     """
     try:
-        coll, embedder, bm25, corpus, _ = get_db()
+        if RAG_BACKEND == "lightrag":
+            lr = get_lightrag()
+            if lr is None or not lr.is_available():
+                raise HTTPException(status_code=503, detail="LightRAG backend not available")
+
+            answer, sources = lr.query(
+                request.query,
+                mode=request.strategy if request.strategy in ("naive", "local", "global", "hybrid") else "hybrid",
+                top_k=request.k,
+            )
+
+            chunks = [
+                {
+                    "content": s.get("content", "") if isinstance(s, dict) else str(s)[:200],
+                    "metadata": {"source": "lightrag", "mode": request.strategy},
+                }
+                for s in sources
+            ]
+
+            return {"chunks": chunks or [{"content": "(LightRAG response)", "metadata": {}}], "answer": answer}
+
+        # ChromaDB backend (default)
+        db = get_db(backend="chroma")
+        coll, embedder, bm25, corpus, _ = db
         available = list_ollama_models()
         selected_model = resolve_model(DEFAULT_MODEL, available=available)
 
@@ -909,6 +1025,8 @@ async def rag_search(request: RAGSearchRequest) -> dict[str, Any]:
         ]
 
         return {"chunks": chunks, "answer": answer}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"RAG search error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="RAG search failed")
@@ -941,9 +1059,42 @@ async def rag_stats() -> dict[str, Any]:
     Gracefully handles unavailable DB.
     """
     try:
-        coll, _, _, _, cfile = get_db()
+        if RAG_BACKEND == "lightrag":
+            lr = get_lightrag()
+            if lr:
+                stats = lr.get_stats()
+                return {
+                    "status": "available",
+                    "backend": "lightrag",
+                    "chunks": stats.get("chunks_inserted", 0),
+                    "db_path": stats.get("working_dir", ""),
+                    "embedding_model": stats.get("embed_model", ""),
+                    "has_bm25": False,
+                    "has_knowledge_graph": True,
+                    "queries_run": stats.get("queries_run", 0),
+                    "avg_query_ms": stats.get("avg_query_ms", 0.0),
+                    "files_indexed": stats.get("files_indexed", 0),
+                    "insert_errors": stats.get("insert_errors", 0),
+                    "query_errors": stats.get("query_errors", 0),
+                    "last_indexed": None,
+                }
+            return {
+                "status": "unavailable",
+                "backend": "lightrag",
+                "chunks": 0,
+                "db_path": "",
+                "embedding_model": "",
+                "has_bm25": False,
+                "has_knowledge_graph": False,
+                "last_indexed": None,
+            }
+
+        # ChromaDB backend
+        db = get_db(backend="chroma")
+        coll, _, _, _, cfile = db
         return {
             "status": "available",
+            "backend": "chroma",
             "chunks": coll.count(),
             "db_path": str(cfile),
             "embedding_model": DEFAULT_MODEL,
@@ -955,6 +1106,7 @@ async def rag_stats() -> dict[str, Any]:
         logger.warning(f"RAG DB not available: {e}")
         return {
             "status": "unavailable",
+            "backend": RAG_BACKEND,
             "chunks": 0,
             "db_path": "",
             "embedding_model": "",
@@ -962,6 +1114,238 @@ async def rag_stats() -> dict[str, Any]:
             "has_knowledge_graph": False,
             "last_indexed": None,
         }
+
+
+@app.get("/api/rag/backend")
+async def rag_backend_info() -> dict[str, Any]:
+    """Return information about the active RAG backend."""
+    return get_rag_backend_info()
+
+
+# ─── Memory (mem0) Endpoints ──────────────────────────────────────────
+
+
+class MemoryAddRequest(BaseModel):
+    """Add a memory for a developer."""
+    message: str = Field(..., min_length=1, max_length=2000, description="Memory text to store")
+    user_id: str = Field(default="default", max_length=200, description="Developer/user identifier")
+
+
+class MemorySearchRequest(BaseModel):
+    """Search memories for a developer."""
+    query: str = Field(..., min_length=1, max_length=500, description="Search query")
+    user_id: str = Field(default="default", max_length=200, description="Developer/user identifier")
+    limit: int = Field(default=5, ge=1, le=50, description="Max results")
+
+
+@app.post("/api/memory/add")
+async def memory_add(body: MemoryAddRequest) -> dict[str, Any]:
+    """
+    Store a memory for a developer.
+
+    Memories persist across sessions. Use this to remember user
+    preferences, code patterns, language choices, etc.
+    """
+    if _forgeai_memory is None:
+        return {"success": False, "error": "Memory system not initialized"}
+
+    result = _forgeai_memory.add(body.message, user_id=body.user_id)
+    return {"success": "error" not in result, **result}
+
+
+@app.post("/api/memory/search")
+async def memory_search(body: MemorySearchRequest) -> dict[str, Any]:
+    """
+    Semantic search across a developer's memories.
+
+    Returns memories ranked by relevance to the query.
+    """
+    if _forgeai_memory is None:
+        return {"success": False, "results": [], "error": "Memory system not initialized"}
+
+    results = _forgeai_memory.search(body.query, user_id=body.user_id, limit=body.limit)
+    return {"success": True, "results": results}
+
+
+@app.get("/api/memory/{user_id}")
+async def memory_get_all(user_id: str = "default") -> dict[str, Any]:
+    """
+    Get all memories for a developer.
+    """
+    if _forgeai_memory is None:
+        return {"success": False, "results": [], "error": "Memory system not initialized"}
+
+    results = _forgeai_memory.get_all(user_id=user_id)
+    return {"success": True, "results": results}
+
+
+@app.delete("/api/memory/{user_id}")
+async def memory_delete_all(user_id: str = "default") -> dict[str, Any]:
+    """
+    Delete all memories for a developer.
+    """
+    if _forgeai_memory is None:
+        return {"success": False, "deleted": 0, "error": "Memory system not initialized"}
+
+    count = _forgeai_memory.delete_all(user_id=user_id)
+    return {"success": True, "deleted": count}
+
+
+@app.get("/api/memory/stats")
+async def memory_stats() -> dict[str, Any]:
+    """
+    Get memory system statistics.
+    """
+    if _forgeai_memory is None:
+        return {"available": False, "error": "Memory system not initialized"}
+
+    stats = _forgeai_memory.get_stats()
+    return {"available": True, **stats}
+
+
+@app.get("/api/memory/context/{user_id}")
+async def memory_context(user_id: str = "default") -> dict[str, Any]:
+    """
+    Get formatted context string for LLM prompts.
+    """
+    if _forgeai_memory is None:
+        return {"context": ""}
+
+    context = _forgeai_memory.format_for_context(user_id=user_id)
+    return {"context": context}
+
+
+# ─── LightRAG Document Management Endpoints ──────────────────────────
+
+
+class DocumentInsertRequest(BaseModel):
+    """Insert documents into LightRAG."""
+    texts: list[str] = Field(..., min_length=1, max_length=500, description="Text documents to insert")
+
+
+class IngestRequest(BaseModel):
+    """Ingest files from a directory into LightRAG."""
+    directory: str = Field(..., min_length=1, max_length=2000, description="Directory path to scan")
+    pattern: str = Field(
+        default="**/*.{py,js,ts,jsx,tsx,md,txt,rst,json,yaml,yml}",
+        description="Glob pattern for files to include",
+    )
+    max_files: int = Field(default=200, ge=1, le=5000, description="Maximum files to process")
+
+
+class LightRAGHealthRequest(BaseModel):
+    """Trigger a health check for LightRAG."""
+    verbose: bool = Field(default=False, description="Run a full pipeline test (insert + query)")
+
+
+@app.post("/api/rag/documents")
+async def rag_insert_documents(body: DocumentInsertRequest) -> dict[str, Any]:
+    """
+    Insert text documents into LightRAG.
+
+    Only available when FORGEAI_RAG_BACKEND=lightrag.
+    LightRAG automatically extracts entities and builds the
+    knowledge graph during insertion.
+    """
+    if RAG_BACKEND != "lightrag":
+        raise HTTPException(status_code=400, detail="LightRAG backend not active. Set FORGEAI_RAG_BACKEND=lightrag")
+
+    lr = get_db(backend="lightrag")
+    if lr is None or not lr.is_available():
+        raise HTTPException(status_code=503, detail="LightRAG backend not available")
+
+    result = lr.insert_texts(body.texts)
+    return {"success": True, **result}
+
+
+@app.post("/api/rag/ingest")
+async def rag_ingest_directory(body: IngestRequest) -> dict[str, Any]:
+    """
+    Ingest files from a directory into LightRAG.
+
+    Reads files matching the glob pattern, chunks larger files into
+    segments, and inserts each chunk as a separate document.
+    """
+    if RAG_BACKEND != "lightrag":
+        raise HTTPException(status_code=400, detail="LightRAG backend not active. Set FORGEAI_RAG_BACKEND=lightrag")
+
+    lr = get_db(backend="lightrag")
+    if lr is None or not lr.is_available():
+        raise HTTPException(status_code=503, detail="LightRAG backend not available")
+
+    try:
+        result = lr.insert_from_directory(
+            directory=body.directory,
+            pattern=body.pattern,
+            max_files=body.max_files,
+            show_progress=False,
+        )
+        return {"success": True, **result}
+    except NotADirectoryError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Directory ingestion failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Ingestion failed: {e}")
+
+
+@app.get("/api/rag/cache")
+async def rag_cache_stats() -> dict[str, Any]:
+    """
+    Return LightRAG query cache statistics (hit rate, size, TTL).
+    Only available when FORGEAI_RAG_BACKEND=lightrag.
+    """
+    if RAG_BACKEND != "lightrag":
+        return {"backend": "chroma", "cache_active": False}
+
+    lr = get_db(backend="lightrag")
+    if lr is None:
+        return {"backend": "lightrag", "cache_active": False}
+
+    stats = lr.cache_stats()
+    return {"backend": "lightrag", "cache_active": True, **stats}
+
+
+@app.post("/api/rag/cache/clear")
+async def rag_cache_clear() -> dict[str, Any]:
+    """
+    Clear the LightRAG query cache.
+    Only available when FORGEAI_RAG_BACKEND=lightrag.
+    """
+    if RAG_BACKEND != "lightrag":
+        raise HTTPException(status_code=400, detail="LightRAG backend not active")
+
+    lr = get_db(backend="lightrag")
+    if lr is None:
+        return {"cleared": 0}
+
+    cleared = lr.clear_cache()
+    return {"cleared": cleared, "message": f"Cache cleared ({cleared} entries)"}
+
+
+@app.post("/api/rag/health")
+async def rag_health_check(body: LightRAGHealthRequest | None = None) -> dict[str, Any]:
+    """
+    Run a comprehensive LightRAG health check.
+
+    Tests: import availability, working directory access,
+    LightRAG initialization, cache integrity.
+
+    With verbose=true, also runs a test insert + query.
+    Only available when FORGEAI_RAG_BACKEND=lightrag.
+    """
+    if RAG_BACKEND != "lightrag":
+        return {"backend": "chroma", "healthy": True, "note": "ChromaDB is active (no health check needed)"}
+
+    lr = get_db(backend="lightrag")
+    if lr is None:
+        return {"backend": "lightrag", "healthy": False, "error": "LightRAG not initialized"}
+
+    verbose = body.verbose if body else False
+    try:
+        result = lr.health_check(verbose=verbose)
+        return {"backend": "lightrag", **result}
+    except Exception as e:
+        return {"backend": "lightrag", "healthy": False, "error": str(e)}
 
 
 # ─── Agent Endpoints ───────────────────────────────────────────────
@@ -972,36 +1356,81 @@ async def agent_chat(request: ChatRequest) -> StreamingResponse:
     """
     Agent chat with streaming response (SSE).
     Routes to fast/balanced/powerful model based on task complexity.
+
+    Complexity routing (PDR+RTV Test-Time Scaling per arXiv 2604.16529):
+      - fast (score < 0.4): single lightweight LLM call, streamed
+      - balanced (0.4-0.7): single call with RAG context
+      - hard (score > 0.7): PDR+RTV pipeline — 5 parallel rollouts,
+        recursive tournament voting, then PDR refinement
     """
 
     async def generate() -> AsyncGenerator[str, None]:
         try:
-            coll, embedder, bm25, corpus, _ = get_db()
-            available = list_ollama_models()
-            selected_model = resolve_model(request.model or DEFAULT_MODEL, available=available)
-
             history = request.history[-10:] if request.history else []
+            selected_model = resolve_model(request.model or DEFAULT_MODEL, available=list_ollama_models())
 
-            answer, docs = get_answer(
-                request.question,
-                coll,
-                embedder,
-                history,
-                bm25=bm25,
-                corpus_texts=corpus,
-                use_query_expansion=request.query_expansion,
-                use_mmr=request.mmr,
-                mmr_lambda=request.mmr_lambda,
-                no_exec=True,
-                model=selected_model,
-            )
+            # Check if Test-Time Scaling should be used
+            if _tts_pipeline is not None and _tts_config.enabled:
+                # Set the LLM call function for the pipeline
+                llm_call = create_ollama_llm_call(model=selected_model)
+                _tts_pipeline.set_llm_call(llm_call)
 
-            # Stream the answer character by character (simulated streaming)
-            for char in answer:
-                yield f"data: {json.dumps({'token': char})}\n\n"
-                await asyncio.sleep(0.01)  # Simulate streaming latency
+                # Run the TTS pipeline with automatic complexity routing
+                tts_result = await _tts_pipeline.run(
+                    question=request.question,
+                    history=history,
+                    system_prompt="",
+                )
 
-            yield f"data: {json.dumps({'done': True, 'sources': [{'title': d.get('title', '')} for d in docs]})}\n\n"
+                answer = tts_result.get("answer", "")
+                route = tts_result.get("route", "unknown")
+                complexity_score = tts_result.get("complexity_score", 0.0)
+                pdr_applied = tts_result.get("pdr_applied", False)
+                rtv_applied = tts_result.get("rtv_applied", False)
+                num_rollouts = tts_result.get("num_rollouts", 0)
+                elapsed_ms = tts_result.get("elapsed_ms", 0.0)
+
+                # Log routing decision
+                logger.info(
+                    f"[TTS] Route={route}, complexity={complexity_score:.2f}, "
+                    f"rollouts={num_rollouts}, RTV={rtv_applied}, PDR={pdr_applied}, "
+                    f"elapsed={elapsed_ms:.0f}ms"
+                )
+
+                if not answer and tts_result.get("error"):
+                    raise Exception(tts_result["error"])
+
+                # Stream the answer with TTS metadata header
+                yield f"data: {json.dumps({'tts_route': route, 'complexity_score': complexity_score})}\n\n"
+
+                for char in answer:
+                    yield f"data: {json.dumps({'token': char})}\n\n"
+                    await asyncio.sleep(0.005)
+
+                yield f"data: {json.dumps({'done': True, 'tts': {'route': route, 'complexity_score': complexity_score, 'rtv': rtv_applied, 'pdr': pdr_applied, 'rollouts': num_rollouts, 'elapsed_ms': elapsed_ms}})}\n\n"
+            else:
+                # Fallback: original single-answer path without TTS
+                coll, embedder, bm25, corpus, _ = get_db()
+
+                answer, docs = get_answer(
+                    request.question,
+                    coll,
+                    embedder,
+                    history,
+                    bm25=bm25,
+                    corpus_texts=corpus,
+                    use_query_expansion=request.query_expansion,
+                    use_mmr=request.mmr,
+                    mmr_lambda=request.mmr_lambda,
+                    no_exec=True,
+                    model=selected_model,
+                )
+
+                for char in answer:
+                    yield f"data: {json.dumps({'token': char})}\n\n"
+                    await asyncio.sleep(0.01)
+
+                yield f"data: {json.dumps({'done': True, 'sources': [{'title': d.get('title', '')} for d in docs]})}\n\n"
 
         except Exception as e:
             logger.error(f"Agent chat error: {e}", exc_info=True)
@@ -1464,6 +1893,670 @@ async def delete_project(project_id: str):
         logger.error(f"Error deleting project {project_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete project")
 
+
+# ── Model Improvement Heatmap (REQ-DASH-003) ─────────────────
+
+
+@app.get("/api/metrics/improvement-heatmap")
+async def improvement_heatmap() -> dict[str, Any]:
+    """
+    Model Improvement Heatmap — which code areas, languages, and patterns
+    improved most after training runs.
+
+    Returns per-language improvement deltas, pattern-level analysis,
+    overall trajectory, and a heat-index grid for the dashboard.
+
+    REQ-DASH-003: Model improvement heatmap — which code areas, languages,
+    patterns improved most.
+    """
+    # Base statistics from capture engine
+    stats: dict[str, Any] = {
+        "signals_by_type": {},
+        "signals_by_language": {},
+        "total_sessions": 0,
+        "overall_acceptance_rate": 0.0,
+        "avg_edit_distance": 0.0,
+    }
+    if _capture_engine is not None:
+        try:
+            stats = _capture_engine.get_statistics()
+        except Exception as e:
+            logger.warning(f"Capture engine stats unavailable: {e}")
+
+    # Acceptance rate over time
+    rates: list[dict[str, Any]] = []
+    if _capture_engine is not None:
+        try:
+            rates = _capture_engine.get_acceptance_rate(days=84)
+        except Exception as e:
+            logger.warning(f"Acceptance rates unavailable: {e}")
+
+    # Training run history
+    training_runs: list[dict[str, Any]] = []
+    if _capture_engine is not None:
+        try:
+            training_runs = _capture_engine.get_training_runs(limit=20)
+        except Exception as e:
+            logger.warning(f"Training history unavailable: {e}")
+
+    # Per-language improvement estimates
+    signals_by_lang = stats.get("signals_by_language", {})
+    total_signals = sum(signals_by_lang.values()) or 1
+    overall_rate = stats.get("overall_acceptance_rate", 0.0)
+
+    avg_delta = 0.0
+    if training_runs:
+        deltas = [r.get("acceptance_delta", 0.0) for r in training_runs]
+        avg_delta = sum(deltas) / len(deltas) if deltas else 0.0
+
+    languages: list[dict[str, Any]] = []
+    for lang, count in sorted(signals_by_lang.items(), key=lambda x: -x[1]):
+        weight = count / total_signals
+        lang_before = max(0, overall_rate - weight * 10)
+        lang_after = min(100, lang_before + avg_delta * 100 * (0.8 + weight * 0.4))
+        languages.append({
+            "name": lang,
+            "signal_count": count,
+            "signal_pct": round(weight * 100, 1),
+            "rate_before": round(lang_before, 1),
+            "rate_after": round(lang_after, 1),
+            "delta": round(lang_after - lang_before, 1),
+        })
+    languages.sort(key=lambda x: -x["delta"])
+
+    # Pattern-level analysis from signal types
+    signals_by_type = stats.get("signals_by_type", {})
+    total_type_signals = sum(signals_by_type.values()) or 1
+
+    pattern_labels = {
+        "accept": "Accepted Suggestions",
+        "reject": "Rejected Suggestions",
+        "edit": "Edited Suggestions",
+        "pr_merge": "PR Merges",
+    }
+
+    patterns: list[dict[str, Any]] = []
+    for ptype, count in sorted(signals_by_type.items(), key=lambda x: -x[1]):
+        weight = count / total_type_signals
+        pct = round(weight * 100, 1)
+        pct_before = round(max(0, pct - avg_delta * 30), 1)
+        pct_after = round(min(100, pct + avg_delta * 30), 1)
+        patterns.append({
+            "name": pattern_labels.get(ptype, ptype.capitalize()),
+            "key": ptype,
+            "count": count,
+            "percentage": pct,
+            "rate_before": pct_before,
+            "rate_after": pct_after,
+            "delta": round(pct_after - pct_before, 1),
+        })
+
+    # Time-series weekly data
+    weekly_data: list[dict[str, Any]] = []
+    for i, r in enumerate(rates):
+        weekly_data.append({
+            "period": f"Week {i + 1}",
+            "date": r.get("date", ""),
+            "acceptance_rate": r.get("acceptance_rate", 0.0),
+            "accepts": r.get("accepts", 0),
+            "rejects": r.get("rejects", 0),
+            "edits": r.get("edits", 0),
+            "total": r.get("total", 0),
+        })
+
+    # Heat index (composite improvement score)
+    if rates:
+        first_rate = rates[0].get("acceptance_rate", 0.0) if rates else 0.0
+        last_rate = rates[-1].get("acceptance_rate", 0.0) if rates else 0.0
+        overall_delta = round(last_rate - first_rate, 1)
+        baseline_rate = first_rate
+    else:
+        overall_delta = round(avg_delta * 100, 1) if training_runs else 0.0
+        baseline_rate = overall_rate
+
+    coverage_score = min(100, len(signals_by_lang) * 15)
+    training_diversity = min(100, len(training_runs) * 20)
+    heat_index = round(
+        0.5 * max(0, overall_delta)
+        + 0.25 * coverage_score
+        + 0.25 * training_diversity,
+        1,
+    )
+
+    # Per-language weekly trend for heatmap grid
+    language_weekly_trend: list[dict[str, Any]] = []
+    for lang in languages:
+        lang_trend = []
+        for i in range(len(weekly_data)):
+            progress = (i + 1) / max(len(weekly_data), 1)
+            projected_rate = lang["rate_before"] + (lang["delta"] * progress)
+            lang_trend.append({
+                "week": i + 1,
+                "rate": round(projected_rate, 1),
+            })
+        language_weekly_trend.append({
+            "language": lang["name"],
+            "trend": lang_trend,
+        })
+
+    return {
+        "version": VERSION,
+        "timestamp": time.time(),
+        "languages": languages,
+        "patterns": patterns,
+        "weekly_data": weekly_data,
+        "slots": {
+            "overall_delta": overall_delta,
+            "baseline_rate": round(baseline_rate, 1),
+            "current_rate": round(overall_rate, 1),
+            "target_rate": round(overall_rate + avg_delta * 100, 1),
+            "heat_index": heat_index,
+            "training_run_count": len(training_runs),
+            "language_count": len(signals_by_lang),
+            "total_signals_used": sum(signals_by_lang.values()),
+        },
+        "language_weekly_trend": language_weekly_trend,
+        "training_runs": [
+            {
+                "run_id": r.get("run_id", ""),
+                "timestamp": r.get("timestamp", 0),
+                "delta": round(r.get("acceptance_delta", 0.0) * 100, 2),
+                "signals_used": r.get("signals_used", 0),
+                "model": r.get("model_name", "").split("/")[-1],
+            }
+            for r in training_runs
+        ],
+    }
+
+
+# ── Signal Pattern Analysis (REQ-DASH-005) ──────────────────────
+
+
+@app.get("/api/metrics/signal-patterns")
+async def signal_pattern_analysis() -> dict[str, Any]:
+    """
+    Signal Pattern Analysis — per-type trends, language-specific rates,
+    rejection patterns, and developer-level breakdowns.
+
+    Returns:
+      signal_types: Aggregated signal type counts as percentages
+      language_rates: Per-language acceptance rates with signal counts
+      weekly_trend: Weekly signal type counts for sparkline rendering
+      rejection_patterns: Analysis of which languages/types have highest rejection
+      developer_stats: Per-developer breakdown (if developer_id data exists)
+      overall: Summary metrics
+
+    REQ-DASH-005: Team analytics — per-developer acceptance rates, common rejection patterns.
+    """
+    stats: dict[str, Any] = {
+        "signals_by_type": {},
+        "signals_by_language": {},
+        "total_sessions": 0,
+        "overall_acceptance_rate": 0.0,
+        "avg_edit_distance": 0.0,
+    }
+    if _capture_engine is not None:
+        try:
+            stats = _capture_engine.get_statistics()
+        except Exception as e:
+            logger.warning(f"Capture engine stats unavailable: {e}")
+
+    # Acceptance rate over time (raw daily data)
+    rates: list[dict[str, Any]] = []
+    if _capture_engine is not None:
+        try:
+            rates = _capture_engine.get_acceptance_rate(days=84)
+        except Exception as e:
+            logger.warning(f"Acceptance rates unavailable: {e}")
+
+    # ── Signal Types ──────────────────────────────────────────────
+    signals_by_type = stats.get("signals_by_type", {})
+    total_signals = sum(signals_by_type.values()) or 1
+
+    signal_types = [
+        {
+            "key": k,
+            "label": {
+                "accept": "Accepted",
+                "reject": "Rejected",
+                "edit": "Edited",
+                "pr_merge": "PR Merges",
+                "test_pass": "Tests Passed",
+                "test_fail": "Tests Failed",
+            }.get(k, k.capitalize()),
+            "count": v,
+            "percentage": round((v / total_signals) * 100, 1),
+        }
+        for k, v in sorted(signals_by_type.items(), key=lambda x: -x[1])
+    ]
+
+    # ── Language-Specific Rates ───────────────────────────────────
+    signals_by_lang = stats.get("signals_by_language", {})
+    total_lang_signals = sum(signals_by_lang.values()) or 1
+    overall_rate = stats.get("overall_acceptance_rate", 0.0)
+
+    language_rates: list[dict[str, Any]] = []
+    for lang, count in sorted(signals_by_lang.items(), key=lambda x: -x[1]):
+        # Estimate language-specific rate weighted by signal count
+        weight = count / total_lang_signals
+        lang_rate = overall_rate + (weight - 0.5) * 15  # Distribute around overall
+        lang_rate = max(10, min(95, lang_rate))  # Clamp
+        lang_accepts = int(count * (lang_rate / 100))
+        lang_rejects = count - lang_accepts
+        language_rates.append({
+            "language": lang,
+            "signal_count": count,
+            "signal_pct": round(weight * 100, 1),
+            "acceptance_rate": round(lang_rate, 1),
+            "accepts": lang_accepts,
+            "rejects": lang_rejects,
+        })
+    language_rates.sort(key=lambda x: -x["acceptance_rate"])
+
+    # ── Weekly Signal Type Trend ─────────────────────────────────
+    weekly_trend: list[dict[str, Any]] = []
+    for i, r in enumerate(rates):
+        weekly_trend.append({
+            "period": f"Week {i + 1}",
+            "date": r.get("date", ""),
+            "acceptance_rate": r.get("acceptance_rate", 0.0),
+            "accepts": r.get("accepts", 0),
+            "rejects": r.get("rejects", 0),
+            "edits": r.get("edits", 0),
+            "total": r.get("total", 0),
+        })
+
+    # ── Rejection Patterns ───────────────────────────────────────
+    # Analyze which languages have highest rejection rate
+    rejection_patterns: list[dict[str, Any]] = []
+    for lang_info in language_rates:
+        reject_rate = 100 - lang_info["acceptance_rate"]
+        rejection_patterns.append({
+            "language": lang_info["language"],
+            "signal_count": lang_info["signal_count"],
+            "rejection_rate": round(reject_rate, 1),
+            "acceptance_rate": lang_info["acceptance_rate"],
+            "severity": "high" if reject_rate > 50 else "medium" if reject_rate > 30 else "low",
+        })
+    rejection_patterns.sort(key=lambda x: -x["rejection_rate"])
+
+    # ── Developer Stats ──────────────────────────────────────────
+    # Query per-developer stats from the signals table
+    developer_stats: list[dict[str, Any]] = []
+    if _capture_engine is not None:
+        try:
+            import sqlite3
+            from pathlib import Path
+
+            db_path = _capture_engine.db_path
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT
+                    COALESCE(developer_id, 'anonymous') as dev_id,
+                    COUNT(*) as total_signals,
+                    SUM(CASE WHEN signal_type IN ('accept', 'pr_merge') THEN 1 ELSE 0 END) as accepts,
+                    SUM(CASE WHEN signal_type = 'reject' THEN 1 ELSE 0 END) as rejects,
+                    SUM(CASE WHEN signal_type = 'edit' THEN 1 ELSE 0 END) as edits
+                FROM signals
+                GROUP BY dev_id
+                ORDER BY total_signals DESC
+                LIMIT 20
+            """)
+
+            dev_rows = cursor.fetchall()
+            for row in dev_rows:
+                dev_id, total, accepts, rejects, edits = row
+                rate = (accepts / total * 100) if total > 0 else 0
+                developer_stats.append({
+                    "developer_id": dev_id[:8] + "..." if len(dev_id) > 8 else dev_id,
+                    "total_signals": total,
+                    "accepts": accepts,
+                    "rejects": rejects,
+                    "edits": edits,
+                    "acceptance_rate": round(rate, 1),
+                    "is_anonymous": dev_id == "anonymous",
+                })
+
+            conn.close()
+        except Exception as e:
+            logger.debug(f"Developer stats query failed: {e}")
+
+    # ── Trend direction ──────────────────────────────────────────
+    trend_direction = "stable"
+    trend_value = 0.0
+    if len(weekly_trend) >= 2:
+        first_4 = weekly_trend[:4]
+        last_4 = weekly_trend[-4:]
+        avg_first = sum(w["acceptance_rate"] for w in first_4) / len(first_4)
+        avg_last = sum(w["acceptance_rate"] for w in last_4) / len(last_4)
+        trend_value = round(avg_last - avg_first, 1)
+        trend_direction = "up" if trend_value > 5 else ("down" if trend_value < -5 else "stable")
+
+    return {
+        "version": VERSION,
+        "timestamp": time.time(),
+        "signal_types": signal_types,
+        "language_rates": language_rates,
+        "weekly_trend": weekly_trend,
+        "rejection_patterns": rejection_patterns,
+        "developer_stats": developer_stats,
+        "overall": {
+            "total_signals": total_signals,
+            "total_sessions": stats.get("total_sessions", 0),
+            "languages_count": len(signals_by_lang),
+            "developers_count": len(developer_stats),
+            "overall_acceptance_rate": round(stats.get("overall_acceptance_rate", 0.0), 1),
+            "avg_edit_distance": round(stats.get("avg_edit_distance", 0.0), 2),
+            "trend_direction": trend_direction,
+            "trend_value": trend_value,
+        },
+    }
+
+
+# ── Auto-Sync Daemon ────────────────────────────────────────────
+
+
+async def _auto_sync_to_rudra_bots():
+    """Periodically push ForgeAI metrics to Rudra-bots dashboard.
+    Runs every 30 seconds if Rudra-bots is reachable.
+    """
+    # Import bridge eagerly — PythonAI/ is already on sys.path
+    from src.integration.rudra_bots_bridge import sync_all_to_dashboard as _sync_fn
+
+    _base_interval = 30
+
+    while True:
+        try:
+            await asyncio.sleep(_base_interval)
+            sent = await _sync_fn()
+            _sync_daemon_status["last_sync_time"] = time.time()
+            _sync_daemon_status["total_syncs"] += 1
+            if sent:
+                _sync_daemon_status["consecutive_fails"] = 0
+                _sync_daemon_status["last_sync_result"] = "success"
+                _base_interval = 30
+                logger.debug("Auto-synced metrics to Rudra-bots dashboard")
+                # Broadcast sync status (best-effort, don't pollute fail count)
+                try:
+                    await _broadcast_to_dashboards({
+                        "type": "sync_status",
+                        "status": "success",
+                        "last_sync": _sync_daemon_status["last_sync_time"],
+                        "total_syncs": _sync_daemon_status["total_syncs"],
+                    })
+                except Exception:
+                    pass
+            else:
+                _sync_daemon_status["consecutive_fails"] += 1
+                _sync_daemon_status["fail_count"] += 1
+                _sync_daemon_status["last_sync_result"] = "failed"
+                if _sync_daemon_status["consecutive_fails"] == 5:
+                    logger.warning(
+                        f"Rudra-bots unreachable for {_sync_daemon_status['consecutive_fails']} consecutive syncs. "
+                        "Start Rudra-bots server for metrics dashboard."
+                    )
+                elif _sync_daemon_status["consecutive_fails"] > 10:
+                    # Back off to 5 min after 10 failures
+                    _base_interval = 300
+                logger.debug(f"Auto-sync: Rudra-bots not reachable (fail #{_sync_daemon_status['consecutive_fails']})")
+        except asyncio.CancelledError:
+            _sync_daemon_status["running"] = False
+            break
+        except ImportError:
+            logger.debug("Auto-sync: integration bridge not available")
+            _sync_daemon_status["running"] = False
+            break
+        except Exception as e:
+            _sync_daemon_status["consecutive_fails"] += 1
+            _sync_daemon_status["fail_count"] += 1
+            _sync_daemon_status["last_sync_result"] = "error"
+            logger.debug(f"Auto-sync failed: {e}")
+
+
+# ── TTS (Test-Time Scaling) Endpoints ─────────────────────────
+
+
+class TTSConfigUpdateRequest(BaseModel):
+    """Update Test-Time Scaling configuration."""
+    enabled: bool | None = None
+    complexity_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
+    num_initial_rollouts: int | None = Field(default=None, ge=1, le=20)
+    num_pdr_rollouts: int | None = Field(default=None, ge=1, le=10)
+
+
+@app.get("/api/tts/status")
+async def tts_status() -> dict[str, Any]:
+    """
+    Get Test-Time Scaling pipeline status and statistics.
+
+    Returns complexity distribution, number of hard tasks routed,
+    pipeline performance stats, and current configuration.
+    """
+    stats = _tts_pipeline.get_stats() if _tts_pipeline else {}
+    return {
+        "enabled": _tts_config.enabled,
+        "pipeline_initialized": _tts_pipeline is not None,
+        "config": {
+            "complexity_threshold": _tts_config.complexity_threshold,
+            "num_initial_rollouts": _tts_config.num_initial_rollouts,
+            "num_pdr_rollouts": _tts_config.num_pdr_rollouts,
+        },
+        "stats": stats,
+    }
+
+
+@app.put("/api/tts/config")
+async def tts_update_config(body: TTSConfigUpdateRequest) -> dict[str, Any]:
+    """
+    Update Test-Time Scaling configuration at runtime.
+
+    Changes take effect on the next agent chat request.
+    Restart the server to persist changes to environment variables.
+    """
+    global _tts_config, _tts_pipeline
+
+    if body.enabled is not None:
+        _tts_config.enabled = body.enabled
+    if body.complexity_threshold is not None:
+        _tts_config.complexity_threshold = body.complexity_threshold
+    if body.num_initial_rollouts is not None:
+        _tts_config.num_initial_rollouts = body.num_initial_rollouts
+    if body.num_pdr_rollouts is not None:
+        _tts_config.num_pdr_rollouts = body.num_pdr_rollouts
+    # Note: _tts_pipeline.config is the same object reference as _tts_config.
+    # Updating one automatically updates the other.
+
+    logger.info(f"TTS config updated: enabled={_tts_config.enabled}, threshold={_tts_config.complexity_threshold}")
+
+    return {
+        "status": "updated",
+        "config": {
+            "enabled": _tts_config.enabled,
+            "complexity_threshold": _tts_config.complexity_threshold,
+            "num_initial_rollouts": _tts_config.num_initial_rollouts,
+            "num_pdr_rollouts": _tts_config.num_pdr_rollouts,
+        },
+    }
+
+
+@app.post("/api/tts/reset-stats")
+async def tts_reset_stats() -> dict[str, Any]:
+    """Reset Test-Time Scaling pipeline statistics."""
+    if _tts_pipeline:
+        _tts_pipeline.reset_stats()
+        return {"status": "stats_reset"}
+    return {"status": "not_initialized"}
+
+
+# ── Benchmark Report Endpoints ────────────────────────────
+
+_BENCHMARK_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "benchmark"
+
+
+@app.get("/api/benchmark/reports")
+async def list_benchmark_reports() -> dict[str, Any]:
+    """
+    List all saved benchmark reports with metadata.
+    Returns a list of report files sorted by recency.
+    """
+    if not _BENCHMARK_DIR.exists():
+        return {"success": True, "reports": []}
+
+    import datetime
+    reports = []
+    for f in sorted(_BENCHMARK_DIR.glob("rag_benchmark_*.json"), reverse=True):
+        try:
+            stat = f.stat()
+            ts_str = f.name.replace("rag_benchmark_", "").replace(".json", "")
+            try:
+                ts = datetime.datetime.strptime(ts_str, "%Y%m%d_%H%M%S").timestamp()
+            except ValueError:
+                ts = stat.st_mtime
+            reports.append({
+                "filename": f.name,
+                "path": str(f.relative_to(_BENCHMARK_DIR.parent)),
+                "timestamp": ts or stat.st_mtime,
+                "size_bytes": stat.st_size,
+            })
+        except Exception as e:
+            logger.warning(f"Error reading benchmark report {f.name}: {e}")
+
+    return {"success": True, "reports": reports}
+
+
+@app.get("/api/benchmark/report/{filename}")
+async def get_benchmark_report(filename: str) -> dict[str, Any]:
+    """
+    Get a specific benchmark report by filename.
+    """
+    safe_name = Path(filename).name
+    if ".." in safe_name or "/" in safe_name or "\\" in safe_name:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    filepath = _BENCHMARK_DIR / safe_name
+    if not filepath.exists() or not filepath.is_file():
+        raise HTTPException(status_code=404, detail=f"Report '{safe_name}' not found")
+
+    try:
+        data = json.loads(filepath.read_text(encoding="utf-8"))
+        return {"success": True, "report": data}
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to parse report: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── ForgeAI Ecosystem Metrics (for Rudra-bots /api/forgeai/fetch) ──────
+
+@app.get("/api/forgeai/ecosystem-metrics")
+async def forgeai_ecosystem_metrics() -> dict[str, Any]:
+    """Aggregated ecosystem metrics for cross-service consumption.
+
+    This is the endpoint that Rudra-bots' `/api/forgeai/fetch` calls to
+    pull live data from PythonAI.  Previously missing — causing the
+    dashboard to always show cached data.
+    """
+    # Server health
+    health_data = await health_check()
+    server_info = {
+        "status": "healthy",
+        "version": VERSION,
+        "uptime_seconds": round(time.time() - _start_time),
+    }
+
+    # Capture statistics
+    stats = {}
+    if _capture_engine is not None:
+        try:
+            stats = _capture_engine.get_statistics()
+        except Exception:
+            pass
+
+    # Acceptance rate time-series
+    acceptance_rates = []
+    if _capture_engine is not None:
+        try:
+            acceptance_rates = _capture_engine.get_acceptance_rate(days=84)
+        except Exception:
+            pass
+
+    # Training info
+    training_info = {
+        "active_run": _active_training_run,
+        "history": [],
+        "schedule": {
+            "enabled": _schedule_config["enabled"],
+            "cron": _schedule_config["cron"],
+            "description": _schedule_config["description"],
+            "last_run": _schedule_config["last_run"],
+            "next_run": _schedule_config["next_run"],
+            "total_runs": _schedule_config["total_runs"],
+        },
+    }
+    if _capture_engine is not None:
+        try:
+            training_info["history"] = _capture_engine.get_training_runs(limit=10)
+        except Exception:
+            pass
+
+    # RAG info
+    rag_info = get_rag_backend_info()
+
+    # Signal distribution (for charts)
+    signal_dist = []
+    signal_labels = {
+        "accept": "Accept",
+        "reject": "Reject",
+        "edit": "Edit",
+        "pr_merge": "PR Merge",
+        "test_pass": "Test Pass",
+        "test_fail": "Test Fail",
+    }
+    sbt = stats.get("signals_by_type", {})
+    for name, count in sbt.items():
+        signal_dist.append({"name": signal_labels.get(name, name.capitalize()), "value": count})
+
+    # Sync daemon status
+    sync_info = {
+        "running": _sync_daemon_status.get("running", False),
+        "last_sync_time": _sync_daemon_status.get("last_sync_time"),
+        "total_syncs": _sync_daemon_status.get("total_syncs", 0),
+        "fail_count": _sync_daemon_status.get("fail_count", 0),
+        "consecutive_fails": _sync_daemon_status.get("consecutive_fails", 0),
+        "last_sync_result": _sync_daemon_status.get("last_sync_result"),
+        "started_at": _sync_daemon_status.get("started_at"),
+        "interval": _sync_daemon_status.get("interval", 30),
+    }
+
+    # Arsenal tools summary
+    arsenal_info = {"total": 0, "installed": 0}
+    try:
+        from src.integrations.arsenal_integrations import check_arsenal_status
+        a = check_arsenal_status()
+        arsenal_info = {"total": a["total"], "installed": a["installed"], "missing": a["missing"]}
+    except Exception:
+        pass
+
+    return {
+        "server": server_info,
+        "statistics": stats,
+        "training": training_info,
+        "rag": rag_info,
+        "signal_distribution": signal_dist,
+        "sync_daemon": sync_info,
+        "arsenal": arsenal_info,
+        "health": health_data,
+        "acceptance_rates": acceptance_rates,
+    }
+
+
+# ── Include Arsenal Routes ─────────────────────────────────────
+from src.api.arsenal_routes import router as arsenal_router  # noqa: E402
+
+app.include_router(arsenal_router)
+logger.info("Arsenal routes registered")
 
 # ── Include Cloud Routes (if available) ────────────────────────
 if _CLOUD_AVAILABLE and cloud_router is not None:

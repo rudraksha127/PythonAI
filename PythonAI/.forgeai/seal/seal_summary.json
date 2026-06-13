@@ -1,18 +1,46 @@
 {
-  "current_cycle": 1,
+  "current_cycle": 10,
   "state": {
-    "cycle_number": 1,
-    "total_actions_taken": 1,
+    "cycle_number": 10,
+    "total_actions_taken": 10,
     "domains_explored": {
-      "async_programming/hard": 1
+      "async_programming/hard": 1,
+      "general/easy": 1,
+      "debugging/hard": 1,
+      "error_handling/easy": 1,
+      "api_design/hard": 1,
+      "performance/easy": 1,
+      "data_structures/easy": 1,
+      "testing/hard": 1,
+      "general/hard": 1,
+      "concurrency/medium": 1
     },
     "difficulties_tried": {
-      "hard": 1
+      "hard": 5,
+      "easy": 4,
+      "medium": 1
     },
     "weakness_scores": {},
     "acceptance_rate_history": [],
     "action_effectiveness": {
       "increase_difficulty": [
+        0.0,
+        0.0
+      ],
+      "balance_languages": [
+        0.0
+      ],
+      "reduce_hallucination": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "focus_domain": [
+        0.0,
+        0.0
+      ],
+      "reinforce_weakness": [
         0.0
       ]
     },

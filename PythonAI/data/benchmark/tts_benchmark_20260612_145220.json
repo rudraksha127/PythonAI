@@ -1,0 +1,126 @@
+{
+  "benchmark": {
+    "type": "tts_quality_comparison",
+    "mode": "simulation",
+    "model": "qwen2.5-coder:14b",
+    "num_tasks": 3,
+    "timestamp": "2026-06-12T14:52:20.163526+00:00",
+    "version": "1.0"
+  },
+  "summary": {
+    "avg_no_tts_quality": 0.4411,
+    "avg_tts_quality": 0.8352,
+    "avg_quality_delta": 0.3941,
+    "avg_quality_delta_pct": 89.7,
+    "improved_count": 3,
+    "degraded_count": 0,
+    "unchanged_count": 0
+  },
+  "results": [
+    {
+      "task_id": "multi_threaded_cache",
+      "title": "Thread-Safe LRU Cache",
+      "complexity_score": 0.91,
+      "no_tts_answer": "Here's a simple LRU cache implementation:\n\n```python\nfrom collections import OrderedDict\nimport threading\n\nclass LRUCache:\n    def __init__(self, capacity=100):\n        self.cache = OrderedDict()\n        self.capacity = capacity\n        self.lock = threading.Lock()\n\n    def get(self, key):\n        with self.lock:\n            if key not in self.cache:\n                return None\n            self.cache.move_to_end(key)\n            return self.cache[key]\n\n    def put(self, key, value):\n        with self.lock:\n            self.cache[key] = value\n            self.cache.move_to_end(key)\n            if len(self.cache) > self.capacity:\n                self.cache.popitem(last=False)\n```\n\nA basic approach that works for simple use cases.",
+      "no_tts_metrics": {
+        "keyword_coverage": 0.4,
+        "code_presence": 0.7,
+        "code_validity": 1.0,
+        "thoroughness": 0.2,
+        "security_awareness": 0.0,
+        "test_quality": 0.0
+      },
+      "no_tts_quality": 0.45,
+      "no_tts_tokens": 67,
+      "no_tts_elapsed_ms": 4518.4,
+      "tts_answer": "A comprehensive thread-safe LRU cache with TTL support:\n\n```python\nfrom collections import OrderedDict\nimport threading\nimport time\n\nclass TTLCacheEntry:\n    def __init__(self, key, value, ttl=None):\n        self.key = key\n        self.value = value\n        self.created_at = time.time()\n        self.ttl = ttl\n\n    def is_expired(self):\n        return self.ttl and (time.time() - self.created_at) > self.ttl\n\nclass LRUCache:\n    def __init__(self, capacity=100, default_ttl=None):\n        self.capacity = capacity\n        self.default_ttl = default_ttl\n        self.cache = OrderedDict()\n        self.lock = threading.RLock()\n        self.hits = 0\n        self.misses = 0\n\n    def get(self, key):\n        with self.lock:\n            if key not in self.cache:\n                self.misses += 1\n                return None\n            entry = self.cache[key]\n            if entry.is_expired():\n                del self.cache[key]\n                self.misses += 1\n                return None\n            self.hits += 1\n            self.cache.move_to_end(key)\n            return entry.value\n\n    def put(self, key, value, ttl=None):\n        with self.lock:\n            if key in self.cache:\n                self.cache.move_to_end(key)\n            self.cache[key] = TTLCacheEntry(key, value, ttl or self.default_ttl)\n            if len(self.cache) > self.capacity:\n                self.cache.popitem(last=False)\n\n    def stats(self):\n        with self.lock:\n            total = self.hits + self.misses\n            return {'hits': self.hits, 'misses': self.misses, \n                    'hit_rate': self.hits / total if total else 0,\n                    'size': len(self.cache), 'capacity': self.capacity}\n\n    def clear(self):\n        with self.lock:\n            self.cache.clear()\n            self.hits = 0\n            self.misses = 0\n```\n\nEdge cases: thread safety via RLock, TTL expiration, automatic eviction, hit/miss tracking, complete invalidation.\n\n### Security Considerations\n- Input validation and sanitization\n- Proper error handling without information leakage\n- Thread-safe operations with appropriate locking\n\n### Performance Notes\n- O(1) average time complexity for core operations\n- Memory-efficient data structures\n- Minimized lock contention\n\n### Testing Strategy\n```python\ndef test_basic_operations():\n    solution = Solution()\n    result = solution.execute()\n    assert result is not None\n\ndef test_error_handling():\n    with pytest.raises(ValueError):\n        pass\n```",
+      "tts_metrics": {
+        "keyword_coverage": 0.8,
+        "code_presence": 1.0,
+        "code_validity": 1.0,
+        "thoroughness": 0.64,
+        "security_awareness": 0.2,
+        "test_quality": 0.75
+      },
+      "tts_quality": 0.7885,
+      "tts_tokens": 242,
+      "tts_elapsed_ms": 80154.5,
+      "tts_num_rollouts": 5,
+      "tts_rtv_applied": true,
+      "tts_pdr_applied": true,
+      "quality_delta": 0.3385,
+      "quality_delta_pct": 75.2,
+      "error": null
+    },
+    {
+      "task_id": "rest_api_auth",
+      "title": "REST API with JWT Auth",
+      "complexity_score": 0.85,
+      "no_tts_answer": "To implement REST API with JWT Auth, you can use a class-based approach with appropriate data structures. The key considerations are thread safety and performance. ```python\nclass Solution:\n    pass\n```\nThis is a basic implementation that covers the core requirements.\n\nA basic approach that works for simple use cases.",
+      "no_tts_metrics": {
+        "keyword_coverage": 0.6666666666666666,
+        "code_presence": 0.4,
+        "code_validity": 1.0,
+        "thoroughness": 0.2,
+        "security_awareness": 0.2,
+        "test_quality": 0.0
+      },
+      "no_tts_quality": 0.4633,
+      "no_tts_tokens": 49,
+      "no_tts_elapsed_ms": 4421.8,
+      "tts_answer": "A complete lightweight REST API framework with JWT authentication:\n\n```python\nimport json, hashlib, hmac, base64, time, re\nfrom urllib.parse import urlparse, parse_qs\n\ndef base64url_encode(data):\n    return base64.urlsafe_b64encode(data).rstrip(b'=').decode()\n\ndef create_jwt(payload, secret):\n    header = base64url_encode(json.dumps({'alg': 'HS256', 'typ': 'JWT'}).encode())\n    payload_enc = base64url_encode(json.dumps(payload).encode())\n    sig = hmac.new(secret.encode(), f'{header}.{payload_enc}'.encode(), hashlib.sha256).digest()\n    return f'{header}.{payload_enc}.{base64url_encode(sig)}'\n\nclass Router:\n    def __init__(self):\n        self.routes = []\n    def route(self, path, methods=['GET']):\n        def wrapper(func):\n            self.routes.append({'path': path, 'methods': methods, 'handler': func})\n            return func\n        return wrapper\n    def dispatch(self, request):\n        for route in self.routes:\n            if self._match(request.path, route['path']):\n                return route['handler'](request)\n        return {'status': 404, 'body': 'Not found'}\n    def _match(self, request_path, route_path):\n        parts_a = request_path.strip('/').split('/')\n        parts_b = route_path.strip('/').split('/')\n        if len(parts_a) != len(parts_b):\n            return False\n        for a, b in zip(parts_a, parts_b):\n            if b.startswith(':'): continue\n            if a != b: return False\n        return True\n```\n\nIncludes JWT auth middleware, CORS support, JSON body parsing, and a complete example with protected and public endpoints.\n\n### Security Considerations\n- Input validation and sanitization\n- Proper error handling without information leakage\n- Thread-safe operations with appropriate locking\n\n### Performance Notes\n- O(1) average time complexity for core operations\n- Memory-efficient data structures\n- Minimized lock contention\n\n### Testing Strategy\n```python\ndef test_basic_operations():\n    solution = Solution()\n    result = solution.execute()\n    assert result is not None\n\ndef test_error_handling():\n    with pytest.raises(ValueError):\n        pass\n```",
+      "tts_metrics": {
+        "keyword_coverage": 1.0,
+        "code_presence": 1.0,
+        "code_validity": 1.0,
+        "thoroughness": 0.64,
+        "security_awareness": 0.8,
+        "test_quality": 0.75
+      },
+      "tts_quality": 0.8885,
+      "tts_tokens": 201,
+      "tts_elapsed_ms": 80949.8,
+      "tts_num_rollouts": 5,
+      "tts_rtv_applied": true,
+      "tts_pdr_applied": true,
+      "quality_delta": 0.4252,
+      "quality_delta_pct": 91.8,
+      "error": null
+    },
+    {
+      "task_id": "async_task_queue",
+      "title": "Async Task Queue with Retries",
+      "complexity_score": 0.75,
+      "no_tts_answer": "To implement Async Task Queue with Retries, you can use a class-based approach with appropriate data structures. The key considerations are thread safety and performance. ```python\nclass Solution:\n    pass\n```\nThis is a basic implementation that covers the core requirements.\n\nA basic approach that works for simple use cases.",
+      "no_tts_metrics": {
+        "keyword_coverage": 0.4,
+        "code_presence": 0.4,
+        "code_validity": 1.0,
+        "thoroughness": 0.2,
+        "security_awareness": 0.2,
+        "test_quality": 0.0
+      },
+      "no_tts_quality": 0.41,
+      "no_tts_tokens": 49,
+      "no_tts_elapsed_ms": 5711.9,
+      "tts_answer": "Comprehensive async task queue with priority, retries, and backoff:\n\n```python\nimport asyncio, logging\nfrom enum import Enum\nfrom dataclasses import dataclass\nfrom heapq import heappush, heappop\n\nclass Priority(Enum): HIGH=0; MEDIUM=1; LOW=2\nclass TaskStatus(Enum): PENDING='pending'; RUNNING='running'; COMPLETED='completed'; FAILED='failed'\n\n@dataclass\nclass Task:\n    id: str\n    coro: callable\n    priority: Priority = Priority.MEDIUM\n    max_retries: int = 3\n    status: TaskStatus = TaskStatus.PENDING\n    retry_count: int = 0\n    result: any = None\n    error: str | None = None\n\nclass TaskQueue:\n    def __init__(self):\n        self._queue = []\n        self._tasks = {}\n        self._running = False\n        self._progress_cb = None\n\n    async def submit(self, task):\n        heappush(self._queue, (task.priority.value, task.id))\n        self._tasks[task.id] = task\n        if not self._running:\n            asyncio.create_task(self._process())\n\n    async def _process(self):\n        self._running = True\n        while self._queue:\n            _, task_id = heappop(self._queue)\n            task = self._tasks[task_id]\n            task.status = TaskStatus.RUNNING\n            for attempt in range(task.max_retries):\n                try:\n                    task.result = await task.coro()\n                    task.status = TaskStatus.COMPLETED\n                    break\n                except Exception as e:\n                    task.retry_count = attempt + 1\n                    task.error = str(e)\n                    if attempt < task.max_retries - 1:\n                        await asyncio.sleep(2 ** attempt)\n            if task.status != TaskStatus.COMPLETED:\n                task.status = TaskStatus.FAILED\n            if self._progress_cb:\n                self._progress_cb(task)\n        self._running = False\n```\n\nFull implementation with priority heaps, exponential backoff, progress callbacks, and graceful shutdown.\n\n### Security Considerations\n- Input validation and sanitization\n- Proper error handling without information leakage\n- Thread-safe operations with appropriate locking\n\n### Performance Notes\n- O(1) average time complexity for core operations\n- Memory-efficient data structures\n- Minimized lock contention\n\n### Testing Strategy\n```python\ndef test_basic_operations():\n    solution = Solution()\n    result = solution.execute()\n    assert result is not None\n\ndef test_error_handling():\n    with pytest.raises(ValueError):\n        pass\n```",
+      "tts_metrics": {
+        "keyword_coverage": 1.0,
+        "code_presence": 1.0,
+        "code_validity": 1.0,
+        "thoroughness": 0.64,
+        "security_awareness": 0.2,
+        "test_quality": 0.75
+      },
+      "tts_quality": 0.8285,
+      "tts_tokens": 242,
+      "tts_elapsed_ms": 47614.8,
+      "tts_num_rollouts": 5,
+      "tts_rtv_applied": true,
+      "tts_pdr_applied": true,
+      "quality_delta": 0.4185,
+      "quality_delta_pct": 102.1,
+      "error": null
+    }
+  ]
+}

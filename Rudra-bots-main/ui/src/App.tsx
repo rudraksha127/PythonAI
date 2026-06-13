@@ -5,7 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import ChatArea from "@/components/ChatArea";
 import ThemeModal from "@/components/ThemeModal";
 import BrainModal from "@/components/BrainModal";
-import { Dashboard, Settings } from "@/pages";
+import { Dashboard, ForgeAI, Settings } from "@/pages";
 
 // ─── Shared layout: Sidebar + children ─────────────────────────
 
@@ -57,6 +57,16 @@ function DashboardPage() {
   return (
     <MainLayout>
       <Dashboard />
+    </MainLayout>
+  );
+}
+
+// ─── ForgeAI Metrics page ───────────────────────────────────────
+
+function ForgeAIPage() {
+  return (
+    <MainLayout>
+      <ForgeAI />
     </MainLayout>
   );
 }
@@ -180,6 +190,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/forgeai" element={<ForgeAIPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/components" element={<ComponentsDemo />} />
           <Route path="/" element={<Navigate to="/chat" replace />} />

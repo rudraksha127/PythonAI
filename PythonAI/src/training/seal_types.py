@@ -388,6 +388,19 @@ class SealConfig:
     exploration_rate: float = 0.3
     """Probability of choosing a random action instead of the best-known one."""
 
+    # Test-Time Scaling for curriculum generation
+    tts_enabled: bool = False
+    """Use PDR+RTV (Test-Time Scaling) to generate better curriculum actions."""
+
+    tts_complexity_threshold: float = 0.7
+    """Complexity threshold below which TTS is skipped for curriculum generation."""
+
+    tts_num_rollouts: int = 3
+    """Number of parallel curriculum rollouts to generate when TTS is enabled."""
+
+    tts_num_pdr_rollouts: int = 1
+    """Number of PDR refinement rollouts for the winning curriculum."""
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SealConfig:
         valid_keys = set(cls.__dataclass_fields__.keys())

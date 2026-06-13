@@ -36,7 +36,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from cryptography.fernet import Fernet
+from src.utils.encrypted_db import EncryptedDB, create_encrypted_db, get_machine_id
 
 
 class SignalType(str, Enum):
@@ -188,48 +188,43 @@ class CaptureEngine:
     - Queryable: easy extraction for training pipeline
     """
 
-    SCHEMA_VERSION = "2.0"
+    SCHEMA_VERSION = "2.1"
 
     def __init__(
         self,
         db_path: str | Path | None = None,
         encryption_key: str | None = None,
         project_name: str = "default",
+        prefer_sqlcipher: bool = True,
     ):
         if db_path is None:
             db_path = Path.home() / ".forgeai" / "signals.db"
         self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         self.project_name = project_name
         self.session_id = str(uuid.uuid4())
 
-        # Encryption
-        if encryption_key:
-            self.fernet = Fernet(encryption_key)
-        else:
-            # Generate from machine ID for consistent encryption
-            machine_id = self._get_machine_id()
-            key = hashlib.sha256(machine_id.encode()).digest()
-            # Use first 32 bytes as Fernet key (base64 encoded)
-            import base64
-
-            self.fernet = Fernet(base64.urlsafe_b64encode(key[:32]))
+        # Initialize encrypted DB wrapper
+        self._db = create_encrypted_db(
+            db_path=self.db_path,
+            encryption_key=encryption_key,
+            prefer_sqlcipher=prefer_sqlcipher,
+            auto_migrate=True,
+        )
 
         self._init_db()
 
-    def _get_machine_id(self) -> str:
-        """Get a unique but anonymized machine identifier."""
-        try:
-            import platform
+    def _get_conn(self) -> sqlite3.Connection:
+        """Get an encrypted database connection.
 
-            return platform.node() + platform.machine()
-        except Exception:
-            return str(uuid.getnode())
+        Replaces all raw sqlite3.connect() calls with this method
+        to ensure every connection goes through the encryption layer.
+        """
+        return self._db.connect()
 
     def _init_db(self):
         """Initialize the SQLite database with schema."""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_conn()
         cursor = conn.cursor()
 
         cursor.executescript("""
@@ -431,7 +426,7 @@ class CaptureEngine:
         test_output: str | None = None,
     ):
         """Update a signal with test execution result (verifiable reward)."""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_conn()
         cursor = conn.cursor()
         cursor.execute(
             "UPDATE signals SET test_passed = ? WHERE signal_id = ?",
@@ -484,7 +479,7 @@ class CaptureEngine:
 
     def _store_signal(self, signal: TrainingSignal):
         """Store a signal in the database."""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_conn()
         cursor = conn.cursor()
 
         data = signal.to_dict()
@@ -529,7 +524,7 @@ class CaptureEngine:
         conn.close()
 
     def _update_session_accept(self):
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_conn()
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -544,7 +539,7 @@ class CaptureEngine:
         conn.close()
 
     def _update_session_reject(self):
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_conn()
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -559,7 +554,7 @@ class CaptureEngine:
         conn.close()
 
     def _update_session_edit(self):
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_conn()
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -576,7 +571,7 @@ class CaptureEngine:
     def _update_daily_metrics(self, event_type: str):
         """Update daily acceptance rate metrics."""
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_conn()
         cursor = conn.cursor()
 
         if event_type == "accept":
@@ -621,7 +616,7 @@ class CaptureEngine:
 
     def _anonymize_id(self) -> str:
         """Create an anonymized developer ID."""
-        machine_id = self._get_machine_id()
+        machine_id = get_machine_id()
         return hashlib.sha256(machine_id.encode()).hexdigest()[:16]
 
     def store_training_run(
@@ -637,7 +632,7 @@ class CaptureEngine:
         metrics: dict[str, Any] | None = None,
     ):
         """Record a training run with before/after acceptance rate."""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_conn()
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -669,7 +664,7 @@ class CaptureEngine:
         limit: int = 10,
     ) -> list[dict[str, Any]]:
         """Get recent training runs with acceptance rate deltas."""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_conn()
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -717,7 +712,7 @@ class CaptureEngine:
         limit: int = 1000,
     ) -> list[TrainingSignal]:
         """Query signals with optional filters."""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_conn()
         cursor = conn.cursor()
 
         query = "SELECT * FROM signals WHERE 1=1"
@@ -800,7 +795,7 @@ class CaptureEngine:
             "output": "<suggestion or final_code>"
         }
         """
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_conn()
         cursor = conn.cursor()
 
         signal_types = []
@@ -902,7 +897,7 @@ class CaptureEngine:
         group_by: str = "day",
     ) -> list[dict[str, Any]]:
         """Get acceptance rate over time."""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_conn()
         cursor = conn.cursor()
 
         cutoff = time.time() - (days * 86400)
@@ -941,7 +936,7 @@ class CaptureEngine:
 
     def get_statistics(self) -> dict[str, Any]:
         """Get overall capture statistics."""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_conn()
         cursor = conn.cursor()
 
         stats = {}

@@ -85,3 +85,43 @@ export async function searchRag(
     body: JSON.stringify({ query, project_id: projectId || "default" }),
   });
 }
+
+// ─── ForgeAI Ecosystem Metrics ────────────────────────────────
+
+export interface ForgeAIMetricsResponse {
+  success: boolean;
+  data?: {
+    version: string;
+    timestamp: number;
+    statistics: {
+      signals_by_type: Record<string, number>;
+      signals_by_language: Record<string, number>;
+      total_sessions: number;
+      overall_acceptance_rate: number;
+      avg_edit_distance: number;
+    };
+    acceptance_rates: Array<{
+      date: string;
+      acceptance_rate: number;
+      accepts: number;
+      rejects: number;
+      edits: number;
+    }>;
+    training: {
+      active_run: Record<string, unknown> | null;
+      history: Array<Record<string, unknown>>;
+      schedule: { enabled: boolean; cron: string; description: string; next_run: string | null; total_runs: number };
+    };
+    signal_distribution: Array<{ name: string; value: number; percentage: number }>;
+    total_signals: number;
+    server: { uptime_seconds: number; status: string; inference_connected: boolean; db_ok: boolean };
+    health: { status: string; version: string; uptime_seconds: number };
+  };
+  cached: boolean;
+  error?: string;
+  hint?: string;
+}
+
+export async function getForgeAIMetrics(): Promise<ForgeAIMetricsResponse> {
+  return fetchApi<ForgeAIMetricsResponse>("/forgeai/fetch");
+}

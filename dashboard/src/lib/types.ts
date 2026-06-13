@@ -146,12 +146,37 @@ export interface SealStats {
 
 export interface RagStats {
   status: string;
+  backend?: string;
   chunks: number;
   db_path: string;
   embedding_model: string;
   has_bm25: boolean;
   has_knowledge_graph: boolean;
   last_indexed: string | null;
+  // LightRAG-specific fields
+  queries_run?: number;
+  avg_query_ms?: number;
+  files_indexed?: number;
+  insert_errors?: number;
+  query_errors?: number;
+}
+
+export interface RagCacheStats {
+  backend: string;
+  cache_active: boolean;
+  size: number;
+  maxsize: number;
+  ttl: number;
+  hits: number;
+  misses: number;
+  hit_rate: number;
+}
+
+export interface RagBackendInfo {
+  backend: string;
+  lightrag_available: boolean;
+  lightrag_stats: Record<string, unknown> | null;
+  chroma_available: boolean;
 }
 
 // ─── WebSocket Messages ─────────────────────────────────────────
@@ -184,6 +209,74 @@ export interface WsSyncStatus {
 }
 
 export type WsMessage = WsEventCaptured | WsTrainingProgress | WsTrainingStarted | WsSyncStatus;
+
+// ─── Signal Pattern Analysis (REQ-DASH-005) ────────────────────
+
+export interface SignalTypeInfo {
+  key: string;
+  label: string;
+  count: number;
+  percentage: number;
+}
+
+export interface LanguageRateInfo {
+  language: string;
+  signal_count: number;
+  signal_pct: number;
+  acceptance_rate: number;
+  accepts: number;
+  rejects: number;
+}
+
+export interface WeeklySignalTrendPoint {
+  period: string;
+  date: string;
+  acceptance_rate: number;
+  accepts: number;
+  rejects: number;
+  edits: number;
+  total: number;
+}
+
+export interface RejectionPattern {
+  language: string;
+  signal_count: number;
+  rejection_rate: number;
+  acceptance_rate: number;
+  severity: "high" | "medium" | "low";
+}
+
+export interface DeveloperStat {
+  developer_id: string;
+  total_signals: number;
+  accepts: number;
+  rejects: number;
+  edits: number;
+  acceptance_rate: number;
+  is_anonymous: boolean;
+}
+
+export interface SignalPatternOverall {
+  total_signals: number;
+  total_sessions: number;
+  languages_count: number;
+  developers_count: number;
+  overall_acceptance_rate: number;
+  avg_edit_distance: number;
+  trend_direction: "up" | "down" | "stable";
+  trend_value: number;
+}
+
+export interface SignalPatternData {
+  version: string;
+  timestamp: number;
+  signal_types: SignalTypeInfo[];
+  language_rates: LanguageRateInfo[];
+  weekly_trend: WeeklySignalTrendPoint[];
+  rejection_patterns: RejectionPattern[];
+  developer_stats: DeveloperStat[];
+  overall: SignalPatternOverall;
+}
 
 // ─── Improvement Heatmap (REQ-DASH-003) ────────────────────────
 
@@ -254,6 +347,138 @@ export interface ImprovementHeatmapData {
   slots: HeatmapSlots;
   language_weekly_trend: LanguageWeeklyTrend[];
   training_runs: HeatmapTrainingRun[];
+}
+
+// ─── TTS (Test-Time Scaling) Status ────────────────────────────────
+
+export interface TtsConfig {
+  enabled: boolean;
+  complexity_threshold: number;
+  num_initial_rollouts: number;
+  num_pdr_rollouts: number;
+}
+
+export interface TtsGeneratorStats {
+  total_rollouts: number;
+  total_tokens: number;
+  total_elapsed_ms: number;
+}
+
+export interface TtsTournamentStats {
+  rounds: number;
+  comparisons: number;
+  judge_tokens: number;
+}
+
+export interface TtsPdrStats {
+  pdr_rounds: number;
+  pdr_tokens: number;
+}
+
+export interface TtsStats {
+  total_pipelines: number;
+  hard_tasks: number;
+  medium_tasks: number;
+  fast_tasks: number;
+  total_tokens_used: number;
+  total_elapsed_ms: number;
+  avg_complexity_score: number;
+  complexity_threshold: number;
+  config: TtsConfig;
+  generator: TtsGeneratorStats;
+  tournament: TtsTournamentStats;
+  pdr: TtsPdrStats;
+}
+
+export interface TtsStatusResponse {
+  enabled: boolean;
+  pipeline_initialized: boolean;
+  config: TtsConfig;
+  stats: TtsStats | Record<string, never>;
+}
+
+// ─── RAG Benchmark Report ──────────────────────────────────────────
+
+export interface BenchmarkReport {
+  version: string;
+  timestamp: number;
+  config: {
+    model: string;
+    embed_model: string;
+    num_queries: number;
+    test_queries: string[];
+    cache_test_queries: string[];
+  };
+  timing: {
+    seed_seconds: number;
+    cold_queries_seconds: number;
+    concurrent_seconds?: number;
+    cache_queries_seconds: number;
+    total_seconds: number;
+  };
+  comparisons: Record<string, number>;
+  stats: Record<string, {
+    avg_total_ms: number;
+    min_total_ms: number;
+    max_total_ms: number;
+    p50_ms: number;
+    p95_ms: number;
+    avg_retrieval_ms: number;
+    avg_answer_len: number;
+    count: number;
+    errors: number;
+  }>;
+  details: Array<{
+    query: string;
+    backend: string;
+    mode: string;
+    total_ms: number;
+    retrieval_ms: number;
+    answer_len: number;
+    error: string | null;
+  }>;
+  throughput: {
+    concurrent_time_seconds: number;
+    results: Array<{
+      backend: string;
+      concurrency: number;
+      total_queries: number;
+      wall_time_seconds: number;
+      qps: number;
+      avg_latency_ms: number;
+      p50_ms: number;
+      p95_ms: number;
+      min_ms: number;
+      max_ms: number;
+      errors: number;
+    }>;
+    scaling: Record<string, Record<string, number>>;
+    best_qps: number;
+    best_backend: string;
+    best_concurrency: number;
+  };
+  cache_stats_from_adapter?: {
+    size: number;
+    maxsize: number;
+    ttl: number;
+    hits: number;
+    misses: number;
+    hit_rate: number;
+  };
+  per_mode_queries?: Record<string, number>;
+}
+
+export interface BenchmarkReportListItem {
+  filename: string;
+  timestamp: number;
+  size_bytes: number;
+  report?: BenchmarkReport;
+}
+
+export interface BenchmarkListResponse {
+  success: boolean;
+  reports: BenchmarkReportListItem[];
+  error?: string;
 }
 
 // ─── UI State ───────────────────────────────────────────────────

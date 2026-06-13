@@ -17,11 +17,12 @@ Architecture:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import random
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from src.training.seal_types import (
     CurriculumState,
@@ -182,16 +183,33 @@ class CurriculumGenerator:
         self,
         config: SealConfig | None = None,
         state: CurriculumState | None = None,
+        tts_llm_call: Callable | None = None,
     ):
+        """Initialize the curriculum generator.
+
+        Args:
+            config: SEAL configuration (includes TTS settings).
+            state: Current curriculum state.
+            tts_llm_call: Async LLM call function for TTS pipeline.
+                Required when config.tts_enabled is True.
+        """
         self.config = config or SealConfig()
         self.state = state or CurriculumState()
+        self.tts_llm_call = tts_llm_call
+
+        # TTS pipeline cache (created lazily)
+        self._tts_pipeline = None
 
     def generate_action(self) -> SelfEditAction:
         """Generate the next curriculum action.
 
+        If TTS is enabled and an LLM call function is available, uses
+        the PDR+RTV pipeline to generate multiple candidate curriculum
+        actions and select the best one. Otherwise, falls back to the
+        standard single LLM call or random exploration.
+
         With probability exploration_rate, picks a random action
-        to explore. Otherwise, generates an informed action via
-        the LLM curriculum generator.
+        to explore regardless of TTS mode.
         """
 
         # Exploration: try something random
@@ -203,7 +221,19 @@ class CurriculumGenerator:
             )
             return action
 
-        # Exploitation: use LLM-informed decision
+        # TTS-based generation (when enabled)
+        if self.config.tts_enabled and self.tts_llm_call:
+            action = self._generate_tts_action()
+            if action is not None:
+                logger.info(
+                    f"[SEAL-TTS] Curriculum action: {action.action_type.value} "
+                    f"(domain={action.domain}, count={action.count}, "
+                    f"difficulty={action.difficulty})"
+                )
+                return action
+            logger.info("[SEAL-TTS] TTS generation failed, falling back to standard LLM")
+
+        # Standard LLM-based generation
         action = self._generate_llm_action()
         if action is None:
             # Fallback to random on failure
@@ -243,6 +273,99 @@ class CurriculumGenerator:
             return None
         except Exception as e:
             logger.error(f"[SEAL] LLM curriculum generation error: {e}")
+            return None
+
+    def _get_or_create_tts_pipeline(self) -> Any:
+        """Get or create the TTS pipeline for curriculum generation.
+
+        Uses lazy initialization so the TTS pipeline is only created
+        when actually needed (not at init time).
+        """
+        if self._tts_pipeline is not None:
+            return self._tts_pipeline
+
+        from src.training.time_scaling import TTSConfig, TestTimeScalingPipeline
+
+        tts_config = TTSConfig(
+            enabled=True,
+            complexity_threshold=self.config.tts_complexity_threshold,
+            num_initial_rollouts=self.config.tts_num_rollouts,
+            num_pdr_rollouts=self.config.tts_num_pdr_rollouts,
+            temperatures=[0.5, 0.7, 0.9],
+            verbose=self.config.tts_enabled,
+        )
+        self._tts_pipeline = TestTimeScalingPipeline(
+            llm_call=self.tts_llm_call,
+            config=tts_config,
+        )
+        return self._tts_pipeline
+
+    def _generate_tts_action(self) -> SelfEditAction | None:
+        """Generate a curriculum action using the TTS (PDR+RTV) pipeline.
+
+        The TTS pipeline generates multiple candidate curriculum actions
+        in parallel (rollouts), selects the best via recursive tournament
+        voting, and optionally refines it via PDR conditioning. This
+        produces more thorough and diverse curriculum decisions.
+
+        Returns:
+            A SelfEditAction, or None if TTS generation fails.
+        """
+        try:
+            prompt = _build_curriculum_prompt(self.state)
+            pipeline = self._get_or_create_tts_pipeline()
+
+            # Run TTS pipeline synchronously
+            loop = asyncio.new_event_loop()
+            try:
+                result = loop.run_until_complete(
+                    pipeline.run(
+                        question=prompt,
+                        system_prompt=SELF_EDIT_SYSTEM_PROMPT,
+                        force_hard=True,
+                    )
+                )
+            finally:
+                loop.close()
+
+            answer = result.get("answer", "")
+            if not answer:
+                logger.warning("[SEAL-TTS] Empty answer from TTS pipeline")
+                return None
+
+            route = result.get("route", "unknown")
+            num_rollouts = result.get("num_rollouts", 0)
+            rtv_applied = result.get("rtv_applied", False)
+            pdr_applied = result.get("pdr_applied", False)
+
+            logger.info(
+                f"[SEAL-TTS] Pipeline result: route={route}, "
+                f"rollouts={num_rollouts}, "
+                f"rtv={rtv_applied}, pdr={pdr_applied}, "
+                f"answer_len={len(answer)}"
+            )
+
+            logger.debug(f"[SEAL-TTS] Raw answer (first 300 chars): {answer[:300]}")
+
+            action = SelfEditAction.from_json(answer)
+            if action is None:
+                logger.warning("[SEAL-TTS] Could not parse SelfEditAction from TTS output")
+                return None
+
+            # Add metadata about TTS generation
+            action.rationale = (
+                f"[TTS-generated] {action.rationale} "
+                f"(route={route}, rollouts={num_rollouts}, "
+                f"rtv={rtv_applied}, pdr={pdr_applied})"
+            )
+
+            return action
+
+        except ImportError as e:
+            logger.warning(f"[SEAL-TTS] TTS dependencies not available: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"[SEAL-TTS] Curriculum generation error: {e}")
             return None
 
     def _generate_random_action(self) -> SelfEditAction:
