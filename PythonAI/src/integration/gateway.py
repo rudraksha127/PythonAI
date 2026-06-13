@@ -497,7 +497,10 @@ class _ServiceTokenBody(BaseModel):
 
 @app.post("/api/auth/login")
 async def auth_login(body: _LoginBody):
-    return _auth.authenticate(body.username, body.password)
+    result = _auth.authenticate(body.username, body.password)
+    if not result["success"]:
+        raise HTTPException(status_code=401, detail=result.get("error", "Authentication failed"))
+    return result
 
 
 @app.post("/api/auth/signup")
