@@ -840,6 +840,9 @@ async def sso_login(provider: str) -> dict[str, Any]:
     """Initiate SSO login for a provider.
 
     Returns the authorization URL to redirect the user to.
+    - OAuth2 providers (google, github): standard state parameter
+    - OIDC: full PKCE flow with code_challenge (S256)
+    - SAML 2.0: generates AuthnRequest signed with SP key
     """
     from src.auth.providers import get_sso_manager
 
@@ -852,9 +855,11 @@ async def sso_login(provider: str) -> dict[str, Any]:
         elif provider == "github":
             url = manager.github.get_auth_url(state=state)
         elif provider == "saml":
-            url = manager.saml.get_auth_url()
+            # SAML uses python3-saml to generate a signed AuthnRequest
+            url = manager.saml.get_auth_url(state=state)
         elif provider == "oidc":
-            url = manager.oidc.get_auth_url()
+            # OIDC uses PKCE: generates code_verifier + code_challenge internally
+            url = manager.oidc.get_auth_url(state=state)
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
 
@@ -862,6 +867,7 @@ async def sso_login(provider: str) -> dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"SSO login error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -870,13 +876,19 @@ class SSOCallbackRequest(BaseModel):
     code: str = Field(..., min_length=1)
     state: str = Field(..., min_length=1)
     provider: str = Field(..., min_length=1, max_length=50)
+    saml_response: str | None = Field(default=None, description="Base64-encoded SAML Response XML (for SAML provider)")
 
 
 @router.post("/auth/sso/callback")
 async def sso_callback(body: SSOCallbackRequest) -> dict[str, Any]:
-    """Handle SSO callback from OAuth2 provider.
+    """Handle SSO callback from any provider.
 
-    Exchanges the authorization code for user info and creates a session.
+    Supports:
+      - OAuth2 (google, github): exchanges authorization code for tokens
+      - OIDC: exchanges code with PKCE code_verifier, validates ID token via JWKS
+      - SAML 2.0: validates SAML Response assertion with python3-saml
+
+    Returns a session_id and normalized user info on success.
     """
     from src.auth.providers import get_sso_manager
 
@@ -887,12 +899,20 @@ async def sso_callback(body: SSOCallbackRequest) -> dict[str, Any]:
         if not manager.validate_state(body.state, body.provider):
             raise HTTPException(status_code=400, detail="Invalid or expired state parameter")
 
-        # Exchange code for user
         user = None
+
         if body.provider == "google":
             user = manager.handle_google_callback(body.code)
         elif body.provider == "github":
             user = manager.handle_github_callback(body.code)
+        elif body.provider == "oidc":
+            # OIDC with full PKCE + JWKS validation
+            user = manager.handle_oidc_callback(body.code, body.state)
+        elif body.provider == "saml":
+            # SAML with python3-saml assertion validation
+            if not body.saml_response:
+                raise HTTPException(status_code=400, detail="saml_response required for SAML provider")
+            user = manager.handle_saml_callback(body.saml_response)
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported provider: {body.provider}")
 
@@ -910,12 +930,37 @@ async def sso_callback(body: SSOCallbackRequest) -> dict[str, Any]:
                 "name": user.name,
                 "email": user.email,
                 "avatar_url": user.avatar_url,
+                "provider_user_id": user.provider_user_id,
             },
         }
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"SSO callback error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/auth/sso/saml/metadata")
+async def sso_saml_metadata() -> dict[str, Any]:
+    """Get the SP metadata XML for SAML 2.0 configuration.
+
+    Register this XML with your IdP to establish the SAML trust.
+    Contains SP entity ID, ACS URL, and public certificate (if configured).
+    """
+    from src.auth.providers import get_sso_manager
+
+    try:
+        manager = get_sso_manager()
+        metadata = manager.saml.get_metadata_xml()
+        return {
+            "success": True,
+            "metadata_xml": metadata,
+            "entity_id": manager.saml.entity_id,
+            "acs_url": manager.saml.acs_url,
+            "configured": manager.saml.is_configured(),
+        }
+    except Exception as e:
+        logger.error(f"SAML metadata error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
