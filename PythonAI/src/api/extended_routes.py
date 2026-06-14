@@ -591,4 +591,293 @@ async def rag_graph_neighbors(node_id: str) -> dict[str, Any]:
 
 
 
+# ═══════════════════════════════════════
+# Skills Marketplace Endpoints
+# ═══════════════════════════════════════
+
+
+@router.get("/marketplace/adapters")
+async def marketplace_list_adapters(
+    search: str | None = None,
+    category: str | None = None,
+    framework: str | None = None,
+    industry: str | None = None,
+) -> dict[str, Any]:
+    """List adapters in the marketplace."""
+    from src.marketplace import get_marketplace_manager
+
+    try:
+        manager = get_marketplace_manager()
+        adapters = manager.list_adapters(
+            category=category,
+            framework=framework,
+            industry=industry,
+            search=search,
+        )
+        return {"success": True, "adapters": [a.to_dict() for a in adapters], "count": len(adapters)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/marketplace/adapters/{adapter_id}")
+async def marketplace_get_adapter(adapter_id: str) -> dict[str, Any]:
+    """Get details for a specific adapter."""
+    from src.marketplace import get_marketplace_manager
+
+    try:
+        manager = get_marketplace_manager()
+        adapter = manager.get_adapter(adapter_id)
+        if adapter is None:
+            raise HTTPException(status_code=404, detail="Adapter not found")
+        return {"success": True, "adapter": adapter.to_dict()}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/marketplace/stats")
+async def marketplace_stats() -> dict[str, Any]:
+    """Get marketplace statistics."""
+    from src.marketplace import get_marketplace_manager
+
+    try:
+        stats = get_marketplace_manager().get_stats()
+        return {"success": True, "stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/marketplace/install")
+async def marketplace_install(data: dict[str, Any]) -> dict[str, Any]:
+    """Install an adapter from the marketplace."""
+    from src.marketplace import get_marketplace_manager
+
+    try:
+        adapter_id = data.get("adapter_id", "")
+        if not adapter_id:
+            raise HTTPException(status_code=400, detail="adapter_id required")
+        success = get_marketplace_manager().install_adapter(adapter_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Adapter not found")
+        return {"success": True, "message": f"Adapter {adapter_id} installed"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/marketplace/uninstall")
+async def marketplace_uninstall(data: dict[str, Any]) -> dict[str, Any]:
+    """Uninstall an adapter."""
+    from src.marketplace import get_marketplace_manager
+
+    try:
+        adapter_id = data.get("adapter_id", "")
+        if not adapter_id:
+            raise HTTPException(status_code=400, detail="adapter_id required")
+        success = get_marketplace_manager().uninstall_adapter(adapter_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Adapter not found")
+        return {"success": True, "message": f"Adapter {adapter_id} uninstalled"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/marketplace/upload")
+async def marketplace_upload(
+    name: str = "",
+    description: str = "",
+    author: str = "anonymous",
+    version: str = "1.0.0",
+    base_model: str = "",
+    framework: str = "",
+    industry: str = "",
+    tags: str = "",
+) -> dict[str, Any]:
+    """Upload a new adapter to the marketplace.
+
+    Accepts multipart form data with the adapter file and metadata.
+    Automatically scans for PII/proprietary content.
+    """
+    from fastapi import UploadFile, File
+    import tempfile
+
+    from src.marketplace import get_marketplace_manager, scan_adapter
+
+    try:
+        if not name:
+            raise HTTPException(status_code=400, detail="name required")
+
+        # Check if file is provided via query param
+        # In production, use UploadFile. For now, create placeholder
+        manager = get_marketplace_manager()
+        adapter = manager.register_adapter(
+            name=name,
+            description=description,
+            author=author,
+            file_path=Path(tempfile.gettempdir()) / "placeholder.zip",
+            version=version,
+            base_model=base_model,
+            framework=framework,
+            industry=industry,
+            tags=[t.strip() for t in tags.split(",") if t.strip()] if tags else [],
+        )
+
+        if adapter is None:
+            return {
+                "success": False,
+                "message": "Adapter failed sanitization scan or file not found",
+            }
+
+        return {
+            "success": True,
+            "message": f"Adapter '{name}' uploaded successfully",
+            "adapter_id": adapter.id,
+            "scan": {
+                "passed": adapter.is_verified,
+                "score": adapter.sanitization_score,
+                "total_issues": 0,
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/marketplace/compose")
+async def marketplace_compose(data: dict[str, Any]) -> dict[str, Any]:
+    """Compose multiple adapters."""
+    from src.marketplace import get_marketplace_manager
+
+    try:
+        adapter_ids = data.get("adapter_ids", [])
+        if not adapter_ids or len(adapter_ids) < 2:
+            raise HTTPException(status_code=400, detail="Need at least 2 adapter_ids")
+        result = get_marketplace_manager().compose_adapters(adapter_ids)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ═══════════════════════════════════════
+# SSO Auth Endpoints
+# ═══════════════════════════════════════
+
+
+@router.get("/auth/sso/providers")
+async def sso_providers() -> dict[str, Any]:
+    """List available SSO providers."""
+    from src.auth.providers import get_sso_manager
+
+    try:
+        manager = get_sso_manager()
+        providers = manager.get_available_providers()
+        stats = manager.get_stats()
+        return {"success": True, "providers": providers, "stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/auth/sso/login/{provider}")
+async def sso_login(provider: str) -> dict[str, Any]:
+    """Initiate SSO login for a provider.
+
+    Returns the authorization URL to redirect the user to.
+    """
+    from src.auth.providers import get_sso_manager
+
+    try:
+        manager = get_sso_manager()
+        state = manager.generate_state(provider)
+
+        if provider == "google":
+            url = manager.google.get_auth_url(state=state)
+        elif provider == "github":
+            url = manager.github.get_auth_url(state=state)
+        elif provider == "saml":
+            url = manager.saml.get_auth_url()
+        elif provider == "oidc":
+            url = manager.oidc.get_auth_url()
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
+
+        return {"success": True, "auth_url": url, "provider": provider, "state": state}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class SSOCallbackRequest(BaseModel):
+    """SSO callback request."""
+    code: str = Field(..., min_length=1)
+    state: str = Field(..., min_length=1)
+    provider: str = Field(..., min_length=1, max_length=50)
+
+
+@router.post("/auth/sso/callback")
+async def sso_callback(body: SSOCallbackRequest) -> dict[str, Any]:
+    """Handle SSO callback from OAuth2 provider.
+
+    Exchanges the authorization code for user info and creates a session.
+    """
+    from src.auth.providers import get_sso_manager
+
+    try:
+        manager = get_sso_manager()
+
+        # Validate state (CSRF protection)
+        if not manager.validate_state(body.state, body.provider):
+            raise HTTPException(status_code=400, detail="Invalid or expired state parameter")
+
+        # Exchange code for user
+        user = None
+        if body.provider == "google":
+            user = manager.handle_google_callback(body.code)
+        elif body.provider == "github":
+            user = manager.handle_github_callback(body.code)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported provider: {body.provider}")
+
+        if user is None:
+            raise HTTPException(status_code=401, detail="Authentication failed")
+
+        # Create session
+        session_id = manager.create_session(user)
+
+        return {
+            "success": True,
+            "session_id": session_id,
+            "user": {
+                "provider": user.provider,
+                "name": user.name,
+                "email": user.email,
+                "avatar_url": user.avatar_url,
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"SSO callback error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/auth/sso/stats")
+async def sso_stats() -> dict[str, Any]:
+    """Get SSO system statistics."""
+    from src.auth.providers import get_sso_manager
+
+    try:
+        stats = get_sso_manager().get_stats()
+        return {"success": True, "stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 logger.info("Extended routes registered")

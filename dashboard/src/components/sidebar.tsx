@@ -19,6 +19,7 @@ import {
   BarChart3,
   Code,
   Swords,
+  Store,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -33,6 +34,7 @@ const navItems = [
   { href: "/agent", label: "Agent", icon: Bot },
   { href: "/battle", label: "Battle", icon: Swords },
   { href: "/review", label: "Review", icon: Code },
+  { href: "/skills", label: "Skills", icon: Store },
   { href: "/ecosystem", label: "Ecosystem", icon: Server },
   { href: "/benchmark", label: "Benchmark", icon: Activity },
   { href: "/settings", label: "Settings", icon: Settings },
