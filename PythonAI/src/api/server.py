@@ -2685,6 +2685,11 @@ from src.api.learning_routes import router as learning_router  # noqa: E402
 app.include_router(learning_router)
 logger.info("Learning routes registered")
 
+# ── Include Extended Routes ──
+from src.api.extended_routes import router as extended_router  # noqa: E402
+app.include_router(extended_router)
+logger.info("Extended routes registered")
+
 # ── Include Battle Routes ───────────────────────────────────────
 from src.api.battle_routes import router as battle_router  # noqa: E402
 
