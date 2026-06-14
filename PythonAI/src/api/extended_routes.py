@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger("forgeai.api.extended")
@@ -688,37 +688,69 @@ async def marketplace_uninstall(data: dict[str, Any]) -> dict[str, Any]:
 
 @router.post("/marketplace/upload")
 async def marketplace_upload(
-    name: str = "",
-    description: str = "",
-    author: str = "anonymous",
-    version: str = "1.0.0",
-    base_model: str = "",
-    framework: str = "",
-    industry: str = "",
-    tags: str = "",
+    file: UploadFile = File(...),
+    name: str = Form(...),
+    description: str = Form(""),
+    author: str = Form("anonymous"),
+    version: str = Form("1.0.0"),
+    base_model: str = Form(""),
+    framework: str = Form(""),
+    industry: str = Form(""),
+    tags: str = Form(""),
 ) -> dict[str, Any]:
     """Upload a new adapter to the marketplace.
 
-    Accepts multipart form data with the adapter file and metadata.
-    Automatically scans for PII/proprietary content.
+    Accepts multipart form data with the adapter file (`file`) and metadata fields.
+    - Saves the uploaded file to a temp location
+    - Runs automated PII/proprietary sanitization scan on all text content
+    - Registers the adapter in the local marketplace store
+    - Returns scan results (passed, score, total_issues, found items)
+
+    Max file size: 500 MB (configured via server limits).
+    Supported formats: .zip, .safetensors, .bin, .pt, .pth
     """
-    from fastapi import UploadFile, File
     import tempfile
 
     from src.marketplace import get_marketplace_manager, scan_adapter
 
-    try:
-        if not name:
-            raise HTTPException(status_code=400, detail="name required")
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided")
 
-        # Check if file is provided via query param
-        # In production, use UploadFile. For now, create placeholder
+    # Validate file extension
+    valid_extensions = {".zip", ".safetensors", ".bin", ".pt", ".pth"}
+    ext = Path(file.filename).suffix.lower()
+    if ext not in valid_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type '{ext}'. Supported: {', '.join(valid_extensions)}",
+        )
+
+    try:
+        # Save uploaded file to a temp location
+        content = await file.read()
+        file_size = len(content)
+
+        if file_size > 500 * 1024 * 1024:  # 500 MB limit
+            raise HTTPException(status_code=400, detail="File exceeds 500 MB limit")
+
+        # Write to temp file
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+        try:
+            tmp.write(content)
+            tmp_path = Path(tmp.name)
+        finally:
+            tmp.close()
+
+        # Run sanitization scan
+        scan_result = scan_adapter(tmp_path)
+
+        # Register the adapter
         manager = get_marketplace_manager()
         adapter = manager.register_adapter(
             name=name,
             description=description,
             author=author,
-            file_path=Path(tempfile.gettempdir()) / "placeholder.zip",
+            file_path=tmp_path,
             version=version,
             base_model=base_model,
             framework=framework,
@@ -726,26 +758,45 @@ async def marketplace_upload(
             tags=[t.strip() for t in tags.split(",") if t.strip()] if tags else [],
         )
 
+        # Clean up temp file (register_adapter copies it to data dir)
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+
         if adapter is None:
             return {
                 "success": False,
-                "message": "Adapter failed sanitization scan or file not found",
+                "message": "Adapter failed sanitization scan (too many PII/proprietary issues)",
+                "scan": {
+                    "passed": scan_result.passed,
+                    "score": scan_result.score,
+                    "total_issues": scan_result.total_issues,
+                    "pii_found": scan_result.pii_found[:5],
+                    "proprietary_found": scan_result.proprietary_found[:5],
+                },
             }
 
         return {
             "success": True,
-            "message": f"Adapter '{name}' uploaded successfully",
+            "message": f"Adapter '{name}' v{version} uploaded successfully",
             "adapter_id": adapter.id,
+            "file_name": file.filename,
+            "file_size_bytes": file_size,
+            "file_size_mb": round(file_size / (1024 * 1024), 1),
             "scan": {
-                "passed": adapter.is_verified,
-                "score": adapter.sanitization_score,
-                "total_issues": 0,
+                "passed": scan_result.passed,
+                "score": scan_result.score,
+                "total_issues": scan_result.total_issues,
+                "pii_found": scan_result.pii_found[:5],
+                "proprietary_found": scan_result.proprietary_found[:5],
             },
         }
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Marketplace upload error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
 
 
 @router.post("/marketplace/compose")

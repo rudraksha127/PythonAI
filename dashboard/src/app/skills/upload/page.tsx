@@ -28,7 +28,16 @@ export default function SkillsUploadPage() {
   const [result, setResult] = useState<{
     success: boolean;
     message: string;
-    scan?: { passed: boolean; score: number; total_issues: number };
+    adapter_id?: string;
+    file_name?: string;
+    file_size_mb?: number;
+    scan?: {
+      passed: boolean;
+      score: number;
+      total_issues: number;
+      pii_found?: string[];
+      proprietary_found?: string[];
+    };
   } | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
@@ -300,25 +309,78 @@ export default function SkillsUploadPage() {
             }`}
           >
             {result.success ? (
-              <div className="flex items-center gap-3">
-                <Check size={20} className="text-success shrink-0" />
-                <div>
+              <div className="flex items-start gap-3">
+                <Check size={20} className="text-success shrink-0 mt-0.5" />
+                <div className="flex-1">
                   <p className="text-sm font-medium text-success">Upload Successful!</p>
-                  <p className="text-xs text-text-muted">{result.message}</p>
-                  {result.scan && (
+                  <p className="text-xs text-text-muted mt-0.5">{result.message}</p>
+                  {result.file_name && (
                     <p className="text-xs text-text-muted mt-1">
-                      Sanitization score: {result.scan.score} / 1.0
-                      {result.scan.passed ? " ✅ Clean" : ` ⚠️ ${result.scan.total_issues} issues`}
+                      File: {result.file_name} ({result.file_size_mb} MB)
                     </p>
+                  )}
+                  {result.adapter_id && (
+                    <p className="text-xs text-text-muted">
+                      ID: <code className="text-forge-primary">{result.adapter_id}</code>
+                    </p>
+                  )}
+                  {result.scan && (
+                    <div className="mt-2 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium">Sanitization:</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                          result.scan.passed
+                            ? "bg-success/10 text-success"
+                            : "bg-warning/10 text-warning"
+                        }`}>
+                          Score {result.scan.score}/1.0
+                        </span>
+                      </div>
+                      {result.scan.pii_found && result.scan.pii_found.length > 0 && (
+                        <div>
+                          <p className="text-xs text-warning mt-1">⚠️ {result.scan.pii_found.length} PII patterns detected:</p>
+                          <ul className="text-xs text-text-muted mt-0.5 space-y-0.5">
+                            {result.scan.pii_found.slice(0, 3).map((item, i) => (
+                              <li key={i} className="truncate">- {item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {result.scan.proprietary_found && result.scan.proprietary_found.length > 0 && (
+                        <p className="text-xs text-warning">
+                          ⚠️ {result.scan.proprietary_found.length} proprietary markers detected
+                        </p>
+                      )}
+                      {result.scan.passed && result.scan.score >= 0.9 && (
+                        <p className="text-xs text-success mt-1">✅ No sensitive content detected</p>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-3">
-                <AlertTriangle size={20} className="text-error shrink-0" />
+              <div className="flex items-start gap-3">
+                <AlertTriangle size={20} className="text-error shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-error">Upload Failed</p>
                   <p className="text-xs text-text-muted">{result.message}</p>
+                  {result.scan && !result.scan.passed && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs text-warning">
+                        ⚠️ Sanitization score: {result.scan.score}/1.0 ({result.scan.total_issues} issues)
+                      </p>
+                      {result.scan.pii_found && result.scan.pii_found.length > 0 && (
+                        <div>
+                          <p className="text-xs text-warning mt-1">PII detected:</p>
+                          <ul className="text-xs text-text-muted mt-0.5 space-y-0.5">
+                            {result.scan.pii_found.slice(0, 3).map((item, i) => (
+                              <li key={i} className="truncate">- {item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
