@@ -138,6 +138,11 @@ class Adapter:
     local_path: str = ""
     sanitization_score: float = 1.0
     is_verified: bool = False
+    # Revenue fields
+    price_cents: int = 0  # Price in cents (0 = free)
+    total_earned_cents: int = 0  # Lifetime earnings for creator (creator's 70% share)
+    platform_earned_cents: int = 0  # Platform's 30% share
+    pending_payout_cents: int = 0  # Amount awaiting payout to creator
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -160,6 +165,10 @@ class Adapter:
             "local_path": self.local_path,
             "sanitization_score": self.sanitization_score,
             "is_verified": self.is_verified,
+            "price_cents": self.price_cents,
+            "total_earned_cents": self.total_earned_cents,
+            "platform_earned_cents": self.platform_earned_cents,
+            "pending_payout_cents": self.pending_payout_cents,
         }
 
     @classmethod
@@ -184,6 +193,119 @@ class Adapter:
             local_path=data.get("local_path", ""),
             sanitization_score=data.get("sanitization_score", 1.0),
             is_verified=data.get("is_verified", False),
+            price_cents=data.get("price_cents", 0),
+            total_earned_cents=data.get("total_earned_cents", 0),
+            platform_earned_cents=data.get("platform_earned_cents", 0),
+            pending_payout_cents=data.get("pending_payout_cents", 0),
+        )
+
+
+# ── Revenue Configuration ──────────────────────────────────────────
+
+@dataclass
+class RevenueConfig:
+    """Revenue sharing configuration.
+
+    Default: 70% creator / 30% platform split.
+    """
+    creator_share: float = 0.70  # 70% to creator
+    platform_share: float = 0.30  # 30% to platform
+    min_payout_cents: int = 500  # Minimum $5.00 to request a payout
+    platform_fee_percent: float = 0.0  # Additional platform fee (e.g., payment processing)
+    payout_methods: list[str] = field(default_factory=lambda: ["bank", "paypal", "crypto"])
+
+    DEFAULT_PRICE_CENTS: int = 999  # $9.99 default price for paid adapters
+    FREE_TIER_LIMIT: int = 100  # Free downloads before prompting to set price
+
+
+@dataclass
+class PayoutRecord:
+    """A payout transaction from platform to creator."""
+    id: str
+    author: str
+    amount_cents: int
+    fee_cents: int = 0
+    status: str = "pending"  # pending → processing → completed / failed
+    method: str = "bank"
+    destination: str = ""
+    notes: str = ""
+    created_at: float = 0.0
+    processed_at: float | None = None
+    adapter_ids: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "author": self.author,
+            "amount_cents": self.amount_cents,
+            "fee_cents": self.fee_cents,
+            "status": self.status,
+            "method": self.method,
+            "destination": self.destination,
+            "notes": self.notes,
+            "created_at": self.created_at,
+            "processed_at": self.processed_at,
+            "adapter_ids": self.adapter_ids,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> PayoutRecord:
+        return cls(
+            id=data.get("id", ""),
+            author=data.get("author", ""),
+            amount_cents=data.get("amount_cents", 0),
+            fee_cents=data.get("fee_cents", 0),
+            status=data.get("status", "pending"),
+            method=data.get("method", "bank"),
+            destination=data.get("destination", ""),
+            notes=data.get("notes", ""),
+            created_at=data.get("created_at", 0.0),
+            processed_at=data.get("processed_at"),
+            adapter_ids=data.get("adapter_ids", []),
+        )
+
+
+@dataclass
+class EarningRecord:
+    """Record of a single earning event (e.g., an install of a paid adapter)."""
+    id: str
+    adapter_id: str
+    adapter_name: str
+    author: str
+    amount_cents: int  # Total amount paid by user
+    creator_share_cents: int  # 70%
+    platform_share_cents: int  # 30%
+    event_type: str = "install"  # install, subscription, tip
+    created_at: float = 0.0
+    payout_id: str | None = None  # Linked payout when settled
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "adapter_id": self.adapter_id,
+            "adapter_name": self.adapter_name,
+            "author": self.author,
+            "amount_cents": self.amount_cents,
+            "creator_share_cents": self.creator_share_cents,
+            "platform_share_cents": self.platform_share_cents,
+            "event_type": self.event_type,
+            "created_at": self.created_at,
+            "payout_id": self.payout_id,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> EarningRecord:
+        return cls(
+            id=data.get("id", ""),
+            adapter_id=data.get("adapter_id", ""),
+            adapter_name=data.get("adapter_name", ""),
+            author=data.get("author", ""),
+            amount_cents=data.get("amount_cents", 0),
+            creator_share_cents=data.get("creator_share_cents", 0),
+            platform_share_cents=data.get("platform_share_cents", 0),
+            event_type=data.get("event_type", "install"),
+            created_at=data.get("created_at", 0.0),
+            payout_id=data.get("payout_id"),
         )
 
 
@@ -191,13 +313,16 @@ class Adapter:
 
 
 class MarketplaceManager:
-    """Manages local adapter storage, sanitization, and composability."""
+    """Manages local adapter storage, sanitization, composability, and revenue."""
 
     def __init__(self, data_dir: str | Path | None = None):
         self._data_dir = Path(data_dir) if data_dir else ADAPTERS_DIR
         self._data_dir.mkdir(parents=True, exist_ok=True)
         self._db_path = self._data_dir / "marketplace.json"
         self._adapters: dict[str, Adapter] = {}
+        self._payouts: dict[str, PayoutRecord] = {}
+        self._earnings: dict[str, EarningRecord] = {}  # keyed by earning id
+        self._revenue_config = RevenueConfig()
         self._load()
 
     # ── CRUD ─────────────────────────────────────────────────────
@@ -478,11 +603,315 @@ class MarketplaceManager:
             self._save()
         return count
 
+    # ── Revenue / Earnings ──────────────────────────────────────
+
+    def set_adapter_price(self, adapter_id: str, price_cents: int) -> bool:
+        """Set the price for a paid adapter (in cents). 0 = free."""
+        adapter = self._adapters.get(adapter_id)
+        if adapter is None:
+            return False
+        adapter.price_cents = max(0, price_cents)
+        self._save()
+        return True
+
+    def record_install_earnings(self, adapter_id: str, amount_cents: int | None = None) -> EarningRecord | None:
+        """Record earnings when a paid adapter is installed.
+
+        Applies the 70/30 revenue split automatically.
+        If amount_cents is None, uses the adapter's configured price.
+        """
+        adapter = self._adapters.get(adapter_id)
+        if adapter is None:
+            return None
+
+        price = amount_cents if amount_cents is not None else adapter.price_cents
+        if price <= 0:
+            return None  # Free adapter — no earnings
+
+        creator_share = int(price * self._revenue_config.creator_share)
+        platform_share = price - creator_share
+
+        earning_id = hashlib.sha256(f"earn:{adapter_id}:{time.time():.6f}".encode()).hexdigest()[:16]
+        earning = EarningRecord(
+            id=earning_id,
+            adapter_id=adapter_id,
+            adapter_name=adapter.name,
+            author=adapter.author,
+            amount_cents=price,
+            creator_share_cents=creator_share,
+            platform_share_cents=platform_share,
+            event_type="install",
+            created_at=time.time(),
+        )
+
+        self._earnings[earning.id] = earning
+
+        # Update adapter revenue totals
+        adapter.total_earned_cents += creator_share
+        adapter.platform_earned_cents += platform_share
+        adapter.pending_payout_cents += creator_share
+
+        self._save()
+        return earning
+
+    def get_creator_earnings(self, author: str) -> dict[str, Any]:
+        """Get comprehensive earnings summary for a creator."""
+        author_adapters = [a for a in self._adapters.values() if a.author.lower() == author.lower()]
+        author_earnings = [e for e in self._earnings.values() if e.author.lower() == author.lower()]
+
+        total_earned = sum(e.creator_share_cents for e in author_earnings)
+        total_platform = sum(e.platform_share_cents for e in author_earnings)
+        pending_payout = sum(a.pending_payout_cents for a in author_adapters)
+        paid_out = sum(p.amount_cents for p in self._payouts.values()
+                       if p.author.lower() == author.lower() and p.status == "completed")
+        in_flight = sum(p.amount_cents for p in self._payouts.values()
+                        if p.author.lower() == author.lower() and p.status in ("pending", "processing"))
+
+        # Group earnings by adapter (include all author adapters, even with $0 earnings)
+        by_adapter: dict[str, dict[str, Any]] = {}
+        for a in author_adapters:
+            by_adapter[a.id] = {
+                "adapter_id": a.id,
+                "adapter_name": a.name,
+                "price_cents": a.price_cents,
+                "downloads": a.downloads,
+                "total_earned_cents": 0,
+                "platform_share_cents": 0,
+                "pending_payout_cents": a.pending_payout_cents,
+                "last_earning": 0.0,
+            }
+        for e in author_earnings:
+            if e.adapter_id in by_adapter:
+                by_adapter[e.adapter_id]["total_earned_cents"] += e.creator_share_cents
+                by_adapter[e.adapter_id]["platform_share_cents"] += e.platform_share_cents
+                by_adapter[e.adapter_id]["last_earning"] = max(
+                    by_adapter[e.adapter_id]["last_earning"], e.created_at
+                )
+
+        return {
+            "author": author,
+            "total_adapters": len(author_adapters),
+            "paid_adapters": len([a for a in author_adapters if a.price_cents > 0]),
+            "free_adapters": len([a for a in author_adapters if a.price_cents == 0]),
+            "total_earnings_cents": total_earned,
+            "total_earnings_dollars": round(total_earned / 100, 2),
+            "platform_fees_cents": total_platform,
+            "platform_fees_dollars": round(total_platform / 100, 2),
+            "pending_payout_cents": pending_payout,
+            "pending_payout_dollars": round(pending_payout / 100, 2),
+            "paid_out_cents": paid_out,
+            "paid_out_dollars": round(paid_out / 100, 2),
+            "in_flight_payouts_cents": in_flight,
+            "in_flight_payouts_dollars": round(in_flight / 100, 2),
+            "total_revenue_cents": total_earned + total_platform,
+            "total_revenue_dollars": round((total_earned + total_platform) / 100, 2),
+            "num_earnings_events": len(author_earnings),
+            "by_adapter": list(by_adapter.values()),
+            "recent_earnings": sorted(
+                [e.to_dict() for e in author_earnings],
+                key=lambda x: x["created_at"],
+                reverse=True,
+            )[:20],
+        }
+
+    def get_payouts(
+        self,
+        author: str | None = None,
+        status: str | None = None,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """List payout records, optionally filtered by author and/or status."""
+        results = list(self._payouts.values())
+        if author:
+            results = [p for p in results if p.author.lower() == author.lower()]
+        if status:
+            results = [p for p in results if p.status == status]
+        results.sort(key=lambda p: p.created_at, reverse=True)
+        return [p.to_dict() for p in results[:limit]]
+
+    def request_payout(
+        self,
+        author: str,
+        amount_cents: int | None = None,
+        method: str = "bank",
+        destination: str = "",
+    ) -> dict[str, Any]:
+        """Request a payout for a creator.
+
+        If amount_cents is None, pays out all pending earnings.
+        Validates against minimum payout threshold ($5.00 default).
+        """
+        # Calculate available balance
+        author_adapters = [a for a in self._adapters.values() if a.author.lower() == author.lower()]
+        pending = sum(a.pending_payout_cents for a in author_adapters)
+
+        if pending <= 0:
+            return {"success": False, "error": "No pending earnings to payout"}
+
+        payout_amount = amount_cents if amount_cents is not None else pending
+        if payout_amount <= 0:
+            return {"success": False, "error": "Payout amount must be positive"}
+        if payout_amount > pending:
+            return {"success": False, "error": f"Insufficient balance. Available: ${pending / 100:.2f}"}
+        if payout_amount < self._revenue_config.min_payout_cents:
+            min_dollars = self._revenue_config.min_payout_cents / 100
+            return {
+                "success": False,
+                "error": f"Minimum payout is ${min_dollars:.2f}. You have ${pending / 100:.2f} available.",
+            }
+
+        # Create payout record
+        payout_id = hashlib.sha256(f"payout:{author}:{time.time():.6f}".encode()).hexdigest()[:16]
+
+        # Deduct from adapters proportionally
+        adapter_ids: list[str] = []
+        remaining = payout_amount
+        for a in sorted(author_adapters, key=lambda x: x.pending_payout_cents, reverse=True):
+            if remaining <= 0:
+                break
+            if a.pending_payout_cents <= 0:
+                continue
+            deduct = min(a.pending_payout_cents, remaining)
+            a.pending_payout_cents -= deduct
+            remaining -= deduct
+            adapter_ids.append(a.id)
+
+        payout = PayoutRecord(
+            id=payout_id,
+            author=author,
+            amount_cents=payout_amount,
+            fee_cents=0,
+            status="pending",
+            method=method,
+            destination=destination,
+            adapter_ids=adapter_ids,
+            created_at=time.time(),
+        )
+        self._payouts[payout.id] = payout
+        self._save()
+
+        return {
+            "success": True,
+            "payout": payout.to_dict(),
+            "message": f"Payout request for ${payout_amount / 100:.2f} submitted",
+        }
+
+    def process_payout(self, payout_id: str, status: str = "completed", notes: str = "") -> bool:
+        """Process (approve/reject) a pending payout.
+
+        When completed: marks earnings as settled (no longer pending).
+        When failed: returns pending_payout_cents back to the adapters.
+        """
+        payout = self._payouts.get(payout_id)
+        if payout is None or payout.status != "pending":
+            return False
+
+        payout.status = status
+        payout.processed_at = time.time()
+        payout.notes = notes
+
+        if status == "completed":
+            # Mark all earnings for this payout as settled
+            for e in self._earnings.values():
+                if e.author.lower() == payout.author.lower() and e.payout_id is None:
+                    # Link earnings that contributed to this payout
+                    if e.creator_share_cents > 0:
+                        e.payout_id = payout_id
+        elif status in ("failed", "cancelled"):
+            # Return pending balance back to adapters
+            for aid in payout.adapter_ids:
+                adapter = self._adapters.get(aid)
+                if adapter:
+                    # Add back proportional amount
+                    adapter.pending_payout_cents += payout.amount_cents // max(len(payout.adapter_ids), 1)
+
+        self._save()
+        return True
+
+    def get_revenue_stats(self) -> dict[str, Any]:
+        """Get platform-wide revenue statistics."""
+        total_revenue = sum(e.amount_cents for e in self._earnings.values())
+        total_creator = sum(e.creator_share_cents for e in self._earnings.values())
+        total_platform = sum(e.platform_share_cents for e in self._earnings.values())
+        total_paid_adapters = len([a for a in self._adapters.values() if a.price_cents > 0])
+        total_downloads_paid = sum(a.downloads for a in self._adapters.values() if a.price_cents > 0)
+        pending_payouts_total = sum(a.pending_payout_cents for a in self._adapters.values())
+        completed_payouts = [p for p in self._payouts.values() if p.status == "completed"]
+        total_paid_out = sum(p.amount_cents for p in completed_payouts)
+        unique_creators = len(set(e.author for e in self._earnings.values()))
+
+        # Top earners
+        creator_totals: dict[str, int] = {}
+        for e in self._earnings.values():
+            creator_totals[e.author] = creator_totals.get(e.author, 0) + e.creator_share_cents
+        top_earners = sorted(creator_totals.items(), key=lambda x: x[1], reverse=True)[:10]
+
+        # Monthly breakdown
+        monthly: dict[str, dict[str, int]] = {}
+        for e in self._earnings.values():
+            month_key = time.strftime("%Y-%m", time.localtime(e.created_at))
+            if month_key not in monthly:
+                monthly[month_key] = {"revenue_cents": 0, "creator_cents": 0, "platform_cents": 0, "count": 0}
+            monthly[month_key]["revenue_cents"] += e.amount_cents
+            monthly[month_key]["creator_cents"] += e.creator_share_cents
+            monthly[month_key]["platform_cents"] += e.platform_share_cents
+            monthly[month_key]["count"] += 1
+
+        return {
+            "total_revenue_cents": total_revenue,
+            "total_revenue_dollars": round(total_revenue / 100, 2),
+            "total_creator_earnings_cents": total_creator,
+            "total_creator_earnings_dollars": round(total_creator / 100, 2),
+            "total_platform_fees_cents": total_platform,
+            "total_platform_fees_dollars": round(total_platform / 100, 2),
+            "total_paid_out_cents": total_paid_out,
+            "total_paid_out_dollars": round(total_paid_out / 100, 2),
+            "pending_payouts_cents": pending_payouts_total,
+            "pending_payouts_dollars": round(pending_payouts_total / 100, 2),
+            "split_ratio": f"{int(self._revenue_config.creator_share * 100)}/{int(self._revenue_config.platform_share * 100)}",
+            "min_payout_dollars": self._revenue_config.min_payout_cents / 100,
+            "total_paid_adapters": total_paid_adapters,
+            "total_downloads_paid": total_downloads_paid,
+            "unique_creators": unique_creators,
+            "total_earnings_events": len(self._earnings),
+            "total_payouts": len(self._payouts),
+            "pending_payouts_count": len([p for p in self._payouts.values() if p.status == "pending"]),
+            "completed_payouts_count": len(completed_payouts),
+            "top_earners": [
+                {"author": author, "earned_cents": cents, "earned_dollars": round(cents / 100, 2)}
+                for author, cents in top_earners
+            ],
+            "monthly_breakdown": [
+                {
+                    "month": k,
+                    "revenue_dollars": round(v["revenue_cents"] / 100, 2),
+                    "creator_dollars": round(v["creator_cents"] / 100, 2),
+                    "platform_dollars": round(v["platform_cents"] / 100, 2),
+                    "transactions": v["count"],
+                }
+                for k, v in sorted(monthly.items())
+            ],
+            "config": {
+                "creator_share": self._revenue_config.creator_share,
+                "platform_share": self._revenue_config.platform_share,
+                "min_payout_cents": self._revenue_config.min_payout_cents,
+                "payout_methods": self._revenue_config.payout_methods,
+            },
+        }
+
     # ── Persistence ──────────────────────────────────────────────
 
     def _save(self) -> None:
         data = {
             "adapters": {aid: a.to_dict() for aid, a in self._adapters.items()},
+            "payouts": {pid: p.to_dict() for pid, p in self._payouts.items()},
+            "earnings": {eid: e.to_dict() for eid, e in self._earnings.items()},
+            "revenue_config": {
+                "creator_share": self._revenue_config.creator_share,
+                "platform_share": self._revenue_config.platform_share,
+                "min_payout_cents": self._revenue_config.min_payout_cents,
+                "payout_methods": self._revenue_config.payout_methods,
+            },
             "updated_at": time.time(),
         }
         self._db_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -496,6 +925,18 @@ class MarketplaceManager:
             data = json.loads(self._db_path.read_text(encoding="utf-8"))
             for aid, a_data in data.get("adapters", {}).items():
                 self._adapters[aid] = Adapter.from_dict(a_data)
+            for pid, p_data in data.get("payouts", {}).items():
+                self._payouts[pid] = PayoutRecord.from_dict(p_data)
+            for eid, e_data in data.get("earnings", {}).items():
+                self._earnings[eid] = EarningRecord.from_dict(e_data)
+            rc = data.get("revenue_config", {})
+            if rc:
+                self._revenue_config = RevenueConfig(
+                    creator_share=rc.get("creator_share", 0.70),
+                    platform_share=rc.get("platform_share", 0.30),
+                    min_payout_cents=rc.get("min_payout_cents", 500),
+                    payout_methods=rc.get("payout_methods", ["bank", "paypal", "crypto"]),
+                )
         except (json.JSONDecodeError, KeyError):
             pass
 

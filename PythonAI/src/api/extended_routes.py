@@ -636,6 +636,137 @@ async def marketplace_get_adapter(adapter_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/marketplace/earnings/{author}")
+async def marketplace_earnings(author: str) -> dict[str, Any]:
+    """Get creator earnings summary.
+
+    Returns comprehensive earnings data:
+      - Total earned (70% creator share)
+      - Platform fees (30% platform share)
+      - Pending payout balance
+      - Paid out / in-flight amounts
+      - Per-adapter breakdown with downloads and price
+      - Recent earning events (last 20)
+    """
+    from src.marketplace import get_marketplace_manager
+
+    try:
+        manager = get_marketplace_manager()
+        earnings = manager.get_creator_earnings(author)
+        return {"success": True, "earnings": earnings}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/marketplace/revenue/stats")
+async def marketplace_revenue_stats() -> dict[str, Any]:
+    """Get platform-wide revenue statistics.
+
+    Returns aggregated revenue data:
+      - Total revenue, creator earnings, platform fees
+      - Pending/completed payout totals
+      - Revenue split ratio (70/30)
+      - Top earners leaderboard
+      - Monthly revenue breakdown
+      - Total paid adapters and downloads
+    """
+    from src.marketplace import get_marketplace_manager
+
+    try:
+        manager = get_marketplace_manager()
+        stats = manager.get_revenue_stats()
+        return {"success": True, "stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/marketplace/payouts")
+async def marketplace_payouts(
+    author: str | None = None,
+    status: str | None = None,
+) -> dict[str, Any]:
+    """List payout records.
+
+    Supports filtering by author and/or status (pending, processing, completed, failed).
+    Returns payouts sorted newest first.
+    """
+    from src.marketplace import get_marketplace_manager
+
+    try:
+        manager = get_marketplace_manager()
+        payouts = manager.get_payouts(author=author, status=status)
+        return {"success": True, "payouts": payouts, "count": len(payouts)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class PayoutRequest(BaseModel):
+    """Request a payout."""
+    author: str = Field(..., min_length=1, max_length=200)
+    amount_cents: int | None = None
+    method: str = "bank"
+    destination: str = ""
+
+
+@router.post("/marketplace/payouts/request")
+async def marketplace_payout_request(body: PayoutRequest) -> dict[str, Any]:
+    """Request a payout for a creator.
+
+    If amount_cents is omitted, pays out all pending earnings.
+    Validates against minimum payout threshold ($5.00 default).
+    Supported methods: bank, paypal, crypto
+    """
+    from src.marketplace import get_marketplace_manager
+
+    try:
+        manager = get_marketplace_manager()
+        result = manager.request_payout(
+            author=body.author,
+            amount_cents=body.amount_cents,
+            method=body.method,
+            destination=body.destination,
+        )
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/marketplace/price")
+async def marketplace_set_price(data: dict[str, Any]) -> dict[str, Any]:
+    """Set or update the price for an adapter.
+
+    Set to 0 to make the adapter free.
+    Price is in cents (e.g., 999 = $9.99).
+    """
+    from src.marketplace import get_marketplace_manager
+
+    try:
+        adapter_id = data.get("adapter_id", "")
+        price_cents = data.get("price_cents", 0)
+        if not adapter_id:
+            raise HTTPException(status_code=400, detail="adapter_id required")
+        if not isinstance(price_cents, int) or price_cents < 0:
+            raise HTTPException(status_code=400, detail="price_cents must be a non-negative integer")
+        success = get_marketplace_manager().set_adapter_price(adapter_id, price_cents)
+        if not success:
+            raise HTTPException(status_code=404, detail="Adapter not found")
+        return {
+            "success": True,
+            "message": f"Price set to ${price_cents / 100:.2f}" if price_cents > 0 else "Adapter set to free",
+            "adapter_id": adapter_id,
+            "price_cents": price_cents,
+            "price_dollars": round(price_cents / 100, 2),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/marketplace/stats")
 async def marketplace_stats() -> dict[str, Any]:
     """Get marketplace statistics."""
