@@ -500,4 +500,95 @@ async def dashboard_all_data() -> dict[str, Any]:
     return result
 
 
+# ═══════════════════════════════════════
+# Knowledge Graph Endpoints
+# ═══════════════════════════════════════
+
+
+class GraphQueryRequest(BaseModel):
+    """Query the knowledge graph."""
+    query: str = Field(..., min_length=1, max_length=500)
+    hops: int = Field(default=2, ge=1, le=5)
+    max_results: int = Field(default=10, ge=1, le=50)
+
+
+@router.post("/rag/graph-query", tags=["rag"])
+async def rag_graph_query(body: GraphQueryRequest) -> dict[str, Any]:
+    """
+    Query the Knowledge Graph for concept relationships.
+
+    Uses graph traversal (BFS) to find related concepts N hops away.
+    Returns ranked results with edge types and similarity scores.
+    """
+    from src.rag.knowledge_graph import KnowledgeGraph
+
+    try:
+        kg = KnowledgeGraph()
+        if not kg.load():
+            return {
+                "success": False,
+                "error": "Knowledge graph not built. Run: python -m src.rag.knowledge_graph build",
+                "results": [],
+            }
+
+        results = kg.query(
+            question=body.query,
+            hops=body.hops,
+            max_results=body.max_results,
+        )
+
+        # Get neighbor info for each result
+        enriched = []
+        for r in results:
+            neighbors = kg.get_neighbors(r["node_id"])[:5]
+            enriched.append({
+                **r,
+                "neighbors": [
+                    {"title": n["title"], "edge_type": n["edge_type"], "weight": n["weight"]}
+                    for n in neighbors
+                ],
+            })
+
+        return {
+            "success": True,
+            "query": body.query,
+            "total_results": len(results),
+            "results": enriched,
+            "stats": kg.stats(),
+        }
+    except Exception as e:
+        logger.error(f"Knowledge graph query error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/rag/graph/stats", tags=["rag"])
+async def rag_graph_stats() -> dict[str, Any]:
+    """Get knowledge graph statistics."""
+    from src.rag.knowledge_graph import KnowledgeGraph
+
+    try:
+        kg = KnowledgeGraph()
+        if kg.load():
+            return {"success": True, "stats": kg.stats()}
+        return {"success": False, "error": "Knowledge graph not built", "stats": None}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/rag/graph/neighbors/{node_id}", tags=["rag"])
+async def rag_graph_neighbors(node_id: str) -> dict[str, Any]:
+    """Get neighbors of a knowledge graph node."""
+    from src.rag.knowledge_graph import KnowledgeGraph
+
+    try:
+        kg = KnowledgeGraph()
+        if not kg.load():
+            return {"success": False, "error": "Knowledge graph not built"}
+        neighbors = kg.get_neighbors(node_id)
+        return {"success": True, "node_id": node_id, "neighbors": neighbors}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 logger.info("Extended routes registered")
