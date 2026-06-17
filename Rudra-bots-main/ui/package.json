@@ -1,30 +1,3 @@
-{
-  "name": "odysseus-ui",
-  "private": true,
-  "version": "2.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-router-dom": "^7.0.0",
-    "lucide-react": "^0.460.0",
-    "recharts": "^2.15.0",
-    "zustand": "^5.0.0"
-  },
-  "devDependencies": {
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^4.3.0",
-    "autoprefixer": "^10.4.0",
-    "postcss": "^8.4.0",
-    "tailwindcss": "^3.4.0",
-    "typescript": "^5.6.0",
-    "vite": "^6.0.0"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6324c4b02a82caeaebc58776317560e4345cc268e889af033f85bd7e1e3f7317
+size 708

@@ -1,15 +1,3 @@
-{
-  "name": "Odysseus",
-  "short_name": "Odysseus",
-  "description": "Self-hosted AI chat with memory, documents, and tools",
-  "start_url": "/",
-  "scope": "/",
-  "display": "standalone",
-  "orientation": "any",
-  "background_color": "#282c34",
-  "theme_color": "#282c34",
-  "icons": [
-    { "src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2bd1c7b9bdc5bd3d56d77a861aaaf55db16b3b9741a5dde6e89db44d50382405
+size 521

@@ -1,20 +1,3 @@
-[
-  {
-    "instruction": "What are the Fundamental Rights guaranteed by the Indian Constitution?",
-    "output": "The Fundamental Rights in the Indian Constitution are enshrined in Part III (Articles 12-35). There are six primary fundamental rights:\n1. Right to Equality (Articles 14-18)\n2. Right to Freedom (Articles 19-22)\n3. Right against Exploitation (Articles 23-24)\n4. Right to Freedom of Religion (Articles 25-28)\n5. Cultural and Educational Rights (Articles 29-30)\n6. Right to Constitutional Remedies (Article 32)\n\nNote that the Right to Property (formerly Article 31) was removed from the list of Fundamental Rights by the 44th Amendment in 1978 and made a legal right under Article 300A.",
-    "domain": "law",
-    "difficulty": "beginner"
-  },
-  {
-    "instruction": "Explain the PM-KISAN scheme and its eligibility criteria.",
-    "output": "Pradhan Mantri Kisan Samman Nidhi (PM-KISAN) is a Central Sector Scheme in India providing income support to all landholding farmers' families in the country. \n\nUnder this scheme, an amount of ₹6,000 per year is transferred in three equal installments of ₹2,000 directly into the bank accounts of the beneficiaries. \n\n**Eligibility:**\nAll landholding farmers' families, which comprise husband, wife, and minor children who own cultivable land as per the land records of the respective State/UT, are eligible.\n\n**Exclusions:**\nInstitutional landholders, farmer families holding constitutional posts, serving or retired government employees, pensioners receiving over ₹10,000/month, professionals (doctors, engineers, lawyers), and those who paid income tax in the last assessment year are excluded.",
-    "domain": "india",
-    "difficulty": "intermediate"
-  },
-  {
-    "instruction": "What is the difference between Rabi and Kharif crops? Give examples of each.",
-    "output": "The primary difference between Rabi and Kharif crops lies in their sowing and harvesting seasons in India.\n\n**Kharif Crops (Monsoon Crops):**\n- **Season:** Sown at the beginning of the monsoon season (June-July) and harvested at the end of the monsoon season (September-October).\n- **Conditions:** Require warm, wet weather and a large amount of water.\n- **Examples:** Rice, Maize, Sorghum, Pearl Millet (Bajra), Finger Millet (Ragi), Arhar (Tur), Soybean, Cotton, Groundnut.\n\n**Rabi Crops (Winter Crops):**\n- **Season:** Sown in winter (October-December) and harvested in spring/early summer (April-June).\n- **Conditions:** Require a cold climate for seed germination and warm climate for the maturation of crops. They are not dependent on monsoon rains.\n- **Examples:** Wheat, Barley, Oats, Chickpea/Gram, Mustard, Linseed.\n\nThere is also a short season during the summer months known as the Zaid season (March to July), where crops like watermelon, muskmelon, cucumber, and fodder crops are grown.",
-    "domain": "science",
-    "difficulty": "beginner"
-  }
-]
+version https://git-lfs.github.com/spec/v1
+oid sha256:71af128dc5cab314050c4f10de76fbca72738846ec28bf00f18e69210ab39b3a
+size 2930

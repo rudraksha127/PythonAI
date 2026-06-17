@@ -1,10 +1,3 @@
-[
-  {
-    "instruction": "What is the purpose of regular expressions in Python?",
-    "output": "Regular expressions (REs) are a tiny, highly specialized programming language embedded inside Python and made available through the `re` module. They allow you to specify rules for matching sets of possible strings, such as English sentences, email addresses, or TeX commands. You can use REs to check if a string matches a pattern, find matches within a string, modify strings, or split them apart.",
-    "source": "python-2.7.18-docs-html/howto/regex.html",
-    "category": "howto",
-    "version": "2.7.18",
-    "generator": "qwen2.5-coder:14b"
-  }
-]
+version https://git-lfs.github.com/spec/v1
+oid sha256:af1b4e9281213109d1eefaf7abdb1ef627b7114fc28dae51e099df9c9fd67bbc
+size 649
