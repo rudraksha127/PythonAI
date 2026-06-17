@@ -64,7 +64,27 @@ Thumbs.db
 *.log
 logs/
 
-# ── Large local/generated data excluded from GitHub push ──
+# ── External reference repos (cloned, not project code) ──
+arsenal/
+external-tools/
+skills-main/
+superview-sh-main/
+Claude_Code_npm-main/
+codebuff-main/
+open-claude-main/
+Hermes-studio--main/
+hermes-agent-main/
+powershell/
+
+# ── ForgeAI Universe (monorepo migration workspace) ──
+forgeai-universe/
+
+# ── ForgeAI internal metadata ──
+.forgeai/
+.kiro/
+anti_gravity_data/
+
+# ── Virtual environments ──
 PythonAI.venv/
 PythonAI/data/training/amplified_dataset.jsonl
 PythonAI/data/training/formatted/
