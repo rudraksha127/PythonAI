@@ -119,3 +119,70 @@ PythonAI/ZIP\ FILES/
 *.err.log
 *.out.log
 *.err
+
+# ── AI/ML experiment tracking ─────────────────────
+wandb/
+mlruns/
+lightning_logs/
+.mlflow/
+tensorboard_logs/
+
+# ── AI model caches ────────────────────────────────
+model_cache/
+transformers_cache/
+huggingface_hub_cache/
+*.safetensors
+*.gguf
+*.onnx
+
+# ── Testing & coverage ─────────────────────────────
+.deepeval/
+.hypothesis/
+.coverage*
+htmlcov/
+.coverage/
+
+# ── Root-level screenshots / dev artifacts ─────────
+/agent_workspace.png
+/app_live_screenshot.png
+/dash_home.png
+/screenshot.png
+ForgeAI_ANTIGRAVITY_PROMPT_*.md
+
+# ── Jupyter Notebooks ──────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+
+# ── Windows temp / absolute paths ──────────────────
+C:Users*
+~$*
+*.tmp
+*.temp
+
+# ── Compiled binaries ──────────────────────────────
+*.dll
+*.dylib
+*.o
+*.obj
+
+# ── Media (large, regeneratable) ───────────────────
+*.mp3
+*.mp4
+*.avi
+*.mov
+*.wav
+*.flac
+
+# ── Terraform (if used) ────────────────────────────
+.terraform/
+terraform.tfstate*
+*.tfvars
+
+# ── System restore / recycle ───────────────────────
+$RECYCLE.BIN/
+System Volume Information/
+pagefile.sys
+swapfile.sys
+
+# ── VS Code workspace files ────────────────────────
+*.code-workspace

@@ -69,6 +69,20 @@ docker-compose.override.yml  # Dev override — not for production
 # ── Notebooks with secrets ──
 *.ipynb_checkpoints/
 
+# ── AI/ML experiment tracking ──
+wandb/
+mlruns/
+lightning_logs/
+.mlflow/
+tensorboard_logs/
+model_cache/
+transformers_cache/
+huggingface_hub_cache/
+
+# ── Testing ──
+.deepeval/
+.hypothesis/
+
 # ── Other ──
 .sixth/
 nul
