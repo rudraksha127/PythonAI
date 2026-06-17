@@ -28,8 +28,6 @@ PythonAI/*.sqlite3
 node_modules/
 bun.lock
 bun.lockb
-package-lock.json
-yarn.lock
 .pnp
 .pnp.js
 
@@ -66,16 +64,21 @@ Thumbs.db
 *.log
 logs/
 
-# ── Cloned reference repos (not project code) ────
-arsenal/
-hermes-agent-main/
-skills-main/
-superview-sh-main/
-Claude_Code_npm-main/
-codebuff-main/
-open-claude-main/
-Hermes-studio--main/
-powershell/
+# ── Large local/generated data excluded from GitHub push ──
+PythonAI.venv/
+PythonAI/data/training/amplified_dataset.jsonl
+PythonAI/data/training/formatted/
+PythonAI/data/training/training_dataset.jsonl
+forgeai-universe/sources/PythonAI/data/training/amplified_dataset.jsonl
+forgeai-universe/sources/PythonAI/data/training/formatted/
+forgeai-universe/sources/PythonAI/data/training/training_dataset.jsonl
+forgeai-universe/sources/PythonAI/data/raw/
+forgeai-universe/sources/PythonAI/data/processed/
+forgeai-universe/sources/PythonAI/extra_data/
+forgeai-universe/sources/PythonAI/checkpoints/
+forgeai-universe/sources/PythonAI/python_brain_godmode/
+forgeai-universe/sources/Rudra-bots-main/data/
+arsenal/10-evaluation/BIG-bench/bigbench/benchmark_tasks/dyck_languages/results/full-logs_*
 
 # ── Git submodules (if any) ────────────────────────
 nul
