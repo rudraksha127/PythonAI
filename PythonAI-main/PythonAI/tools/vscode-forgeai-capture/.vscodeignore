@@ -1,7 +1,0 @@
-.vscode/**
-.gitignore
-node_modules/
-src/**
-tsconfig.json
-!.vscode/launch.json
-!.vscode/tasks.json
