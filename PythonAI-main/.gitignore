@@ -1,0 +1,188 @@
+# ── Python ──────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+*.whl
+
+# ── PythonAI specific ──────────────────────────────
+PythonAI/.venv/
+PythonAI/venv/
+PythonAI/env/
+PythonAI/forge_workspace/
+PythonAI/data/raw/
+PythonAI/python_brain_godmode/
+PythonAI/checkpoints/
+PythonAI/.env
+PythonAI/*.db
+PythonAI/*.sqlite3
+
+# ── Node / Bun ─────────────────────────────────────
+node_modules/
+bun.lock
+bun.lockb
+.pnp
+.pnp.js
+
+# ── Build outputs ──────────────────────────────────
+dist/
+build/
+out/
+.next/
+coverage/
+
+# ── TypeScript ─────────────────────────────────────
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# ── IDE / OS ───────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Environment files ──────────────────────────────
+.env
+.env.local
+.env.*.local
+*.key
+
+# ── Docker ─────────────────────────────────────────
+.docker/
+
+# ── Logs ───────────────────────────────────────────
+*.log
+logs/
+
+# ── External reference repos (cloned, not project code) ──
+arsenal/
+external-tools/
+skills-main/
+superview-sh-main/
+Claude_Code_npm-main/
+codebuff-main/
+open-claude-main/
+Hermes-studio--main/
+hermes-agent-main/
+powershell/
+
+# ── ForgeAI Universe (monorepo migration workspace) ──
+forgeai-universe/
+
+# ── ForgeAI internal metadata ──
+.forgeai/
+.kiro/
+anti_gravity_data/
+
+# ── Virtual environments ──
+PythonAI.venv/
+PythonAI/data/training/amplified_dataset.jsonl
+PythonAI/data/training/formatted/
+PythonAI/data/training/training_dataset.jsonl
+forgeai-universe/sources/PythonAI/data/training/amplified_dataset.jsonl
+forgeai-universe/sources/PythonAI/data/training/formatted/
+forgeai-universe/sources/PythonAI/data/training/training_dataset.jsonl
+forgeai-universe/sources/PythonAI/data/raw/
+forgeai-universe/sources/PythonAI/data/processed/
+forgeai-universe/sources/PythonAI/extra_data/
+forgeai-universe/sources/PythonAI/checkpoints/
+forgeai-universe/sources/PythonAI/python_brain_godmode/
+forgeai-universe/sources/Rudra-bots-main/data/
+arsenal/10-evaluation/BIG-bench/bigbench/benchmark_tasks/dyck_languages/results/full-logs_*
+
+# ── Git submodules (if any) ────────────────────────
+nul
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# ── Archives ────────────────────────────────────────
+PythonAI/ZIP\ FILES/
+*.zip
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+*.tar
+
+# ── Runtime logs ────────────────────────────────────
+*.err.log
+*.out.log
+*.err
+
+# ── AI/ML experiment tracking ─────────────────────
+wandb/
+mlruns/
+lightning_logs/
+.mlflow/
+tensorboard_logs/
+
+# ── AI model caches ────────────────────────────────
+model_cache/
+transformers_cache/
+huggingface_hub_cache/
+*.safetensors
+*.gguf
+*.onnx
+
+# ── Testing & coverage ─────────────────────────────
+.deepeval/
+.hypothesis/
+.coverage*
+htmlcov/
+.coverage/
+
+# ── Root-level screenshots / dev artifacts ─────────
+/agent_workspace.png
+/app_live_screenshot.png
+/dash_home.png
+/screenshot.png
+ForgeAI_ANTIGRAVITY_PROMPT_*.md
+
+# ── Jupyter Notebooks ──────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+
+# ── Windows temp / absolute paths ──────────────────
+C:Users*
+~$*
+*.tmp
+*.temp
+
+# ── Compiled binaries ──────────────────────────────
+*.dll
+*.dylib
+*.o
+*.obj
+
+# ── Media (large, regeneratable) ───────────────────
+*.mp3
+*.mp4
+*.avi
+*.mov
+*.wav
+*.flac
+
+# ── Terraform (if used) ────────────────────────────
+.terraform/
+terraform.tfstate*
+*.tfvars
+
+# ── System restore / recycle ───────────────────────
+$RECYCLE.BIN/
+System Volume Information/
+pagefile.sys
+swapfile.sys
+
+# ── VS Code workspace files ────────────────────────
+*.code-workspace

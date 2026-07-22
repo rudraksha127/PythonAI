@@ -1,0 +1,15 @@
+[submodule "integrations/ragflow"]
+	path = integrations/ragflow
+	url = https://github.com/infiniflow/ragflow.git
+[submodule "integrations/dspy"]
+	path = integrations/dspy
+	url = https://github.com/stanfordnlp/dspy.git
+[submodule "integrations/outlines"]
+	path = integrations/outlines
+	url = https://github.com/dottxt-ai/outlines.git
+[submodule "integrations/MemGPT"]
+	path = integrations/MemGPT
+	url = https://github.com/cpacker/MemGPT.git
+[submodule "repos/weaviate"]
+	path = repos/weaviate
+	url = https://github.com/weaviate/weaviate.git
