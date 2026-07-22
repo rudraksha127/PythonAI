@@ -1,0 +1,125 @@
+accelerate==1.13.0
+airllm==2.11.0
+chromadb==1.5.9
+datasets==4.8.5
+ollama==0.6.2
+pandas==3.0.3
+peft==0.19.1
+psutil==7.2.2
+requests==2.33.1
+safetensors==0.7.0
+pytest-xdist==3.6.1
+streamlit==1.57.0
+sentence-transformers==5.4.1
+torch==2.11.0
+tqdm==4.67.3
+transformers==5.8.0
+python-dotenv>=1.0.0
+dask>=2024.1.0
+tiktoken>=0.7.0
+aiohttp>=3.9.0
+huggingface_hub>=0.20.0
+loguru>=0.7.0
+rich>=13.0.0
+apscheduler>=3.10.0
+websockets>=12.0
+pyarrow>=14.0.0
+fastapi>=0.110.0
+uvicorn>=0.29.0
+
+# ── Unsloth (Optional: 2x faster QLoRA training, 70% less VRAM) ──
+# Install via: pip install 'unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git'
+# Requires CUDA. CPU training falls back to standard pipeline automatically.
+# unsloth>=2025.0.0
+
+# ═══════════════════════════════════════════════════════════════
+# ForgeAI v2.0 — Additional Dependencies
+# ═══════════════════════════════════════════════════════════════
+# Research-backed: MIT SEAL · cAST · GRPO · SDFT · Unsloth · vLLM
+# ═══════════════════════════════════════════════════════════════
+
+# ─── Code Analysis (cAST - EMNLP 2025) ────────────────────────
+tree-sitter>=0.20.0
+tree-sitter-python>=0.21.0
+tree-sitter-javascript>=0.20.0
+tree-sitter-typescript>=0.20.0
+tree-sitter-go>=0.20.0
+tree-sitter-rust>=0.20.0
+tree-sitter-java>=0.20.0
+
+# ─── Security (Capture Engine - Encryption) ───────────────────
+cryptography>=41.0.0
+
+# ─── Additional LLM Providers ─────────────────────────────────
+openai>=1.0.0
+anthropic>=0.7.0
+
+# ─── RL Training (GRPO - DeepSeek 2025) ───────────────────────
+trl>=0.7.0
+
+# ─── Optional: vLLM (production inference) ────────────────────
+# pip install vllm
+
+# ─── Optional: SGLang (maximum performance) ───────────────────
+# pip install sglang
+
+# ─── Optional: OpenRLHF (GRPO at scale) ───────────────────────
+# pip install openrlhf
+# Install via: pip install 'unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git'
+# Requires CUDA. CPU training falls back to standard pipeline automatically.
+# unsloth>=2025.0.0
+
+# ═══════════════════════════════════════════════════════════════
+# ForgeAI Cloud — Supabase + Stripe (Optional)
+# ═══════════════════════════════════════════════════════════════
+# Uncomment and set env vars when using cloud features:
+#   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+#   STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET
+
+# Supabase Python SDK
+supabase>=2.8.0
+
+# Stripe payment processing
+stripe>=4.2.0
+
+# Pydantic config + email validation (pydantic[email] covers base dep)
+pydantic[email]>=2.0.0
+
+# ═══════════════════════════════════════════════════════════════
+# 🌌 GITHUB ARSENAL — Priority Tool Integrations
+# Source: Readme/git.txt (300+ tools, pip-installable subset)
+# ═══════════════════════════════════════════════════════════════
+
+# ─── Priority 1: IMMEDIATE — Fix Current Problems ─────────────
+outlines>=0.1.0                # #9  Guaranteed JSON from any LLM
+distilabel>=1.0.0              # #93 Synthetic data generation pipeline
+ragas>=0.2.0                   # #138 RAG evaluation framework
+deepeval>=1.0.0                # #139 pytest for LLMs
+
+# ─── Priority 2: SHORT TERM — This Month ──────────────────────
+lightrag-hku>=0.1.0            # #66 Graph + Vector hybrid RAG
+mem0ai>=0.1.0                  # #119 Persistent AI memory layer
+langfuse>=2.0.0                # #148 LLM observability platform
+crawl4ai>=0.4.0                # #196 Async web crawler for LLMs
+duckduckgo-search>=6.0.0       # #269 Free web search API
+
+# ─── Priority 3: MEDIUM TERM — Next Month ─────────────────────
+crewai>=0.80.0                 # #44 Role-based multi-agent framework
+graphiti-core>=0.4.0           # #109 Temporal knowledge graph
+argilla>=2.0.0                 # #94/130 Data labeling for AI
+
+# ─── Priority 4: ADVANCED — This Quarter ──────────────────────
+dspy>=2.0.0                    # #6 Programming (not prompting) LMs
+llama-index>=0.11.0            # #5 Data framework for LLM apps
+guardrails-ai>=0.5.0           # #251 Input/output validation
+firecrawl-py>=1.0.0            # #195 LLM-optimized web crawling
+
+# ─── Additional Arsenal (Already satisfied or lightweight) ────
+networkx>=3.0                  # #112 Pure Python graph library
+cleanlab>=2.0                  # #132 Fix data quality issues
+trafilatura>=1.0               # #199 Web content extraction
+
+# ─── Optional GPU-only (uncomment if CUDA available) ──────────
+# vllm>=0.6.0                  # #23 High-throughput LLM serving
+# sglang>=0.3.0                # #24 5x faster than vLLM
+# unsloth>=2025.0.0            # #81 2x faster, 50% less memory
