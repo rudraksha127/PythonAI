@@ -1,0 +1,11 @@
+name,age,height,weight,is_student,join_date,department
+Alice,25,165.5,55.2,true,2023-01-15,Engineering
+Bob,30,180.0,75.5,false,2022-06-20,Marketing
+Charlie,22,175.3,68.1,true,2023-03-10,Engineering
+David,28,170.2,62.3,false,2021-11-05,HR
+Eve,24,162.8,50.7,true,2023-02-14,Marketing
+Frank,35,185.0,85.0,false,2020-09-18,Engineering
+Grace,27,168.5,58.9,true,2022-12-01,HR
+Henry,29,177.8,72.4,false,2021-08-15,Engineering
+Ivy,23,160.0,48.2,true,2023-04-22,Marketing
+Jack,31,182.5,78.6,false,2020-10-30,Engineering

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI/ML GitHub Star Trends</title>
+<style>
+:root { --bg: #0a0a0b; --surface: #111114; --elevated: #18181c;
+  --border: #27272c; --text: #fafafa; --secondary: #a1a1aa;
+  --muted: #71717a; --accent: #5b5bff; --success: #22c55e; --warning: #f59e0b; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.6; }
+.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.header { text-align: center; padding: 30px 0 20px; }
+.header h1 { font-size: 1.8rem; background: linear-gradient(135deg, var(--accent), #06b6d4);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.header p { color: var(--muted); margin-top: 6px; }
+.stats-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 16px 0; }
+.stat-card { background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px 20px; text-align: center; min-width: 130px; }
+.stat-card .num { font-size: 1.4rem; font-weight: 700; color: var(--accent);
+  font-variant-numeric: tabular-nums; }
+.stat-card .label { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+.stat-card .num.green { color: var(--success); }
+.stat-card .num.warning { color: var(--warning); }
+.filters { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; align-items: center; }
+.filters input, .filters select { background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 0.9rem; }
+.filters input { flex: 1; min-width: 200px; }
+table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+th { text-align: left; padding: 10px 12px; font-size: 0.8rem; color: var(--muted);
+  border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; }
+th:hover { color: var(--accent); }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+tr:hover td { background: var(--elevated); }
+.repo-link { color: var(--accent); text-decoration: none; }
+.repo-link:hover { text-decoration: underline; }
+.stars-num { font-variant-numeric: tabular-nums; }
+.growth-pos { color: var(--success); }
+.growth-neg { color: #ef4444; }
+.growth-zero { color: var(--muted); }
+.badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px;
+  background: var(--elevated); color: var(--muted); border: 1px solid var(--border);
+  display: inline-block; white-space: nowrap; }
+.pulse { animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@media (max-width: 768px) { table { font-size: 0.8rem; } td, th { padding: 6px 8px; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>⭐ AI/ML Star Trends</h1>
+    <p>Tracking 566 repos across 24 categories · June 17, 2026</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="num">6,956,676</div><div class="label">Total Stars</div></div>
+    <div class="stat-card"><div class="num green">+6,956,676</div><div class="label">Weekly Growth</div></div>
+    <div class="stat-card"><div class="num">566</div><div class="label">Repos Tracked</div></div>
+    <div class="stat-card"><div class="num">24</div><div class="label">Categories</div></div>
+  </div>
+
+  <div class="filters">
+    <input type="text" id="search" placeholder="Search repos..." oninput="filterTable()">
+    <select id="sortSelect" onchange="sortTable()">
+      <option value="growth_7d">Sort: Weekly Growth</option>
+      <option value="stars">Sort: Total Stars</option>
+      <option value="growth_rate">Sort: Growth Rate %</option>
+      <option value="name">Sort: Name</option>
+    </select>
+    <label style="color:var(--muted);font-size:0.85rem;">
+      <input type="checkbox" id="onlyPositive" onchange="filterTable()"> Growing only
+    </label>
+  </div>
+
+  <table id="trendsTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Repository</th>
+        <th style="text-align:right">Stars</th>
+        <th style="text-align:right">+7 Days</th>
+        <th style="text-align:right">+30 Days</th>
+        <th style="text-align:right">Growth %</th>
+        <th>Category</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+
+  <div style="margin-top:30px;text-align:center;color:var(--muted);font-size:0.8rem;">
+    ↑ Click column headers to sort · Data updates daily via GitHub API
+  </div>
+</div>
+
+<script>
+const repos = [{"full_name": "Significant-Gravitas/AutoGPT", "stars": 184988, "growth_7d": 184988, "growth_30d": 184988, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "ollama/ollama", "stars": 174360, "growth_7d": 174360, "growth_30d": 174360, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "AUTOMATIC1111/stable-diffusion-webui", "stars": 163762, "growth_7d": 163762, "growth_30d": 163762, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "huggingface/transformers", "stars": 161666, "growth_7d": 161666, "growth_30d": 161666, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "langflow-ai/langflow", "stars": 149776, "growth_7d": 149776, "growth_30d": 149776, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "langgenius/dify", "stars": 145594, "growth_7d": 145594, "growth_30d": 145594, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "open-webui/open-webui", "stars": 141955, "growth_7d": 141955, "growth_30d": 141955, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "langchain-ai/langchain", "stars": 139540, "growth_7d": 139540, "growth_30d": 139540, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "comfyanonymous/ComfyUI", "stars": 117342, "growth_7d": 117342, "growth_30d": 117342, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "ggml-org/llama.cpp", "stars": 116947, "growth_7d": 116947, "growth_30d": 116947, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "microsoft/generative-ai-for-beginners", "stars": 112089, "growth_7d": 112089, "growth_30d": 112089, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "deepseek-ai/DeepSeek-V3", "stars": 103753, "growth_7d": 103753, "growth_30d": 103753, "growth_rate_7d": 0, "category": "foundation-llms", "snapshot_date": "2026-06-17"}, {"full_name": "openai/whisper", "stars": 102892, "growth_7d": 102892, "growth_30d": 102892, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "pytorch/pytorch", "stars": 100827, "growth_7d": 100827, "growth_30d": 100827, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "browser-use/browser-use", "stars": 99239, "growth_7d": 99239, "growth_30d": 99239, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "rasbt/LLMs-from-scratch", "stars": 97287, "growth_7d": 97287, "growth_30d": 97287, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "deepseek-ai/DeepSeek-R1", "stars": 91986, "growth_7d": 91986, "growth_30d": 91986, "growth_rate_7d": 0, "category": "foundation-llms", "snapshot_date": "2026-06-17"}, {"full_name": "Yidadaa/ChatGPT-Next-Web", "stars": 88263, "growth_7d": 88263, "growth_30d": 88263, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "modelcontextprotocol/servers", "stars": 87358, "growth_7d": 87358, "growth_30d": 87358, "growth_rate_7d": 0, "category": "mcp-servers", "snapshot_date": "2026-06-17"}, {"full_name": "vllm-project/vllm", "stars": 83138, "growth_7d": 83138, "growth_30d": 83138, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "infiniflow/ragflow", "stars": 83001, "growth_7d": 83001, "growth_30d": 83001, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "mlabonne/llm-course", "stars": 80197, "growth_7d": 80197, "growth_30d": 80197, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "lobehub/lobe-chat", "stars": 78768, "growth_7d": 78768, "growth_30d": 78768, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "All-Hands-AI/OpenHands", "stars": 77481, "growth_7d": 77481, "growth_30d": 77481, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "nomic-ai/gpt4all", "stars": 77374, "growth_7d": 77374, "growth_30d": 77374, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "dair-ai/Prompt-Engineering-Guide", "stars": 75699, "growth_7d": 75699, "growth_30d": 75699, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "openai/openai-cookbook", "stars": 74215, "growth_7d": 74215, "growth_30d": 74215, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "hiyouga/LLaMA-Factory", "stars": 72250, "growth_7d": 72250, "growth_30d": 72250, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "geekan/MetaGPT", "stars": 68856, "growth_7d": 68856, "growth_30d": 68856, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "unslothai/unsloth", "stars": 66684, "growth_7d": 66684, "growth_30d": 66684, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "keras-team/keras", "stars": 64095, "growth_7d": 64095, "growth_30d": 64095, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "docling-project/docling", "stars": 61734, "growth_7d": 61734, "growth_30d": 61734, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "Mintplex-Labs/anything-llm", "stars": 61708, "growth_7d": 61708, "growth_30d": 61708, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "karpathy/nanoGPT", "stars": 59765, "growth_7d": 59765, "growth_30d": 59765, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "microsoft/autogen", "stars": 59032, "growth_7d": 59032, "growth_30d": 59032, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "mem0ai/mem0", "stars": 58775, "growth_7d": 58775, "growth_30d": 58775, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "RVC-Boss/GPT-SoVITS", "stars": 58746, "growth_7d": 58746, "growth_30d": 58746, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "ultralytics/ultralytics", "stars": 58495, "growth_7d": 58495, "growth_30d": 58495, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "imartinez/privateGPT", "stars": 57281, "growth_7d": 57281, "growth_30d": 57281, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "gpt-engineer-org/gpt-engineer", "stars": 55205, "growth_7d": 55205, "growth_30d": 55205, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "facebookresearch/segment-anything", "stars": 54360, "growth_7d": 54360, "growth_30d": 54360, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "crewAIInc/crewAI", "stars": 53768, "growth_7d": 53768, "growth_30d": 53768, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "FlowiseAI/Flowise", "stars": 53678, "growth_7d": 53678, "growth_30d": 53678, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "xai-org/grok-1", "stars": 51690, "growth_7d": 51690, "growth_30d": 51690, "growth_rate_7d": 0, "category": "foundation-llms", "snapshot_date": "2026-06-17"}, {"full_name": "ggml-org/whisper.cpp", "stars": 50795, "growth_7d": 50795, "growth_30d": 50795, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "BerriAI/litellm", "stars": 50675, "growth_7d": 50675, "growth_30d": 50675, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "run-llama/llama_index", "stars": 50189, "growth_7d": 50189, "growth_30d": 50189, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "oobabooga/text-generation-webui", "stars": 47328, "growth_7d": 47328, "growth_30d": 47328, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "coqui-ai/TTS", "stars": 45574, "growth_7d": 45574, "growth_30d": 45574, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}, {"full_name": "milvus-io/milvus", "stars": 44814, "growth_7d": 44814, "growth_30d": 44814, "growth_rate_7d": 0, "category": "architecture-variants", "snapshot_date": "2026-06-17"}];
+let currentSort = 'growth_7d';
+let sortAsc = false;
+
+function fmtNum(n) { return n.toLocaleString(); }
+
+function growthClass(val) {
+  if (val > 0) return 'growth-pos';
+  if (val < 0) return 'growth-neg';
+  return 'growth-zero';
+}
+
+function fmtGrowth(val) {
+  const prefix = val > 0 ? '+' : '';
+  return `<span class="${growthClass(val)}">${prefix}${fmtNum(val)}</span>`;
+}
+
+function filterTable() {
+  const query = document.getElementById('search').value.toLowerCase();
+  const onlyPos = document.getElementById('onlyPositive').checked;
+
+  let filtered = repos.filter(r => {
+    const matchName = r.full_name.toLowerCase().includes(query);
+    const matchPos = !onlyPos || r.growth_7d > 0;
+    return matchName && matchPos;
+  });
+
+  renderTable(filtered);
+}
+
+function sortTable() {
+  const sortKey = document.getElementById('sortSelect').value;
+  if (sortKey === currentSort) sortAsc = !sortAsc;
+  else { currentSort = sortKey; sortAsc = false; }
+  filterTable();
+}
+
+function renderTable(data) {
+  data.sort((a, b) => {
+    let cmp = 0;
+    if (currentSort === 'growth_7d') cmp = b.growth_7d - a.growth_7d;
+    else if (currentSort === 'stars') cmp = b.stars - a.stars;
+    else if (currentSort === 'growth_rate') cmp = b.growth_rate_7d - a.growth_rate_7d;
+    else if (currentSort === 'name') cmp = a.full_name.localeCompare(b.full_name);
+    if (sortAsc) cmp = -cmp;
+    return cmp;
+  });
+
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = data.map((r, i) =>
+    '<tr>' +
+      '<td>' + (i + 1) + '</td>' +
+      '<td><a class="repo-link" href="https://github.com/' + r.full_name + '" target="_blank">' + r.full_name + '</a></td>' +
+      '<td style="text-align:right" class="stars-num">' + fmtNum(r.stars) + '</td>' +
+      '<td style="text-align:right" class="stars-num">' + fmtGrowth(r.growth_7d) + '</td>' +
+      '<td style="text-align:right" class="stars-num">' + fmtGrowth(r.growth_30d) + '</td>' +
+      '<td style="text-align:right" class="stars-num">' + fmtGrowth(r.growth_rate_7d) + '%</td>' +
+      '<td><span class="badge">' + r.category + '</span></td>' +
+    '</tr>'
+  ).join('');
+}
+
+// Initial render
+filterTable();
+</script>
+</body>
+</html>

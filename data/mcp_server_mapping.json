@@ -1,0 +1,63 @@
+{
+  "_comment": "MCP Server Name → GitHub Repository Mapping",
+  "_description": "Maps logical MCP server names (from tables without clone URLs) to their actual GitHub repos. Sources: modelcontextprotocol/servers (official ref impl), independent repos, community forks.",
+  "_updated": "2025-06-17",
+  "servers": {
+    "mcp-brave-search": {
+      "full_name": "modelcontextprotocol/servers",
+      "subdirectory": "src/brave-search",
+      "clone_url": "https://github.com/modelcontextprotocol/servers.git",
+      "alternate_repo": "brave/brave-search-mcp-server",
+      "description": "Brave web search via MCP",
+      "category": "mcp-servers"
+    },
+    "mcp-puppeteer": {
+      "full_name": "modelcontextprotocol/servers",
+      "subdirectory": "src/puppeteer",
+      "clone_url": "https://github.com/modelcontextprotocol/servers.git",
+      "alternate_repo": "modelcontextprotocol/puppeteer-server",
+      "description": "Browser automation via Puppeteer",
+      "category": "mcp-servers"
+    },
+    "mcp-fetch": {
+      "full_name": "modelcontextprotocol/servers",
+      "subdirectory": "src/fetch",
+      "clone_url": "https://github.com/modelcontextprotocol/servers.git",
+      "description": "Fetch web URLs as markdown",
+      "category": "mcp-servers"
+    },
+    "browser-tools-mcp": {
+      "full_name": "agentdesk/browser-tools-mcp",
+      "clone_url": "https://github.com/agentdesk/browser-tools-mcp.git",
+      "description": "Browser automation tools via MCP",
+      "category": "mcp-servers"
+    },
+    "mcp-memory": {
+      "full_name": "modelcontextprotocol/servers",
+      "subdirectory": "src/memory",
+      "clone_url": "https://github.com/modelcontextprotocol/servers.git",
+      "description": "Persistent knowledge graph memory",
+      "category": "mcp-servers"
+    },
+    "mcp-qdrant": {
+      "full_name": "qdrant/mcp-server-qdrant",
+      "clone_url": "https://github.com/qdrant/mcp-server-qdrant.git",
+      "description": "Vector DB search via Qdrant",
+      "category": "mcp-servers"
+    },
+    "mcp-slack": {
+      "full_name": "modelcontextprotocol/servers",
+      "subdirectory": "src/slack",
+      "clone_url": "https://github.com/modelcontextprotocol/servers.git",
+      "description": "Slack messaging integration",
+      "category": "mcp-servers"
+    },
+    "mcp-google-drive": {
+      "full_name": "modelcontextprotocol/servers",
+      "subdirectory": "src/gdrive",
+      "clone_url": "https://github.com/modelcontextprotocol/servers.git",
+      "description": "Google Drive file access",
+      "category": "mcp-servers"
+    }
+  }
+}
