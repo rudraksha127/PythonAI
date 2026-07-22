@@ -60,6 +60,13 @@ from src.data.phase1 import (
     generate_week4,
     phase1_stats,
 )
+from src.data.keyword_expander import (
+    ExpansionConfig,
+    KeywordExpander,
+    detect_domain,
+    generate_questions,
+    score_pairs,
+)
 from src.data.quality import (
     QualityPipeline,
     check_boilerplate,
@@ -97,6 +104,12 @@ __all__ = [
     "near_dedup",
     "check_boilerplate",
     "check_repetition",
+    # Keyword Expander (M9)
+    "ExpansionConfig",
+    "KeywordExpander",
+    "detect_domain",
+    "generate_questions",
+    "score_pairs",
     # Phase 1
     "generate_phase1_datasets",
     "generate_week1",

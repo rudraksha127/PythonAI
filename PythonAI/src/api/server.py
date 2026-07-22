@@ -601,32 +601,25 @@ async def get_training_status(project_id: str | None = None) -> dict[str, Any]:
 
 @app.post("/api/training/trigger")
 async def trigger_training(project_id: str | None = None) -> dict[str, Any]:
-    """Manually trigger a training run."""
-    global _active_training_run
+    """Manually trigger a training run.
 
-    if _capture_engine is None or _sdft_trainer is None:
-        raise HTTPException(status_code=503, detail="Training system not initialized")
+    Delegates to ``_run_scheduled_training()`` which owns all state management
+    and dashboard broadcasting (run ID, progress, results). The full pipeline:
+    signal extraction → SDFT training → GRPO training → quality comparison →
+    rollback (if needed) → record results.
+
+    Returns immediately. Poll ``GET /api/training/status`` to track progress.
+    """
+    if _capture_engine is None or _sdft_trainer is None or _grpo_trainer is None:
+        raise HTTPException(status_code=503, detail="Training system not initialised")
 
     if _active_training_run is not None:
         raise HTTPException(status_code=409, detail="Training run already in progress")
 
-    run_id = str(uuid.uuid4())
-    _active_training_run = {
-        "run_id": run_id,
-        "status": "queued",
-        "started_at": time.time(),
-        "progress": 0.0,
-    }
+    # Let _run_scheduled_training own the run_id, state, and broadcasting
+    asyncio.create_task(_run_scheduled_training())
 
-    # Broadcast start
-    await _broadcast_to_dashboards(
-        {
-            "type": "training_started",
-            "run_id": run_id,
-        }
-    )
-
-    return {"run_id": run_id, "status": "queued"}
+    return {"status": "started", "detail": "Training pipeline launched in background. Use GET /api/training/status to track progress."}
 
 
 # ─── WebSocket Endpoints ───────────────────────────────────────────
@@ -779,15 +772,24 @@ def _get_cron_description(cron_expr: str) -> str:
 
 
 async def _run_scheduled_training():
-    """Job run by APScheduler. Triggers training if no run is active."""
+    """Job run by APScheduler. Triggers training if no run is active.
+
+    Pipeline:
+      1. Extract accept/reject/edit signals from CaptureEngine
+      2. Convert signals to SDFT TrainingExample objects + GRPO pairs
+      3. Run SDFT (sequential fine-tuning to prevent forgetting)
+      4. Run GRPO (RL with accept/reject pairs for reward optimisation)
+      5. Record before/after acceptance rate in CaptureEngine
+      6. Broadcast progress updates to dashboard via WebSocket
+    """
     global _active_training_run, _schedule_config
 
     if _active_training_run is not None:
         logger.warning("Scheduled training skipped: a training run is already active.")
         return
 
-    if _capture_engine is None or _sdft_trainer is None:
-        logger.warning("Scheduled training skipped: training system not initialized.")
+    if _capture_engine is None or _sdft_trainer is None or _grpo_trainer is None:
+        logger.warning("Scheduled training skipped: training system not fully initialised.")
         return
 
     logger.info("Starting scheduled weekly training run...")
@@ -795,34 +797,619 @@ async def _run_scheduled_training():
     run_id = str(uuid.uuid4())
     _active_training_run = {
         "run_id": run_id,
-        "status": "running",
+        "status": "extracting_signals",
         "started_at": time.time(),
         "progress": 0.0,
     }
 
     try:
         # Broadcast start
-        await _broadcast_to_dashboards(
-            {
-                "type": "training_started",
-                "run_id": run_id,
-            }
+        await _broadcast_to_dashboards({
+            "type": "training_started",
+            "run_id": run_id,
+        })
+
+        # ── Phase 1: Extract signals from CaptureEngine ──────────────
+        logger.info("Phase 1/4: Extracting developer signals...")
+        accept_signals = _capture_engine.get_signals(signal_type="accept", limit=500)
+        reject_signals = _capture_engine.get_signals(signal_type="reject", limit=500)
+        edit_signals = _capture_engine.get_signals(signal_type="edit", limit=500)
+        pr_merge_signals = _capture_engine.get_signals(signal_type="pr_merge", limit=500)
+
+        logger.info(
+            f"Extracted {len(accept_signals)} accepts, {len(reject_signals)} rejects, "
+            f"{len(edit_signals)} edits, {len(pr_merge_signals)} PR merges"
         )
 
-        # Log the scheduled run
+        total_signals = len(accept_signals) + len(reject_signals) + len(edit_signals) + len(pr_merge_signals)
+        if total_signals == 0:
+            logger.info("No signals available for training. Skipping run.")
+            _active_training_run["status"] = "skipped_no_data"
+            _schedule_config["last_run"] = time.time()
+            _schedule_config["total_runs"] += 1
+            await _broadcast_to_dashboards({
+                "type": "training_skipped",
+                "run_id": run_id,
+                "reason": "no_signals",
+            })
+            return
+
+        # Record acceptance rate BEFORE training
+        acceptance_before = _capture_engine.get_statistics().get("overall_acceptance_rate", 0.0)
+        logger.info(f"Acceptance rate before training: {acceptance_before:.1f}%")
+
+        # ── Phase 2: SDFT Training (Sequential Fine-Tuning) ─────────
+        _active_training_run["status"] = "sdft_training"
+        _active_training_run["progress"] = 0.2
+        await _broadcast_to_dashboards({
+            "type": "training_progress",
+            "run_id": run_id,
+            "phase": "sdft",
+            "progress": 0.2,
+        })
+
+        sdft_examples = _signals_to_sdft_examples(accept_signals, edit_signals, pr_merge_signals)
+        sdft_metrics: dict[str, Any] = {"examples_used": 0}
+
+        if sdft_examples:
+            sdft_output_dir = Path.home() / ".forgeai" / "adapters" / run_id / "sdft"
+            logger.info(f"Phase 2/4: SDFT training with {len(sdft_examples)} examples...")
+
+            sdft_metrics = await asyncio.to_thread(
+                _sdft_trainer.train,
+                current_examples=sdft_examples,
+                output_dir=str(sdft_output_dir),
+                num_epochs=1,
+                batch_size=4,
+                save_steps=500,
+                logging_steps=10,
+            )
+
+            # Update replay buffer for next run to prevent forgetting
+            prev_week_path = Path.home() / ".forgeai" / "replay" / "previous_week.jsonl"
+            foundational_path = Path.home() / ".forgeai" / "replay" / "foundational.jsonl"
+            _sdft_trainer.update_replay_buffer(
+                current_examples=sdft_examples,
+                save_previous_week_path=str(prev_week_path),
+                save_foundational_path=str(foundational_path),
+            )
+
+            logger.info(f"SDFT complete: loss={sdft_metrics.get('train_loss')}, "
+                         f"forgetting_detected={sdft_metrics.get('forgetting_detected')}")
+        else:
+            logger.warning("No positive examples for SDFT, skipping SDFT phase.")
+
+        # ── Phase 3: GRPO Training (RL with accept/reject pairs) ────
+        _active_training_run["status"] = "grpo_training"
+        _active_training_run["progress"] = 0.6
+        await _broadcast_to_dashboards({
+            "type": "training_progress",
+            "run_id": run_id,
+            "phase": "grpo",
+            "progress": 0.6,
+        })
+
+        grpo_pairs = _signals_to_grpo_pairs(accept_signals, reject_signals, edit_signals)
+        grpo_metrics: dict[str, Any] = {"pairs_trained": 0}
+
+        if grpo_pairs:
+            grpo_output_dir = Path.home() / ".forgeai" / "adapters" / run_id / "grpo"
+            logger.info(f"Phase 3/4: GRPO training with {len(grpo_pairs)} pairs...")
+
+            grpo_metrics = await asyncio.to_thread(
+                _grpo_trainer.train,
+                pairs=grpo_pairs,
+                output_dir=str(grpo_output_dir),
+                num_epochs=1,
+                batch_size=4,
+                save_steps=100,
+                logging_steps=10,
+            )
+
+            logger.info(f"GRPO complete: loss={grpo_metrics.get('final_loss')}, "
+                         f"pairs_trained={grpo_metrics.get('pairs_trained')}")
+        else:
+            logger.warning("No accept/reject pairs available for GRPO, skipping GRPO phase.")
+
+        # ── Phase 4: Quality comparison ───────────────────────────────
+        _active_training_run["status"] = "quality_comparison"
+        _active_training_run["progress"] = 0.85
+        await _broadcast_to_dashboards({
+            "type": "training_progress",
+            "run_id": run_id,
+            "phase": "comparison",
+            "progress": 0.85,
+        })
+
+        logger.info("Phase 4/5: Running quality comparison against previous best adapter...")
+        comparison_results: dict[str, Any] = await asyncio.to_thread(
+            _run_quality_comparison_sync, run_id
+        )
+
+        # Initialize rollback data (may be populated if regression detected)
+        rollback_data: dict[str, Any] = {}
+
+        if comparison_results.get("regression_detected"):
+            details = comparison_results.get("regression_details", [])
+            logger.warning(
+                f"Quality regression detected in run {run_id}: "
+                f"{' ; '.join(details) if details else 'check comparison report'}"
+            )
+
+            # ── Rollback: replace the regressed adapter with the previous best ──
+            logger.info("Initiating rollback to previous best adapter...")
+            rollback_data = await asyncio.to_thread(
+                _rollback_adapter_sync, run_id, comparison_results
+            )
+
+            if rollback_data.get("status") == "rolled_back":
+                logger.warning(
+                    f"Rollback completed. Active adapter switched to "
+                    f"{rollback_data.get('previous_adapter', 'unknown')}"
+                )
+            else:
+                logger.error(
+                    f"Rollback failed: {rollback_data.get('error', 'unknown error')}"
+                )
+
+            await _broadcast_to_dashboards({
+                "type": "rollback_completed"
+                if rollback_data.get("status") == "rolled_back"
+                else "rollback_failed",
+                "run_id": run_id,
+                "rollback": rollback_data,
+            })
+        elif comparison_results.get("status") == "completed":
+            logger.info("No quality regression detected. New adapter is at parity or better.")
+        else:
+            logger.info(f"Quality comparison: {comparison_results.get('status', 'unknown')}")
+
+        # ── Phase 5: Record results ──────────────────────────────────
+        _active_training_run["status"] = "recording_results"
+        _active_training_run["progress"] = 0.9
+
+        acceptance_after = _capture_engine.get_statistics().get("overall_acceptance_rate", 0.0)
+
+        _capture_engine.store_training_run(
+            run_id=run_id,
+            model_name=_sdft_trainer.model_name,
+            signals_used=total_signals,
+            acceptance_rate_before=acceptance_before,
+            acceptance_rate_after=acceptance_after,
+            train_loss=sdft_metrics.get("train_loss"),
+            eval_loss=sdft_metrics.get("eval_loss"),
+            adapter_path=str(Path.home() / ".forgeai" / "adapters" / run_id),
+            metrics={
+                "sdft": {
+                    "examples_used": sdft_metrics.get("examples_used", 0),
+                    "train_loss": sdft_metrics.get("train_loss"),
+                    "eval_loss": sdft_metrics.get("eval_loss"),
+                    "forgetting_detected": sdft_metrics.get("forgetting_detected"),
+                },
+                "grpo": {
+                    "pairs_trained": grpo_metrics.get("pairs_trained", 0),
+                    "final_loss": grpo_metrics.get("final_loss"),
+                },
+                "quality_comparison": comparison_results,
+                "rollback": rollback_data,
+                "signal_counts": {
+                    "accepts": len(accept_signals),
+                    "rejects": len(reject_signals),
+                    "edits": len(edit_signals),
+                    "pr_merges": len(pr_merge_signals),
+                },
+            },
+        )
+
         _schedule_config["last_run"] = time.time()
         _schedule_config["total_runs"] += 1
 
-        logger.info(f"Scheduled training run {run_id} started successfully.")
+        acceptance_delta = acceptance_after - acceptance_before
+        direction = "improved" if acceptance_delta > 0 else "declined" if acceptance_delta < 0 else "unchanged"
+        logger.info(
+            f"Scheduled training run {run_id} completed. "
+            f"Acceptance: {acceptance_before:.1f}% → {acceptance_after:.1f}% ({direction}). "
+            f"SDFT: {sdft_metrics.get('examples_used', 0)} examples, "
+            f"GRPO: {grpo_metrics.get('pairs_trained', 0)} pairs."
+        )
+
+        await _broadcast_to_dashboards({
+            "type": "training_completed",
+            "run_id": run_id,
+            "acceptance_before": acceptance_before,
+            "acceptance_after": acceptance_after,
+            "acceptance_delta": acceptance_delta,
+            "sdft_examples": sdft_metrics.get("examples_used", 0),
+            "grpo_pairs": grpo_metrics.get("pairs_trained", 0),
+        })
+
     except Exception as e:
-        logger.error(f"Scheduled training run failed: {e}")
+        logger.error(f"Scheduled training run failed: {e}", exc_info=True)
         _active_training_run["status"] = "failed"
+        await _broadcast_to_dashboards({
+            "type": "training_failed",
+            "run_id": run_id,
+            "error": str(e),
+        })
     finally:
-        if _active_training_run and _active_training_run["status"] != "failed":
+        if _active_training_run and _active_training_run["status"] not in ("failed", "skipped_no_data"):
             _active_training_run["status"] = "completed"
             _active_training_run["progress"] = 1.0
-        # Reset after a short delay so dashboard can see the completed run
-        # In production, this would wait for actual training to finish
+        # Keep the run visible for 30s before clearing so the dashboard can poll it
+        await asyncio.sleep(30)
+        _active_training_run = None
+
+
+def _signals_to_sdft_examples(
+    accept_signals: list[Any],
+    edit_signals: list[Any],
+    pr_merge_signals: list[Any],
+) -> list[Any]:
+    """Convert capture engine TrainingSignal objects to SDFT TrainingExample objects.
+
+    Accept signals and PR merges → high-quality positive examples.
+    Edit signals → medium-quality examples (original suggestion was imperfect).
+    """
+    from src.training.sdft_trainer import TrainingExample
+
+    examples: list[Any] = []
+
+    def _context(signal: Any) -> str:
+        return signal.full_context or f"{signal.context_before}\n{signal.context_after}"
+
+    # Accepts and PR merges — high quality (quality_score = 1.0)
+    for signal in accept_signals + pr_merge_signals:
+        examples.append(TrainingExample(
+            instruction=f"Complete the code in {signal.file_path} ({signal.language}).",
+            input=_context(signal)[:1000],
+            output=signal.suggestion,
+            source="current",
+            quality_score=1.0,
+            signal_id=signal.signal_id,
+            language=signal.language,
+            framework=signal.framework,
+        ))
+
+    # Edits — quality proportional to edit_distance (lower edit = better suggestion)
+    for signal in edit_signals:
+        quality = max(1.0 - signal.edit_distance, 0.1)
+        examples.append(TrainingExample(
+            instruction=f"Fix or improve the code in {signal.file_path} ({signal.language}).",
+            input=_context(signal)[:1000],
+            output=signal.final_code or signal.suggestion,
+            source="current",
+            quality_score=quality,
+            signal_id=signal.signal_id,
+            language=signal.language,
+            framework=signal.framework,
+        ))
+
+    return examples
+
+
+def _signals_to_grpo_pairs(
+    accept_signals: list[Any],
+    reject_signals: list[Any],
+    edit_signals: list[Any],
+) -> list[Any]:
+    """Convert capture engine signals to GRPO training pairs.
+
+    Strategy:
+    - Match accepts with rejects that have the same language + file extension.
+      This creates natural preference pairs (good answer vs bad answer).
+    - Edits become pairs too: final_code (accepted) vs original suggestion (rejected).
+    - Final list is shuffled to avoid ordering bias during training.
+    """
+    import random
+
+    from src.training.grpo_trainer import GRPOPair
+
+    pairs: list[Any] = []
+    used_rejects: set[str] = set()
+
+    def _context(signal: Any) -> str:
+        return signal.full_context or f"{signal.context_before}\n{signal.context_after}"
+
+    # Match accepts with rejects (same language + file extension)
+    for accept in accept_signals:
+        accept_suffix = Path(accept.file_path).suffix
+        for reject in reject_signals:
+            if reject.signal_id in used_rejects:
+                continue
+            reject_suffix = Path(reject.file_path).suffix
+            if accept.language == reject.language and accept_suffix == reject_suffix:
+                pairs.append(GRPOPair(
+                    prompt=_context(accept),
+                    accepted_response=accept.suggestion,
+                    rejected_response=reject.suggestion,
+                    accepted_test_passed=accept.test_passed or False,
+                    rejected_test_passed=reject.test_passed or False,
+                    signal_id=accept.signal_id,
+                    language=accept.language,
+                ))
+                used_rejects.add(reject.signal_id)
+                break  # One reject per accept
+
+    # Create pairs from edits (final_code is accepted, original suggestion rejected)
+    for edit in edit_signals:
+        pairs.append(GRPOPair(
+            prompt=_context(edit),
+            accepted_response=edit.final_code or edit.suggestion,
+            rejected_response=edit.suggestion,
+            signal_id=edit.signal_id,
+            language=edit.language,
+            framework=edit.framework,
+        ))
+
+    random.shuffle(pairs)
+    return pairs
+
+
+def _run_quality_comparison_sync(run_id: str) -> dict[str, Any]:
+    """Evaluate the newly trained adapter against the previous best and detect regressions.
+
+    This runs in a thread (via asyncio.to_thread) because it loads full
+    transformers/PEFT models and runs them on test prompts.
+
+    Returns a dict with comparison metrics. Returns a lightweight status dict
+    if comparison is not possible (first run, missing deps, no previous adapter).
+
+    Regression signals:
+    - Generation time increase > 1.0 s (model got slower)
+    - Error rate increase (model produces more errors)
+    - Output quality degradation (shorter + less code than before)
+    """
+    # Heavy imports — only attempt when called
+    try:
+        from src.training.comparison import evaluate_adapter, DEFAULT_PROMPTS, AdapterResult  # type: ignore[import-untyped]
+    except ImportError as e:
+        logger.warning(f"Quality comparison skipped: missing dependencies ({e})")
+        return {"status": "skipped", "reason": f"missing_deps: {e}"}
+
+    adapters_dir = Path.home() / ".forgeai" / "adapters"
+    if not adapters_dir.exists():
+        return {"status": "skipped", "reason": "no_adapters_dir"}
+
+    # Discover all previous training run directories (sorted by name = chronological)
+    previous_dirs = sorted([
+        d for d in adapters_dir.iterdir()
+        if d.is_dir() and d.name != run_id
+    ])
+
+    if not previous_dirs:
+        return {"status": "first_run", "previous_adapters": 0, "regression_detected": False}
+
+    # Find the best previous adapter (prefer GRPO, fall back to SDFT)
+    best_previous: Path | None = None
+    for prev_dir in reversed(previous_dirs):
+        grpo = prev_dir / "grpo"
+        sdft = prev_dir / "sdft"
+        if grpo.exists() and (grpo / "adapter_config.json").exists():
+            best_previous = grpo
+            break
+        if sdft.exists() and (sdft / "adapter_config.json").exists():
+            best_previous = sdft
+            break
+
+    # Find the new adapter from this training run
+    new_adapter: Path | None = None
+    current_run_dir = adapters_dir / run_id
+    if current_run_dir.exists():
+        grpo = current_run_dir / "grpo"
+        sdft = current_run_dir / "sdft"
+        if grpo.exists() and (grpo / "adapter_config.json").exists():
+            new_adapter = grpo
+        elif sdft.exists() and (sdft / "adapter_config.json").exists():
+            new_adapter = sdft
+
+    if new_adapter is None:
+        logger.warning(f"No adapter found for current run {run_id}")
+        return {"status": "skipped", "reason": "no_new_adapter"}
+
+    if best_previous is None:
+        return {
+            "status": "first_run",
+            "previous_adapters": len(previous_dirs),
+            "regression_detected": False,
+            "note": "No usable previous adapter found for comparison",
+        }
+
+    logger.info(
+        f"Running quality comparison: "
+        f"'{best_previous.parent.name}/{best_previous.name}' vs "
+        f"'{new_adapter.parent.name}/{new_adapter.name}'"
+    )
+
+    try:
+        previous_results = evaluate_adapter(best_previous, DEFAULT_PROMPTS, max_new_tokens=96)
+        new_results = evaluate_adapter(new_adapter, DEFAULT_PROMPTS, max_new_tokens=96)
+    except Exception as e:
+        logger.warning(f"Adapter evaluation failed: {e}")
+        return {"status": "failed", "error": str(e)}
+
+    def _aggregate(results: list[AdapterResult]) -> dict[str, Any]:
+        if not results:
+            return {"avg_time_s": 0.0, "avg_tokens": 0.0, "errors": 0, "total_chars": 0, "code_count": 0}
+        return {
+            "avg_time_s": round(sum(r.generation_time_s for r in results) / len(results), 2),
+            "avg_tokens": round(sum(r.output_length_tokens for r in results) / len(results), 1),
+            "errors": sum(1 for r in results if r.error),
+            "total_chars": sum(r.output_length_chars for r in results),
+            "code_count": sum(1 for r in results if r.has_code),
+        }
+
+    prev_metrics = _aggregate(previous_results)
+    new_metrics = _aggregate(new_results)
+
+    # ── Regression detection ─────────────────────────────────
+    regression_detected = False
+    regression_details: list[str] = []
+
+    # 1. Generation time regression
+    time_delta = new_metrics["avg_time_s"] - prev_metrics["avg_time_s"]
+    if time_delta > 1.0:
+        regression_detected = True
+        regression_details.append(
+            f"Generation time +{time_delta:.1f}s "
+            f"({prev_metrics['avg_time_s']}s→{new_metrics['avg_time_s']}s)"
+        )
+
+    # 2. Error regression
+    error_delta = new_metrics["errors"] - prev_metrics["errors"]
+    if error_delta > 0:
+        regression_detected = True
+        regression_details.append(
+            f"Errors +{error_delta} "
+            f"({prev_metrics['errors']}→{new_metrics['errors']})"
+        )
+
+    # 3. Per-prompt quality regressions
+    prompt_regressions = 0
+    prompt_improvements = 0
+    for prev_r, new_r in zip(previous_results, new_results):
+        # Quality heuristic: longer outputs with code are usually better
+        prev_quality = prev_r.output_length_chars + (200 if prev_r.has_code else 0)
+        new_quality = new_r.output_length_chars + (200 if new_r.has_code else 0)
+
+        if new_r.error and not prev_r.error:
+            prompt_regressions += 1
+        elif not new_r.error and prev_r.error:
+            prompt_improvements += 1
+        elif new_quality < prev_quality * 0.5 and prev_quality > 50:
+            prompt_regressions += 1
+        elif new_quality > prev_quality * 1.5 and new_quality > 50:
+            prompt_improvements += 1
+
+    if prompt_regressions > 0 and prompt_regressions >= prompt_improvements:
+        regression_detected = True
+        regression_details.append(
+            f"{prompt_regressions} prompt(s) regressed vs {prompt_improvements} improved"
+        )
+
+    result: dict[str, Any] = {
+        "status": "completed",
+        "previous_adapter": f"{best_previous.parent.name}/{best_previous.name}",
+        "new_adapter": f"{new_adapter.parent.name}/{new_adapter.name}",
+        "regression_detected": regression_detected,
+        "regression_details": regression_details,
+        "previous_metrics": prev_metrics,
+        "new_metrics": new_metrics,
+        "prompts_evaluated": len(DEFAULT_PROMPTS),
+        "prompt_regressions": prompt_regressions,
+        "prompt_improvements": prompt_improvements,
+        "per_prompt": [
+            {
+                "prompt": prev_r.prompt,
+                "previous_output_length": prev_r.output_length_chars,
+                "new_output_length": new_r.output_length_chars,
+                "previous_has_code": prev_r.has_code,
+                "new_has_code": new_r.has_code,
+                "previous_error": prev_r.error is not None,
+                "new_error": new_r.error is not None,
+                "previous_time_s": prev_r.generation_time_s,
+                "new_time_s": new_r.generation_time_s,
+            }
+            for prev_r, new_r in zip(previous_results, new_results)
+        ],
+    }
+
+    # Save comparison results as JSON alongside adapter
+    comparison_dir = Path.home() / ".forgeai" / "comparisons"
+    comparison_dir.mkdir(parents=True, exist_ok=True)
+    json_path = comparison_dir / f"comparison_{run_id}.json"
+    try:
+        import json as _json
+        json_path.write_text(
+            _json.dumps(result, ensure_ascii=False, indent=2, default=str),
+            encoding="utf-8",
+        )
+    except Exception as write_err:
+        logger.warning(f"Could not save comparison report: {write_err}")
+
+    return result
+
+
+def _rollback_adapter_sync(run_id: str, comparison_results: dict[str, Any]) -> dict[str, Any]:
+    """Roll back to the previous best adapter when regression is detected.
+
+    Called automatically from `_run_scheduled_training()` after
+    `_run_quality_comparison_sync` flags a regression.
+
+    Actions:
+      1. Renames the current run's sdft/grpo adapter directories to
+         ``*_reverted_<timestamp>/``, preserving them on disk for debugging
+         but marking them as inactive.
+      2. Writes a marker file at ``~/.forgeai/active_adapter`` containing
+         the absolute path to the previous best adapter.  A symlink would be
+         ideal, but it requires admin / Developer Mode on Windows, so we use
+         a marker file for portability.
+      3. Returns rollback metadata for the training run record.
+
+    Returns:
+        A dict with rollback status and metadata. On success:
+        ``{"status": "rolled_back", "previous_adapter": ..., ...}``.
+        On failure: ``{"status": "failed", "error": ...}``.
+    """
+    import shutil
+
+    adapters_dir = Path.home() / ".forgeai" / "adapters"
+    current_run_dir = adapters_dir / run_id
+
+    if not current_run_dir.exists():
+        return {"status": "failed", "error": f"Run directory not found: {current_run_dir}"}
+
+    # Parse the previous adapter path from comparison results
+    previous_adapter_path: str = comparison_results.get("previous_adapter", "")
+    if not previous_adapter_path or "/" not in previous_adapter_path:
+        return {"status": "failed", "error": "No previous adapter path in comparison results"}
+
+    prev_run_id, prev_type = previous_adapter_path.split("/", 1)
+    previous_adapter_dir = adapters_dir / prev_run_id / prev_type
+
+    if not previous_adapter_dir.exists():
+        return {
+            "status": "failed",
+            "error": f"Previous adapter not found: {previous_adapter_dir}",
+        }
+
+    # Rename current adapter dirs with a timestamp so multiple rollbacks
+    # targeting the same run each leave a distinct record
+    _rollback_ts = f"{int(time.time())}"
+    reverted: list[str] = []
+    for subdir in ["sdft", "grpo"]:
+        src = current_run_dir / subdir
+        if src.exists() and src.is_dir():
+            dst = current_run_dir / f"{subdir}_reverted_{_rollback_ts}"
+            shutil.move(str(src), str(dst))
+            reverted.append(subdir)
+
+    if not reverted:
+        return {"status": "failed", "error": "No adapter directories found in current run"}
+
+    # Write the active-adapter marker file (portable across Windows / macOS / Linux)
+    active_marker = Path.home() / ".forgeai" / "active_adapter"
+    active_marker.parent.mkdir(parents=True, exist_ok=True)
+    active_marker.write_text(
+        str(previous_adapter_dir.resolve()), encoding="utf-8"
+    )
+
+    rollback_data: dict[str, Any] = {
+        "status": "rolled_back",
+        "previous_adapter": previous_adapter_path,
+        "reverted_adapters": reverted,
+        "rollback_timestamp": _rollback_ts,
+        "active_adapter_marker": str(active_marker),
+        "active_adapter_path": str(previous_adapter_dir.resolve()),
+        "reason": comparison_results.get("regression_details", []),
+    }
+
+    logger.warning(
+        f"ROLLBACK: Run {run_id} reverted to {previous_adapter_path}. "
+        f"Adapter(s) {', '.join(reverted)} moved to <run_id>/..._reverted_{_rollback_ts}/. "
+        f"Active adapter marker written to {active_marker}"
+    )
+
+    return rollback_data
 
 
 def _init_scheduler():
@@ -2695,6 +3282,12 @@ from src.api.battle_routes import router as battle_router  # noqa: E402
 
 app.include_router(battle_router)
 logger.info("Battle routes registered")
+
+# ── Include Agents Routes ────────────────────────────────────────
+from src.api.agents_routes import router as agents_router  # noqa: E402
+
+app.include_router(agents_router)
+logger.info("Agent routes registered")
 
 
 # ═══════════════════════════════════════

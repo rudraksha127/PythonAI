@@ -72,6 +72,54 @@ def main():
                 ]
             )
 
+            # 6. Extract developer signals from CaptureEngine
+            print("\n[DAEMON] Extracting developer signals from CaptureEngine...")
+            run_cmd(
+                [
+                    python_exe,
+                    "-c",
+                    "from src.learning.capture_engine import CaptureEngine; "
+                    "engine = CaptureEngine(); "
+                    "stats = engine.get_statistics(); "
+                    "print(f'Signals: {stats}'); "
+                    "accepts = stats.get('signals_by_type', {}).get('accept', 0); "
+                    "rejects = stats.get('signals_by_type', {}).get('reject', 0); "
+                    "rate = stats.get('overall_acceptance_rate', 0); "
+                    "print(f'[DAEMON] Signal status: {accepts + rejects} total ({accepts}A / {rejects}R), acceptance rate: {rate:.1f}%')",
+                ]
+            )
+
+            # 7. Trigger training if enough signals are available
+            print("\n[DAEMON] Checking training readiness...")
+            run_cmd(
+                [
+                    python_exe,
+                    "-c",
+                    "from src.learning.capture_engine import CaptureEngine; "
+                    "import urllib.request; import json; "
+                    "engine = CaptureEngine(); "
+                    "stats = engine.get_statistics(); "
+                    "total = sum(stats.get('signals_by_type', {}).values()); "
+                    "print(f'[DAEMON] Total signals collected: {total}'); "
+                    "if total >= 10: "
+                    "    try: "
+                    "        req = urllib.request.Request( "
+                    "            'http://localhost:7337/api/training/trigger', "
+                    "            method='POST', "
+                    "            data=b'{}', "
+                    "            headers={'Content-Type': 'application/json'} "
+                    "        ); "
+                    "        with urllib.request.urlopen(req, timeout=10) as resp: "
+                    "            result = json.loads(resp.read()); "
+                    "            print(f'[DAEMON] Training triggered: {result}') "
+                    "    except Exception as e: "
+                    "        print(f'[DAEMON] Training trigger failed (server may not be running): {e}'); "
+                    "        print(f'[DAEMON] To trigger manually: curl -X POST http://localhost:7337/api/training/trigger') "
+                    "else: "
+                    "    print(f'[DAEMON] Not enough signals ({total}/10) to trigger training yet')",
+                ]
+            )
+
             print(f"\n[DAEMON] Cycle complete. Sleeping for {args.interval} hours...")
             time.sleep(args.interval * 3600)
 

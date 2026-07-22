@@ -52,6 +52,8 @@ def run_orchestrator_agent(task: GenerationTask, session_id: str = "default") ->
 
         logger.info("[Orchestrator] Code generated. Routing to Debug Agent for verification...")
         verify_task = GenerationTask(
+            task_id=f"{task.task_id}:verify",
+            task_type="debug",
             prompt=f"Review and fix any potential issues in this code. "
             f"If perfect, just return the code with 'LGTM ✓'.\n"
             f"Code:\n{code_result}\n\nOriginal Request: {task.prompt}"

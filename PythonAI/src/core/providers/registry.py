@@ -805,3 +805,9 @@ def find_models_by_capability(**kwargs: Any) -> list[ModelDescriptor]:
 def get_registry() -> ModelRegistry:
     """Get or create the default model registry singleton."""
     return _ensure_registry()
+
+
+# Initialize the registry at module import time so that ALL_PROVIDERS and ALL_MODELS
+# are populated immediately. Otherwise, any code that imports these lists directly
+# (e.g. via `from .registry import ALL_PROVIDERS`) would get the initial empty lists.
+_ensure_registry()
