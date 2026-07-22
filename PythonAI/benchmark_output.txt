@@ -1,0 +1,50 @@
+C:\Users\lucky_vv7fub\AppData\Roaming\Python\Python314\site-packages\triton\windows_utils.py:406: UserWarning: Failed to find CUDA.
+  warnings.warn("Failed to find CUDA.")
+Skipping import of cpp extensions due to incompatible torch version. Please upgrade to torch >= 2.11.0 (found 2.10.0+cpu).
+W0612 16:16:53.805000 16528 torch\distributed\elastic\multiprocessing\redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+  This benchmark seeds both ChromaDB and LightRAG with 20 sample
+  Python documentation snippets, then runs queries against both.
+
+  NOTE: Each query triggers an Ollama call (qwen2.5-coder:14b).
+  Estimated time: ~3-5 minutes for 12 queries.
+
+
++========================================================================+
+|              ForgeAI RAG Backend Benchmark Suite                        |
+|                                                                         |
+|  LightRAG (graph + vector hybrid) vs ChromaDB (BM25 + dense)           |
++========================================================================+
+
+
+[Phase 1/4] Seeding backends with test data...
+
+[1/2] Initializing ChromaDB...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|##########| 103/103 [00:00<00:00, 1735.32it/s]
+[1mBertModel LOAD REPORT[0m from: sentence-transformers/all-MiniLM-L6-v2
+Key                     | Status     |  | 
+------------------------+------------+--+-
+embeddings.position_ids | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+<string>:72: UserWarning: WARNING: log_level parameter is deprecated, use setup_logger in utils.py instead
+INFO: [] Created new empty graph file: C:\Users\LUCKY_~1\AppData\Local\Temp\forgeai_bench_lightrag_idhg749h\graph_chunk_entity_relation.graphml
+INFO:nano-vectordb:Init {'embedding_dim': 1024, 'metric': 'cosine', 'storage_file': 'C:\\Users\\LUCKY_~1\\AppData\\Local\\Temp\\forgeai_bench_lightrag_idhg749h\\vdb_entities.json'} 0 data
+INFO:nano-vectordb:Init {'embedding_dim': 1024, 'metric': 'cosine', 'storage_file': 'C:\\Users\\LUCKY_~1\\AppData\\Local\\Temp\\forgeai_bench_lightrag_idhg749h\\vdb_relationships.json'} 0 data
+INFO:nano-vectordb:Init {'embedding_dim': 1024, 'metric': 'cosine', 'storage_file': 'C:\\Users\\LUCKY_~1\\AppData\\Local\\Temp\\forgeai_bench_lightrag_idhg749h\\vdb_chunks.json'} 0 data
+INFO: Role LLM Configuration (initialized):
+INFO:  - extract: None/None, host=None, max_async=4, timeout=240
+INFO:  - keyword: None/None, host=None, max_async=4, timeout=240
+INFO:  - query: None/None, host=None, max_async=4, timeout=240
+INFO:  - vlm: None/None, host=None, max_async=4, timeout=240
+INFO: Creating a new event loop in main thread.
+  [ChromaDB] Seeded 20 documents to C:\Users\LUCKY_~1\AppData\Local\Temp\forgeai_bench_chroma_8h24vvym
+[2/2] Initializing LightRAG...
+  [LightRAG] Seeded 0/20 documents to C:\Users\LUCKY_~1\AppData\Local\Temp\forgeai_bench_lightrag_idhg749h
+
+[Phase 2/4] Running cold queries (4 questions)...
+
+  [1/4] "How do Python decorators work with arguments?..."
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 37.06it/s]

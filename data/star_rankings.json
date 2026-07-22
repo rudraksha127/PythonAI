@@ -1,0 +1,182 @@
+[
+  {
+    "rank": 1,
+    "name": "tensorflow/tensorflow",
+    "stars": 185000,
+    "category": "Framework"
+  },
+  {
+    "rank": 2,
+    "name": "Significant-Gravitas/AutoGPT",
+    "stars": 172000,
+    "category": "Agent"
+  },
+  {
+    "rank": 3,
+    "name": "ollama/ollama",
+    "stars": 165000,
+    "category": "Inference"
+  },
+  {
+    "rank": 4,
+    "name": "huggingface/transformers",
+    "stars": 140000,
+    "category": "Library"
+  },
+  {
+    "rank": 5,
+    "name": "AUTOMATIC1111/stable-diffusion-webui",
+    "stars": 145000,
+    "category": "Gen AI"
+  },
+  {
+    "rank": 6,
+    "name": "f/awesome-chatgpt-prompts",
+    "stars": 120000,
+    "category": "Prompts"
+  },
+  {
+    "rank": 7,
+    "name": "langchain-ai/langchain",
+    "stars": 100000,
+    "category": "Agent FW"
+  },
+  {
+    "rank": 8,
+    "name": "papers-we-love/papers-we-love",
+    "stars": 89000,
+    "category": "Learning"
+  },
+  {
+    "rank": 9,
+    "name": "pytorch/pytorch",
+    "stars": 86000,
+    "category": "Framework"
+  },
+  {
+    "rank": 10,
+    "name": "tiangolo/fastapi",
+    "stars": 80000,
+    "category": "API"
+  },
+  {
+    "rank": 11,
+    "name": "open-webui/open-webui",
+    "stars": 90000,
+    "category": "Chat UI"
+  },
+  {
+    "rank": 12,
+    "name": "langgenius/dify",
+    "stars": 90000,
+    "category": "LLMOps"
+  },
+  {
+    "rank": 13,
+    "name": "vllm-project/vllm",
+    "stars": 83000,
+    "category": "Inference"
+  },
+  {
+    "rank": 14,
+    "name": "ggml-org/llama.cpp",
+    "stars": 75000,
+    "category": "Inference"
+  },
+  {
+    "rank": 15,
+    "name": "openai/whisper",
+    "stars": 75000,
+    "category": "Audio"
+  },
+  {
+    "rank": 16,
+    "name": "nomic-ai/gpt4all",
+    "stars": 72000,
+    "category": "Local LLM"
+  },
+  {
+    "rank": 17,
+    "name": "microsoft/playwright",
+    "stars": 68000,
+    "category": "Browser"
+  },
+  {
+    "rank": 18,
+    "name": "comfyanonymous/ComfyUI",
+    "stars": 68000,
+    "category": "Gen AI"
+  },
+  {
+    "rank": 19,
+    "name": "CompVis/stable-diffusion",
+    "stars": 68000,
+    "category": "Gen AI"
+  },
+  {
+    "rank": 20,
+    "name": "KillianLucas/open-interpreter",
+    "stars": 64000,
+    "category": "Code AI"
+  },
+  {
+    "rank": 21,
+    "name": "langflow-ai/langflow",
+    "stars": 55000,
+    "category": "UI/Flow"
+  },
+  {
+    "rank": 22,
+    "name": "n8n-io/n8n",
+    "stars": 55000,
+    "category": "Automation"
+  },
+  {
+    "rank": 23,
+    "name": "gpt-engineer-org/gpt-engineer",
+    "stars": 54000,
+    "category": "Code AI"
+  },
+  {
+    "rank": 24,
+    "name": "scrapy/scrapy",
+    "stars": 53000,
+    "category": "Scraping"
+  },
+  {
+    "rank": 25,
+    "name": "xai-org/grok-1",
+    "stars": 50000,
+    "category": "LLM"
+  },
+  {
+    "rank": 26,
+    "name": "All-Hands-AI/OpenHands",
+    "stars": 77000,
+    "category": "Agent"
+  },
+  {
+    "rank": 27,
+    "name": "geekan/MetaGPT",
+    "stars": 50000,
+    "category": "Multi-Agent"
+  },
+  {
+    "rank": 28,
+    "name": "imartinez/privateGPT",
+    "stars": 55000,
+    "category": "RAG"
+  },
+  {
+    "rank": 29,
+    "name": "facebookresearch/segment-anything",
+    "stars": 48000,
+    "category": "Vision"
+  },
+  {
+    "rank": 30,
+    "name": "microsoft/autogen",
+    "stars": 42000,
+    "category": "Multi-Agent"
+  }
+]

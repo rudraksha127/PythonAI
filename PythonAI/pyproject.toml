@@ -1,0 +1,255 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pythonai"
+version = "2.1.0"
+description = "Next-Generation Multi-Agent AI System with RAG, Tool-Calling, and Training Pipeline"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "PythonAI Team" },
+]
+requires-python = ">=3.10"
+dependencies = [
+    "cryptography>=42.0.0",
+]
+keywords = ["ai", "rag", "agents", "llm", "python", "multi-agent"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.optional-dependencies]
+sqlcipher = [
+    "rotki-pysqlcipher3>=2.1.0",
+]
+full = [
+    "pythonai[sqlcipher]",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["src/*"]
+
+# ═══════════════════════════════════════════════
+# Pytest Configuration
+# ═══════════════════════════════════════════════
+[tool.pytest.ini_options]
+minversion = "7.0"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "-ra",
+    "--tb=short",
+    "--strict-markers",
+    "--strict-config",
+]
+markers = [
+    "integration: marks tests as integration tests (requires real providers/MCP)",
+    "e2e: marks tests as end-to-end tests (requires external services)",
+    "slow: marks tests as slow (skip by default with -m 'not slow')",
+    "smoke: marks tests as smoke tests (quick validation only)",
+    "training: marks tests related to training pipeline",
+    "rag: marks tests related to RAG engine",
+    "provider: marks tests related to LLM providers",
+    "tool: marks tests related to tool system",
+    "orchestrator: marks tests related to agent orchestrator",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/__init__.py",
+    "tests/*",
+    "*/tests/*",
+]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]
+show_missing = true
+
+# ═══════════════════════════════════════════════
+# Ruff Linter Configuration
+# ═══════════════════════════════════════════════
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E4", "E7", "E9",  # pycodestyle errors
+    "F",               # pyflakes
+    "I",               # isort
+    "N",               # pep8-naming
+    "W",               # pycodestyle warnings
+    "UP",              # pyupgrade
+    "YTT",             # flake8-2020
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "E731",  # lambda assignments allowed
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+# ═══════════════════════════════════════════════
+# Mypy Type Checking
+# ═══════════════════════════════════════════════
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+
+exclude = [
+    "tests/",
+    "tools/",
+    ".venv/",
+]
+
+# Per-module strictness
+# Use [[tool.mypy.overrides]] for module-based configuration
+# Order matters: more specific overrides should come first
+
+# Strict-checked modules (pass --strict cleanly)
+[[tool.mypy.overrides]]
+module = "src.utils.validation"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.utils.metrics"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.tool"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.registry"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.context"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.executor"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.tools"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.tools.glob_tool"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.tools.grep_tool"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.providers"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.providers.registry"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.providers.router"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.providers.openai_provider"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.compact.auto_compact"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.compact.reactive_compact"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.compact.micro_compact"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.mcp.config"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.agents.sub_agent"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.core.agents.orchestrator"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "src.api.server"
+ignore_missing_imports = true
+allow_untyped_defs = true
+allow_untyped_calls = true
+
+# Partially-annotated modules
+[[tool.mypy.overrides]]
+module = "src.utils.models"
+allow_untyped_defs = false
+allow_untyped_calls = true
+
+# Catch-all for all other src modules (legacy mode)
+[[tool.mypy.overrides]]
+module = ["src.*", "scripts.*"]
+allow_untyped_defs = true
+allow_untyped_calls = true
+
+# ═══════════════════════════════════════════════
+# isort Configuration
+# ═══════════════════════════════════════════════
+[tool.isort]
+profile = "black"
+line_length = 120
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+# ═══════════════════════════════════════════════
+# Task Runner (tasks.py / doit)
+# ═══════════════════════════════════════════════
+[tool.pythonai]
+project_root = ""
+data_dir = "data"
+checkpoints_dir = "checkpoints"
+rag_db_dir = "python_brain_godmode"
+logs_dir = "logs"
+default_model = "qwen2.5-coder:14b"

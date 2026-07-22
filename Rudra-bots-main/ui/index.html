@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a0a0b" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="Odysseus — Modern AI Chat Interface" />
+    <meta property="og:title" content="Odysseus AI" />
+    <meta property="og:description" content="Modern AI chat interface with multi-model support" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="icon" type="image/svg+xml" href="/odysseus.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <title>Odysseus — AI Chat</title>
+    <script>
+      // Theme bootstrap — prevent flash
+      (function () {
+        try {
+          var t = JSON.parse(localStorage.getItem('odysseus-theme'));
+          var s = document.documentElement.style;
+          if (t && t.colors) {
+            var c = t.colors;
+            if (c.bg) s.setProperty('--bg', c.bg);
+            if (c.fg) s.setProperty('--fg', c.fg);
+            if (c.panel) s.setProperty('--panel', c.panel);
+            if (c.border) s.setProperty('--border', c.border);
+            if (c.red) s.setProperty('--accent', c.red);
+          }
+        } catch (_) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-[var(--bg,#0f0c29)] text-[var(--fg,#e8e8f0)] antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
