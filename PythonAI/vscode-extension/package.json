@@ -1,3 +1,121 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:99b26aeb90fa27d07d3078aef7bf7f8eb27c27583f63848ddb02d84f83b2e50a
-size 3477
+{
+  "name": "forgeai-capture",
+  "displayName": "ForgeAI Capture",
+  "description": "Capture accept/reject/edit signals from VS Code for ForgeAI training pipeline",
+  "version": "0.1.0",
+  "publisher": "forgeai",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Machine Learning",
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "forgeai",
+    "capture",
+    "training",
+    "acceptance rate"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "forgeai.showStats",
+        "title": "ForgeAI: Show Capture Statistics"
+      },
+      {
+        "command": "forgeai.exportTrainingData",
+        "title": "ForgeAI: Export Training Data"
+      }
+    ],
+    "configuration": {
+      "title": "ForgeAI Capture",
+      "properties": {
+        "forgeai.dbPath": {
+          "type": "string",
+          "default": "~/.forgeai/signals.db",
+          "description": "Path to ForgeAI CaptureEngine SQLite database"
+        },
+        "forgeai.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable signal capture"
+        },
+        "forgeai.captureRejects": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture rejection events (backspace/dismiss of inline completions)"
+        },
+        "forgeai.captureEdits": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture edit events (modifications after accept)"
+        },
+        "forgeai.developerId": {
+          "type": "string",
+          "default": "",
+          "description": "Anonymized developer identifier. Leave empty for auto-generated."
+        },
+        "forgeai.serverUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:7337",
+          "description": "ForgeAI FastAPI server URL for autocomplete requests."
+        },
+        "forgeai.autoCompleteEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable real-time AI autocomplete ghost text."
+        },
+        "forgeai.autoCompleteMaxTokens": {
+          "type": "integer",
+          "default": 128,
+          "minimum": 16,
+          "maximum": 512,
+          "description": "Maximum tokens to generate per autocomplete request."
+        },
+        "forgeai.autoCompleteTemperature": {
+          "type": "number",
+          "default": 0.1,
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Temperature for autocomplete generation (low for code)."
+        },
+        "forgeai.autoCompleteDebounceMs": {
+          "type": "integer",
+          "default": 150,
+          "minimum": 0,
+          "maximum": 2000,
+          "description": "Debounce delay in ms before firing an autocomplete request."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/extension.test.js",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "sql.js": "^1.11.0",
+    "uuid": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^10.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.5.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/PythonAI"
+  }
+}
