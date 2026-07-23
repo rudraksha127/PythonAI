@@ -10,6 +10,9 @@ Modules:
   github_trending      — Track trending AI/ML repos + datasets
   paper_dataset_extractor — Extract dataset links from papers
   priority_ranker      — Score datasets by size × quality × domain_gap
+  research_papers      — Research Paper Knowledge Harvester (arXiv, Semantic Scholar)
+  book_knowledge       — Book & Educational Resource Knowledge Base
+  knowledge_harvester  — Unified Knowledge Intelligence Engine
 """
 
 from __future__ import annotations
@@ -20,7 +23,37 @@ from src.data.discovery.gov_portal_crawler import GovPortalCrawler
 from src.data.discovery.hf_catalog_scanner import HFCatalogScanner
 from src.data.discovery.paper_dataset_extractor import PaperDatasetExtractor
 from src.data.discovery.priority_ranker import PriorityRanker, ScoredDataset, print_ranking, rank_discovered
+
+# ── Knowledge Intelligence Engine ────────────────────────────────────
+from src.data.discovery.research_papers import (
+    ArxivAPIClient,
+    PaperAuthor,
+    PaperKeyFinding,
+    PaperKnowledge,
+    PaperKnowledgeExtractor,
+    PaperMethodology,
+    ResearchPaperKnowledgeBase,
+    SemanticScholarClient,
+    collect_research_knowledge,
+    print_paper_summary,
+)
+from src.data.discovery.book_knowledge import (
+    BookKnowledge,
+    BookKnowledgeBase,
+    TutorialResource,
+    collect_book_knowledge,
+)
+from src.data.discovery.knowledge_harvester import (
+    HarvestReport,
+    KnowledgeIntelligence,
+    KnowledgeSource,
+    get_knowledge_stats,
+    harvest_all_knowledge,
+    query_knowledge,
+)
+
 from src.data.metadata import DatasetRecord
+
 
 # ── Convenience functions ────────────────────────────────────────────
 
@@ -184,6 +217,29 @@ __all__ = [
     "PaperDatasetExtractor",
     "PriorityRanker",
     "ScoredDataset",
+    # Knowledge Intelligence
+    "ResearchPaperKnowledgeBase",
+    "PaperKnowledge",
+    "PaperAuthor",
+    "PaperKeyFinding",
+    "PaperMethodology",
+    "ArxivAPIClient",
+    "SemanticScholarClient",
+    "PaperKnowledgeExtractor",
+    "BookKnowledgeBase",
+    "BookKnowledge",
+    "TutorialResource",
+    "KnowledgeIntelligence",
+    "KnowledgeSource",
+    "HarvestReport",
+    # Knowledge functions
+    "collect_research_knowledge",
+    "collect_book_knowledge",
+    "harvest_all_knowledge",
+    "query_knowledge",
+    "get_knowledge_stats",
+    "print_paper_summary",
+    # Auto-discovery
     "auto_discover",
     "check_for_new_papers",
     "discover_government_data",
