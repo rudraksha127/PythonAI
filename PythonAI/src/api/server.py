@@ -28,6 +28,7 @@ import re
 import sqlite3  # Projects store
 import time
 import uuid
+import ollama
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -51,6 +52,20 @@ from src.training.grpo_trainer import GRPOTrainer
 from src.training.sdft_trainer import SDFTTrainer
 from src.training.time_scaling import TTSConfig, TestTimeScalingPipeline, create_ollama_llm_call
 from src.utils.metrics import metrics
+
+# Observability — Langfuse tracing (graceful if not configured)
+from src.utils.observability import (
+    trace_llm_call as _observe,
+    flush_traces as _flush_traces,
+    get_langfuse_client as _get_langfuse,
+)
+
+# Structured Output — Outlines integration
+from src.utils.structured_output import generate_structured_output as _structured_output
+
+# Memory API routes (mem0)
+from src.api.memory_routes import router as _memory_router
+from src.api.memory_routes import set_memory_backend as _set_memory_backend
 
 # Cloud backend (optional — graceful if not configured)
 try:
@@ -113,6 +128,11 @@ _schedule_config: dict[str, Any] = {
     "total_runs": 0,
 }
 
+
+# ═══════════════════════════════════════
+# Guardrails — prompt validation & safety
+# ═══════════════════════════════════════
+from src.utils.guardrails_wrapper import validate_user_prompt, validate_agent_output
 
 # ═══════════════════════════════════════
 # Rate Limiter (in-memory token bucket)
@@ -183,10 +203,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "FORGEAI_BASE_MODEL",
         "Qwen/Qwen2.5-Coder-7B-Instruct",
     )
-    _sdft_trainer = SDFTTrainer(model_name=_default_model)
-    _grpo_trainer = GRPOTrainer(model_name=_default_model)
+    try:
+        _sdft_trainer = SDFTTrainer(model_name=_default_model)
+    except Exception as e:
+        logger.warning(f"SDFT trainer init error (non-fatal): {e}")
+    try:
+        _grpo_trainer = GRPOTrainer(model_name=_default_model)
+    except Exception as e:
+        logger.warning(f"GRPO trainer init error (non-fatal): {e}")
 
-    # Projects DB — initialise inside lifespan for controlled startup        _init_projects_db()
+    # Projects DB — initialise inside lifespan for controlled startup
+    _init_projects_db()
 
     # --- Start training scheduler ---
     _init_scheduler()
@@ -209,6 +236,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         _forgeai_memory = _create_memory_backend()
         if _forgeai_memory and _forgeai_memory._enabled:
             logger.info(f"ForgeAI Memory (mem0) initialized (enabled={_forgeai_memory is not None})")
+            _set_memory_backend(_forgeai_memory)  # Connect to memory API routes
         else:
             logger.info("ForgeAI Memory (mem0) is disabled")
     except Exception as e:
@@ -230,6 +258,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if _scheduler and _scheduler.running:
         _scheduler.shutdown(wait=False)
         logger.info("Training scheduler shut down.")
+    # Flush pending Langfuse traces before shutdown
+    _flush_traces()
     logger.info("ForgeAI server shutting down.")
 
 
@@ -260,20 +290,45 @@ app.add_middleware(
 )
 
 
-# ── Security Headers + Rate Limit Middleware ──
+# ── Security Headers + Rate Limit + Guardrails Middleware ──
 @app.middleware("http")
 async def _security_headers(request: Request, call_next: Any) -> Response:
     client_ip = request.client.host if request.client else "unknown"
-    if not _rate_limiter.allow(client_ip):
-        retry = _rate_limiter.retry_after(client_ip)
-        return JSONResponse(
-            status_code=429,
-            content={"error": "Rate limit exceeded.", "retry_after": round(retry, 1)},
-            headers={"Retry-After": str(int(retry) + 1)},
-        )
+    # Bypass rate limiting for localhost/local development
+    if client_ip not in ("127.0.0.1", "::1", "localhost"):
+        if not _rate_limiter.allow(client_ip):
+            retry = _rate_limiter.retry_after(client_ip)
+            return JSONResponse(
+                status_code=429,
+                content={"error": "Rate limit exceeded.", "retry_after": round(retry, 1)},
+                headers={"Retry-After": str(int(retry) + 1)},
+            )
 
     request_id = uuid.uuid4().hex[:12]
     start = time.time()
+
+    # Guardrails: validate incoming prompts on POST requests with user input
+    # NOTE: Must use request.body() (not request.json()) to avoid consuming
+    # the body stream before downstream route handlers can read it.
+    if request.method == "POST":
+        try:
+            body_bytes = await request.body()
+            if body_bytes:
+                body_data = json.loads(body_bytes)
+                user_text = body_data.get("question", "") or body_data.get("prompt", "") or body_data.get("suggestion", "")
+                if user_text:
+                    result = validate_user_prompt(user_text)
+                    if not result.is_valid:
+                        logger.warning(f"[{request_id}] Guardrail blocked request from {client_ip}: {result.reason}")
+                        return JSONResponse(
+                            status_code=422,
+                            content={"error": result.reason, "code": "PROMPT_REJECTED"},
+                        )
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            pass  # Not a JSON body - skip guardrails
+        except Exception as e:
+            logger.debug(f"[{request_id}] Guardrail check error: {e}")
+
     response: Response = await call_next(request)
     elapsed_ms = (time.time() - start) * 1000
 
@@ -284,6 +339,18 @@ async def _security_headers(request: Request, call_next: Any) -> Response:
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     response.headers["Server"] = "ForgeAI"
+
+    # Guardrails: validate agent output on successful assistant responses
+    if request.url.path in ("/api/agent/chat", "/api/rag/search") and response.status_code == 200:
+        try:
+            body = json.loads(response.body) if hasattr(response, "body") else {}
+            response_text = body.get("answer", "") or body.get("response", "") or body.get("text", "")
+            if response_text:
+                output_result = validate_agent_output(response_text)
+                if output_result.sanitized_input:
+                    body["sanitized_output"] = True
+        except Exception:
+            pass
 
     logger.info(
         f"[{request_id}] {request.method} {request.url.path} from={client_ip} status={response.status_code} time={elapsed_ms:.0f}ms"
@@ -334,8 +401,28 @@ def get_db(backend: str | None = None) -> Any:
     # ChromaDB backend (default)
     if _db_cache is None:
         logger.info("Loading RAG Database (ChromaDB)...")
-        _db_cache = load_or_build_db(backend="chroma")
+        try:
+            _db_cache = load_or_build_db(backend="chroma")
+        except Exception as e:
+            logger.warning(f"ChromaDB load failed: {e}")
+            _db_cache = None
     return _db_cache
+
+
+async def get_db_async(backend: str | None = None, timeout: float = 8.0) -> Any:
+    """Async wrapper around get_db() — runs the synchronous DB init in a thread
+    so it doesn't block the asyncio event loop.
+
+    Falls back gracefully: if the thread times out or fails, returns None.
+    """
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(get_db, backend),
+            timeout=timeout,
+        )
+    except (asyncio.TimeoutError, Exception) as e:
+        logger.warning(f"get_db_async timeout/error after {timeout}s: {e}")
+        return None
 
 
 # ═══════════════════════════════════════
@@ -1548,6 +1635,7 @@ async def _broadcast_to_dashboards(message: dict[str, Any]):
 # ─── RAG Endpoints ─────────────────────────────────────────────────
 
 
+@_observe()
 @app.post("/api/rag/search")
 async def rag_search(request: RAGSearchRequest) -> dict[str, Any]:
     """
@@ -1581,24 +1669,51 @@ async def rag_search(request: RAGSearchRequest) -> dict[str, Any]:
             return {"chunks": chunks or [{"content": "(LightRAG response)", "metadata": {}}], "answer": answer}
 
         # ChromaDB backend (default)
-        db = get_db(backend="chroma")
+        db = await get_db_async(backend="chroma", timeout=10.0)
+        if db is None:
+            raise HTTPException(status_code=503, detail="RAG database not available")
         coll, embedder, bm25, corpus, _ = db
-        available = list_ollama_models()
+
+        # Get available models with timeout protection
+        try:
+            available = await asyncio.wait_for(
+                asyncio.to_thread(list_ollama_models),
+                timeout=5.0,
+            )
+        except (asyncio.TimeoutError, Exception):
+            available = []
+
+        if not available:
+            raise HTTPException(status_code=503, detail="No Ollama models available")
+
         selected_model = resolve_model(DEFAULT_MODEL, available=available)
 
         # Use existing RAG engine with hybrid retrieval
-        answer, docs = get_answer(
-            request.query,
-            coll,
-            embedder,
-            [],
-            bm25=bm25,
-            corpus_texts=corpus,
-            use_query_expansion=True,
-            use_mmr=True,
-            no_exec=True,
-            model=selected_model,
-        )
+        try:
+            answer, docs = await asyncio.wait_for(
+                asyncio.to_thread(
+                    get_answer,
+                    request.query,
+                    coll,
+                    embedder,
+                    [],
+                    bm25=bm25,
+                    corpus_texts=corpus,
+                    use_query_expansion=True,
+                    use_mmr=True,
+                    no_exec=True,
+                    model=selected_model,
+                ),
+                timeout=15.0,
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(status_code=503, detail="RAG search timed out")
+        except ollama.ResponseError as oe:
+            logger.warning(f"Ollama error during RAG search: {oe}")
+            raise HTTPException(status_code=503, detail=f"Ollama model error: {oe}")
+        except Exception as e:
+            logger.warning(f"get_answer failed: {e}")
+            raise HTTPException(status_code=503, detail=f"Answer generation failed: {e}")
 
         chunks = [
             {
@@ -1714,8 +1829,9 @@ async def rag_backend_info() -> dict[str, Any]:
 
 class MemoryAddRequest(BaseModel):
     """Add a memory for a developer."""
-    message: str = Field(..., min_length=1, max_length=2000, description="Memory text to store")
-    user_id: str = Field(default="default", max_length=200, description="Developer/user identifier")
+    text: str = Field(..., min_length=1, max_length=10000, description="Memory text to store")
+    user_id: str = Field(default="default", max_length=100, description="Developer/user identifier")
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class MemorySearchRequest(BaseModel):
@@ -1735,8 +1851,7 @@ async def memory_add(body: MemoryAddRequest) -> dict[str, Any]:
     """
     if _forgeai_memory is None:
         return {"success": False, "error": "Memory system not initialized"}
-
-    result = _forgeai_memory.add(body.message, user_id=body.user_id)
+    result = _forgeai_memory.add(body.text, user_id=body.user_id)
     return {"success": "error" not in result, **result}
 
 
@@ -1938,6 +2053,7 @@ async def rag_health_check(body: LightRAGHealthRequest | None = None) -> dict[st
 # ─── Agent Endpoints ───────────────────────────────────────────────
 
 
+@_observe()
 @app.post("/api/agent/chat")
 async def agent_chat(request: ChatRequest) -> StreamingResponse:
     """
@@ -1997,7 +2113,11 @@ async def agent_chat(request: ChatRequest) -> StreamingResponse:
                 yield f"data: {json.dumps({'done': True, 'tts': {'route': route, 'complexity_score': complexity_score, 'rtv': rtv_applied, 'pdr': pdr_applied, 'rollouts': num_rollouts, 'elapsed_ms': elapsed_ms}})}\n\n"
             else:
                 # Fallback: original single-answer path without TTS
-                coll, embedder, bm25, corpus, _ = get_db()
+                db = get_db()
+                if db is None:
+                    yield f"data: {json.dumps({'error': 'RAG database not available'})}\n\n"
+                    return
+                coll, embedder, bm25, corpus, _ = db
 
                 answer, docs = get_answer(
                     request.question,
@@ -2029,26 +2149,49 @@ async def agent_chat(request: ChatRequest) -> StreamingResponse:
 # ─── Basic RAG Endpoints (backward compatibility) ──────────────────
 
 
+@_observe()
 @app.post("/ask")
 async def ask_question(request: AskRequest) -> dict[str, Any]:
     try:
-        coll, embedder, bm25, corpus, _ = get_db()
-        available = list_ollama_models()
+        db = await get_db_async(backend=None, timeout=10.0)
+        if db is None:
+            raise HTTPException(status_code=503, detail="RAG database not available")
+        coll, embedder, bm25, corpus, _ = db
+        try:
+            available = await asyncio.wait_for(asyncio.to_thread(list_ollama_models), timeout=5.0)
+        except (asyncio.TimeoutError, Exception):
+            available = []
         selected_model = resolve_model(request.model or DEFAULT_MODEL, available=available)
 
-        answer, docs = get_answer(
-            request.question,
-            coll,
-            embedder,
-            [],
-            bm25=bm25,
-            corpus_texts=corpus,
-            use_query_expansion=request.query_expansion,
-            use_mmr=request.mmr,
-            mmr_lambda=request.mmr_lambda,
-            no_exec=True,
-            model=selected_model,
-        )
+        try:
+            answer, docs = await asyncio.wait_for(
+                asyncio.to_thread(get_answer,
+                    request.question,
+                    coll,
+                    embedder,
+                    [],
+                    bm25=bm25,
+                    corpus_texts=corpus,
+                    use_query_expansion=request.query_expansion,
+                    use_mmr=request.mmr,
+                    mmr_lambda=request.mmr_lambda,
+                    no_exec=True,
+                ),
+                timeout=15.0,
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(status_code=503, detail="Answer generation timed out")
+        except ollama.ResponseError as oe:
+            raise HTTPException(status_code=503, detail=f"Ollama error: {oe}")
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"Answer generation failed: {e}")
+
+        # Store Q&A as memory for personalization
+        if _forgeai_memory and _forgeai_memory._enabled and answer:
+            try:
+                _forgeai_memory.add(f"User asked: {request.question[:200]} | Answer: {answer[:500]}", user_id="default")
+            except Exception:
+                pass
 
         return {
             "answer": answer,
@@ -2057,6 +2200,7 @@ async def ask_question(request: AskRequest) -> dict[str, Any]:
                 for d in docs
             ],
             "model": selected_model,
+            "memory_context_used": _memory_injected if "_memory_injected" in dir() else False,
         }
     except Exception as e:
         logger.error(f"Error answering question: {e}", exc_info=True)
@@ -2066,25 +2210,47 @@ async def ask_question(request: AskRequest) -> dict[str, Any]:
 @app.post("/chat")
 async def chat(request: ChatRequest) -> dict[str, Any]:
     try:
-        coll, embedder, bm25, corpus, _ = get_db()
-        available = list_ollama_models()
+        db = await get_db_async(backend=None, timeout=10.0)
+        if db is None:
+            raise HTTPException(status_code=503, detail="RAG database not available")
+        coll, embedder, bm25, corpus, _ = db
+        try:
+            available = await asyncio.wait_for(asyncio.to_thread(list_ollama_models), timeout=5.0)
+        except (asyncio.TimeoutError, Exception):
+            available = []
         selected_model = resolve_model(request.model or DEFAULT_MODEL, available=available)
 
         history = request.history[-10:] if request.history else []
 
-        answer, docs = get_answer(
-            request.question,
-            coll,
-            embedder,
-            history,
-            bm25=bm25,
-            corpus_texts=corpus,
-            use_query_expansion=request.query_expansion,
-            use_mmr=request.mmr,
-            mmr_lambda=request.mmr_lambda,
-            no_exec=True,
-            model=selected_model,
-        )
+        try:
+            answer, docs = await asyncio.wait_for(
+                asyncio.to_thread(get_answer,
+                    request.question,
+                    coll,
+                    embedder,
+                    history,
+                    bm25=bm25,
+                    corpus_texts=corpus,
+                    use_query_expansion=request.query_expansion,
+                    use_mmr=request.mmr,
+                    mmr_lambda=request.mmr_lambda,
+                    no_exec=True,
+                ),
+                timeout=15.0,
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(status_code=503, detail="Answer generation timed out")
+        except ollama.ResponseError as oe:
+            raise HTTPException(status_code=503, detail=f"Ollama error: {oe}")
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"Answer generation failed: {e}")
+
+        # Store Q&A as memory for personalization
+        if _forgeai_memory and _forgeai_memory._enabled and answer:
+            try:
+                _forgeai_memory.add(f"User asked: {request.question[:200]} | Answer: {answer[:500]}", user_id="default")
+            except Exception:
+                pass
 
         return {
             "answer": answer,
@@ -2093,6 +2259,7 @@ async def chat(request: ChatRequest) -> dict[str, Any]:
                 for d in docs
             ],
             "model": selected_model,
+            "memory_context_used": _memory_injected if "_memory_injected" in dir() else False,
         }
     except Exception as e:
         logger.error(f"Error answering chat: {e}", exc_info=True)
@@ -2201,7 +2368,11 @@ _PROJECTS_DB_PATH: Path = Path.home() / ".forgeai" / "projects.db"
 
 
 def _init_projects_db():
-    """Ensure the projects table exists."""
+    """Ensure the projects table exists with latest schema.
+
+    Handles schema migrations: if the table already exists but is missing
+    newer columns (from an older DB version), ALTER TABLE adds them.
+    """
     _PROJECTS_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(_PROJECTS_DB_PATH))
     conn.execute("""
@@ -2219,6 +2390,16 @@ def _init_projects_db():
             updated_at REAL NOT NULL
         )
     """)
+    # Schema migration: add missing columns if table was created by an older version
+    for col, typ in [("rag_indexed_at", "TEXT"),
+                     ("current_adapter_version", "INTEGER NOT NULL DEFAULT 1"),
+                     ("training_phase", "INTEGER NOT NULL DEFAULT 1"),
+                     ("base_model", "TEXT NOT NULL DEFAULT ''"),
+                     ("training_schedule", "TEXT NOT NULL DEFAULT 'manual'")]:
+        try:
+            conn.execute(f"ALTER TABLE projects ADD COLUMN {col} {typ}")
+        except sqlite3.OperationalError:
+            pass
     conn.commit()
     conn.close()
 
@@ -3144,6 +3325,10 @@ from src.api.arsenal_routes import router as arsenal_router  # noqa: E402
 
 app.include_router(arsenal_router)
 logger.info("Arsenal routes registered")
+
+# Memory (mem0) API routes
+app.include_router(_memory_router)
+logger.info("Memory API routes registered")
 
 # ── Include Cloud Routes (if available) ────────────────────────
 if _CLOUD_AVAILABLE and cloud_router is not None:

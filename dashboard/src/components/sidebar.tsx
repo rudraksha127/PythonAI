@@ -21,6 +21,7 @@ import {
   Swords,
   Store,
   DollarSign,
+  Shield,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -38,6 +39,7 @@ const navItems = [
   { href: "/skills", label: "Skills", icon: Store },
   { href: "/earnings", label: "Earnings", icon: DollarSign },
   { href: "/ecosystem", label: "Ecosystem", icon: Server },
+  { href: "/enterprise", label: "Enterprise", icon: Shield },
   { href: "/benchmark", label: "Benchmark", icon: Activity },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

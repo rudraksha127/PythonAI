@@ -614,12 +614,231 @@ class BookKnowledgeBase:
 
     # ── Collection ────────────────────────────────────────────
 
+    def crawl_free_sources(self) -> list[BookKnowledge]:
+        """
+        Run all free-book crawlers and return newly discovered books.
+
+        Sources:
+          - GitHub: EbookFoundation/free-programming-books list
+          - Google Books API: free ebooks in programming/cs categories
+
+        Returns:
+            List of newly discovered BookKnowledge objects (not already in index).
+        """
+        newly_discovered: list[BookKnowledge] = []
+        seen_titles: set[str] = {b.title.lower().strip() for b in self._books.values()}
+
+        # Crawler 1: GitHub free-programming-books list
+        print("  [Crawler] GitHub: EbookFoundation/free-programming-books...")
+        try:
+            gh_books = self._crawl_github_free_books()
+            for book in gh_books:
+                if book.title.lower().strip() not in seen_titles:
+                    self._books[book.book_id] = book
+                    newly_discovered.append(book)
+                    seen_titles.add(book.title.lower().strip())
+            print(f"    -> {len(gh_books)} found, {sum(1 for b in gh_books if b.book_id in self._books)} new")
+        except Exception as e:
+            print(f"    [ERROR] GitHub crawl failed: {e}")
+
+        # Crawler 2: Google Books API free ebooks
+        print("  [Crawler] Google Books API: free programming ebooks...")
+        try:
+            gb_books = self._crawl_google_books()
+            for book in gb_books:
+                if book.title.lower().strip() not in seen_titles:
+                    self._books[book.book_id] = book
+                    newly_discovered.append(book)
+                    seen_titles.add(book.title.lower().strip())
+            print(f"    -> {len(gb_books)} found, {sum(1 for b in gb_books if b.book_id in self._books)} new")
+        except Exception as e:
+            print(f"    [ERROR] Google Books crawl failed: {e}")
+
+        # Save updated index
+        if newly_discovered:
+            self._save_index()
+            print(f"  [OK] {len(newly_discovered)} new resources indexed")
+        else:
+            print("  [INFO] No new resources discovered")
+
+        return newly_discovered
+
+    def _crawl_github_free_books(self) -> list[BookKnowledge]:
+        """
+        Crawl the EbookFoundation/free-programming-books list on GitHub.
+
+        Fetches the main markdown file and parses book entries for
+        programming, AI/ML, and computer science categories.
+        """
+        import urllib.request
+        import ssl
+        import certifi
+
+        ctx = ssl.create_default_context(cafile=certifi.where())
+        now = datetime.now(timezone.utc).isoformat()
+        books: list[BookKnowledge] = []
+
+        # URLs for the free-programming-books lists
+        list_urls = [
+            ("https://raw.githubusercontent.com/EbookFoundation/free-programming-books/main/books/free-programming-books-langs.md", "programming"),
+            ("https://raw.githubusercontent.com/EbookFoundation/free-programming-books/main/books/free-programming-books-subjects.md", "subject"),
+        ]
+
+        # Topics we care about (case-insensitive)
+        relevant_topics = {
+            "python", "machine learning", "deep learning", "artificial intelligence",
+            "data science", "computer science", "algorithms", "data structures",
+            "javascript", "typescript", "rust", "go", "java", "c++", "c ",
+            "julia", "r programming", "sql", "database", "linux", "git",
+            "docker", "kubernetes", "neural networks", "nlp", "computer vision",
+        }
+
+        for url, list_type in list_urls:
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "PythonAI/2.0"})
+                with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
+                    content = resp.read().decode("utf-8")
+            except Exception as exc:
+                print(f"    [WARN] Could not fetch {url.split('/')[-1]}: {exc}")
+                continue
+
+            # Parse markdown sections
+            current_category = ""
+            for line in content.split("\n"):
+                # Detect category headers (### Category Name)
+                header_match = re.match(r"^###\s+(.+)", line)
+                if header_match:
+                    current_category = header_match.group(1).lower().strip()
+                    continue
+
+                # Skip non-relevant categories
+                if current_category and not any(t in current_category for t in relevant_topics):
+                    continue
+
+                # Parse book entry: * [Title](url) - Description (description optional)
+                entry_match = re.match(r"^\s*[-*]\s+\[([^\]]+)\]\(([^)]+)\)(?:\s*-\s*(.+))?", line)
+                if entry_match:
+                    title = entry_match.group(1).strip()
+                    url = entry_match.group(2).strip()
+                    desc = (entry_match.group(3) or "").strip()[:300]
+
+                    book_id = self._make_book_id(title)
+                    if book_id not in self._books:
+                        books.append(BookKnowledge(
+                            book_id=book_id,
+                            title=title[:200],
+                            description=desc,
+                            source_url=url,
+                            source_type="free_book",
+                            topics=[current_category] if current_category else ["programming"],
+                            skill_level="intermediate",
+                            relevance_score=0.5,
+                            ingested_at=now,
+                            last_updated=now,
+                        ))
+
+        return books
+
+    def _crawl_google_books(self) -> list[BookKnowledge]:
+        """
+        Search Google Books API for free programming ebooks.
+
+        Uses the public API (no key needed at low volume) and
+        filters for free ebooks only.
+        """
+        import urllib.request
+        import urllib.parse
+        import json
+        import ssl
+        import certifi
+
+        ctx = ssl.create_default_context(cafile=certifi.where())
+        now = datetime.now(timezone.utc).isoformat()
+        books: list[BookKnowledge] = []
+
+        # Search queries for free programming ebooks
+        search_queries = [
+            "python programming",
+            "machine learning",
+            "deep learning",
+            "data science",
+            "algorithms",
+            "computer science",
+            "javascript",
+            "rust programming",
+            "artificial intelligence",
+        ]
+
+        for query in search_queries:
+            time.sleep(0.5)  # Respect Google API rate limits
+            try:
+                params = urllib.parse.urlencode({
+                    "q": query,
+                    "filter": "free-ebooks",
+                    "maxResults": 10,
+                    "printType": "books",
+                })
+                url = f"https://www.googleapis.com/books/v1/volumes?{params}"
+                req = urllib.request.Request(url, headers={"User-Agent": "PythonAI/2.0"})
+                with urllib.request.urlopen(req, timeout=10, context=ctx) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+
+                for item in data.get("items", []):
+                    vol = item.get("volumeInfo", {})
+                    title = vol.get("title", "")[:200]
+                    if not title:
+                        continue
+
+                    authors = ", ".join(vol.get("authors", ["Unknown"]))
+                    desc = (vol.get("description", "") or "")[:300]
+                    isbn = ""
+                    for id_info in vol.get("industryIdentifiers", []):
+                        if id_info.get("type") in ("ISBN_13", "ISBN_10"):
+                            isbn = id_info.get("identifier", "")
+                            break
+
+                    publisher = vol.get("publisher", "")
+                    year = 0
+                    pub_date = vol.get("publishedDate", "")
+                    if pub_date:
+                        year_match = re.match(r"(\d{4})", pub_date)
+                        if year_match:
+                            year = int(year_match.group(1))
+
+                    categories = [c.lower() for c in vol.get("categories", ["programming"])]
+                    page_count = vol.get("pageCount", 0)
+                    info_link = vol.get("infoLink", "")
+
+                    book_id = self._make_book_id(title)
+                    if book_id not in self._books:
+                        books.append(BookKnowledge(
+                            book_id=book_id,
+                            title=title[:200],
+                            author=authors[:200],
+                            publisher=publisher[:100],
+                            year=year,
+                            isbn=isbn,
+                            topics=categories[:5],
+                            description=desc,
+                            source_url=info_link,
+                            source_type="free_ebook",
+                            skill_level="intermediate",
+                            relevance_score=0.5,
+                            ingested_at=now,
+                            last_updated=now,
+                        ))
+
+            except Exception as exc:
+                print(f"    [WARN] Google Books query '{query}' failed: {exc}")
+                continue
+
+        return books
+
     def scan_free_resources(self) -> list[BookKnowledge]:
         """
         Discover free programming resources from the web.
 
-        Currently returns curated list. Future: crawl O'Reilly, Manning,
-        GitHub, and other platforms for free resources.
+        Returns the currently indexed books (including curated + crawled).
         """
         return list(self._books.values())
 
@@ -664,7 +883,7 @@ class BookKnowledgeBase:
             json.dumps(chunks, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
-        print(f"\n📚 Saved {len(chunks)} book knowledge chunks to {BOOK_CHUNKS_FILE}")
+        print(f"\n[BOOKS] Saved {len(chunks)} book knowledge chunks to {BOOK_CHUNKS_FILE}")
         return BOOK_CHUNKS_FILE
 
     def search(self, query: str, max_results: int = 10) -> list[BookKnowledge]:

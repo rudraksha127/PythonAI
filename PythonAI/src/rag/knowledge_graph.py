@@ -318,15 +318,15 @@ class KnowledgeGraph:
         print(f"\n[KG] Building knowledge graph from {len(valid):,} chunks...")
 
         # Phase 1: Create nodes
-        print("[KG] Phase 1/3 — Creating nodes...")
+        print("[KG] Phase 1/3 - Creating nodes...")
         for chunk in tqdm(valid, desc="Nodes"):
             node = chunk_to_node(chunk)
             self._add_node(node)
 
-        print(f"[KG]   → {self.graph.number_of_nodes():,} nodes created")
+        print(f"[KG]   -> {self.graph.number_of_nodes():,} nodes created")
 
         # Phase 2: Extract explicit edges from text
-        print("[KG] Phase 2/3 — Extracting edges from text...")
+        print("[KG] Phase 2/3 - Extracting edges from text...")
         explicit_edges = 0
         for chunk in tqdm(valid, desc="Edges"):
             source_id = _make_node_id(chunk)
@@ -347,12 +347,12 @@ class KnowledgeGraph:
                         )
                         explicit_edges += 1
 
-        print(f"[KG]   → {explicit_edges:,} explicit edges")
+        print(f"[KG]   -> {explicit_edges:,} explicit edges")
 
         # Phase 3: Auto-link by concept group similarity
-        print("[KG] Phase 3/3 — Auto-linking by concept groups...")
+        print("[KG] Phase 3/3 - Auto-linking by concept groups...")
         auto_edges = self._auto_link_concept_groups()
-        print(f"[KG]   → {auto_edges:,} auto-linked edges")
+        print(f"[KG]   -> {auto_edges:,} auto-linked edges")
 
         total_edges = self.graph.number_of_edges()
         print(f"\n[KG] COMPLETE: {self.graph.number_of_nodes():,} nodes, {total_edges:,} edges")
@@ -580,8 +580,7 @@ class KnowledgeGraph:
             results.append(
                 {
                     "node_id": predecessor,
-                    "title": node_data.get("title", ""),
-                    "edge_type": f"←{edge_data.get('type', '?')}",
+                    "title": node_data.get("title", ""),                            "edge_type": f"<-{edge_data.get('type', '?')}",
                     "weight": edge_data.get("weight", 0),
                 }
             )
@@ -689,7 +688,7 @@ class KnowledgeGraph:
         """Print formatted graph statistics."""
         s = self.stats()
         print(f"\n{'=' * 55}")
-        print("  OMNISCIENT Knowledge Graph — Statistics")
+        print("  OMNISCIENT Knowledge Graph - Statistics")
         print(f"{'=' * 55}")
         print(f"  Nodes    : {s['nodes']:,}")
         print(f"  Edges    : {s['edges']:,}")

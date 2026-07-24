@@ -16,11 +16,26 @@ Usage:
 from __future__ import annotations
 
 import json
+import os
+import ssl
+import time
+import urllib.error
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import certifi
 from src.data.metadata import DataDomain, DatasetRecord, MetadataManager
+
+# SSL context using certifi CA bundle — fixes SSL errors on Windows
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+
+# GitHub API token — set GITHUB_TOKEN env var for 5,000 req/hr instead of 60
+_GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+
+# Rate limiting constants
+_GITHUB_RATE_LIMIT_WARNED = False
+_RATE_LIMIT_DELAY = 2.0  # seconds between API calls to avoid rate limits
 
 DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / ".github_cache.json"
 
@@ -108,15 +123,23 @@ class GitHubTrending:
         api_base: GitHub API base URL.
     """
 
+    # Cache for rate-limited responses (class-level, shared across instances)
+    _request_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+    _last_request_time: float = 0.0
+    _rate_limited_until: float = 0.0
+
     def __init__(
         self,
         metadata_mgr: MetadataManager | None = None,
         cache_path: str | Path | None = None,
+        github_token: str | None = None,
     ) -> None:
         self.metadata_mgr = metadata_mgr or MetadataManager()
         self.cache_path = Path(cache_path) if cache_path else DEFAULT_CACHE_PATH
         self.api_base = "https://api.github.com"
+        self._token = github_token or _GITHUB_TOKEN
         self._seen: set[str] = set()
+        self._rate_limit_delay = _RATE_LIMIT_DELAY if not self._token else 0.5  # Faster with token
         self._load_cache()
 
     def _load_cache(self) -> None:
@@ -134,18 +157,94 @@ class GitHubTrending:
             encoding="utf-8",
         )
 
+    def _respect_rate_limit(self) -> None:
+        """Respect rate limits by waiting between requests."""
+        global _GITHUB_RATE_LIMIT_WARNED
+
+        # Check if we're in a rate limit cooldown period
+        if GitHubTrending._rate_limited_until > time.time():
+            wait = GitHubTrending._rate_limited_until - time.time()
+            print(f"  [GitHubTrending] Rate limited — waiting {wait:.0f}s...")
+            time.sleep(wait)
+            return
+
+        # Enforce minimum delay between requests
+        elapsed = time.time() - GitHubTrending._last_request_time
+        if elapsed < self._rate_limit_delay:
+            time.sleep(self._rate_limit_delay - elapsed)
+
+        # Warn about missing token
+        if not _GITHUB_TOKEN and not _GITHUB_RATE_LIMIT_WARNED:
+            print("  [GitHubTrending] No GITHUB_TOKEN set — limited to 60 req/hr. Set GITHUB_TOKEN for 5,000 req/hr.")
+            _GITHUB_RATE_LIMIT_WARNED = True
+
+    def _handle_rate_limit_response(self, exc: Exception) -> bool:
+        """Handle rate limit response. Returns True if we should retry."""
+        if isinstance(exc, urllib.error.HTTPError):
+            if exc.code in (403, 429):
+                retry_after = 60
+                try:
+                    retry_after = int(exc.headers.get("Retry-After", "60"))
+                except (ValueError, AttributeError):
+                    pass
+                retry_after = max(retry_after, 30)
+                GitHubTrending._rate_limited_until = time.time() + retry_after
+                print(f"  [GitHubTrending] Rate limited (HTTP {exc.code}) — cooling down for {retry_after}s")
+                return True
+        return False
+
+    def _api_request(self, url: str) -> dict[str, Any] | None:
+        """Make an API request with rate limit handling and caching.
+
+        Uses a response cache to avoid repeat requests for the same URL
+        within a 5-minute window.
+        """
+        import urllib.parse
+        import urllib.request
+
+        # Check response cache (5 min TTL)
+        cache_key = url
+        if cache_key in GitHubTrending._request_cache:
+            cached_time, cached_data = GitHubTrending._request_cache[cache_key]
+            if time.time() - cached_time < 300:  # 5 min cache
+                return cached_data
+
+        self._respect_rate_limit()
+
+        try:
+            req = urllib.request.Request(url, headers=self._build_headers())
+            with urllib.request.urlopen(req, timeout=10, context=_SSL_CONTEXT) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                GitHubTrending._last_request_time = time.time()
+                GitHubTrending._request_cache[cache_key] = (time.time(), data)
+                return data
+        except urllib.error.HTTPError as exc:
+            if self._handle_rate_limit_response(exc):
+                return None
+            print(f"  [GitHubTrending] HTTP {exc.code} for {url[:80]}")
+            return None
+        except Exception as exc:
+            print(f"  [GitHubTrending] Request failed: {exc}")
+            return None
+
     def scan(
         self,
         max_results: int = 30,
         min_stars: int = 50,
         topics: list[str] | None = None,
+        force_refresh: bool = False,
     ) -> list[GitHubRepo]:
         """Scan GitHub for trending repos relevant to AI training.
+
+        Uses cached responses to minimize API calls. When rate-limited,
+        returns whatever has been collected so far instead of crashing.
 
         Args:
             max_results: Maximum repos to return.
             min_stars: Minimum stars threshold.
             topics: Topics to search for (defaults to DATASET_TOPICS).
+            force_refresh: If True, ignore the seen-ids cache and return
+                           all matching repos. Useful for scheduled scans.
 
         Returns:
             List of newly discovered GitHubRepo objects.
@@ -153,29 +252,52 @@ class GitHubTrending:
         discovered: list[GitHubRepo] = []
         search_topics = topics or DATASET_TOPICS
 
+        seen: set[str] = set() if force_refresh else self._seen
+
         # Search by multiple topic combinations
-        for topic in search_topics[:5]:  # Limit to top 5 topics
+        for topic in search_topics[:3]:  # Reduced from 5 to 3 to save API calls
             if len(discovered) >= max_results:
+                break
+            if self._is_rate_limited():
+                print("  [GitHubTrending] Skipping remaining topics — rate limited")
                 break
             repos = self._search_by_topic(topic, min_stars, max_results)
             for repo in repos:
                 key = repo.full_name
-                if key not in self._seen:
+                if key not in seen:
                     discovered.append(repo)
-                    self._seen.add(key)
+                    seen.add(key)
 
-        # Also fetch GitHub trending page
-        if len(discovered) < max_results:
+        # Also fetch GitHub trending page (only if not rate limited)
+        if len(discovered) < max_results and not self._is_rate_limited():
             trending = self._fetch_trending(max_results - len(discovered))
             for repo in trending:
                 key = repo.full_name
-                if key not in self._seen:
+                if key not in seen:
                     discovered.append(repo)
-                    self._seen.add(key)
+                    seen.add(key)
+
+        if force_refresh:
+            for repo in discovered:
+                self._seen.add(repo.full_name)
 
         discovered.sort(key=lambda r: r.relevance_score, reverse=True)
         self._save_cache()
         return discovered[:max_results]
+
+    def _is_rate_limited(self) -> bool:
+        """Check if we're currently in a rate limit cooldown."""
+        return GitHubTrending._rate_limited_until > time.time()
+
+    def _build_headers(self) -> dict[str, str]:
+        """Build headers with optional GITHUB_TOKEN auth."""
+        headers: dict[str, str] = {
+            "User-Agent": "PythonAI/2.0 (data-discovery)",
+            "Accept": "application/vnd.github.v3+json",
+        }
+        if self._token:
+            headers["Authorization"] = f"Bearer {self._token}"
+        return headers
 
     def _search_by_topic(
         self,
@@ -183,68 +305,46 @@ class GitHubTrending:
         min_stars: int,
         max_results: int,
     ) -> list[GitHubRepo]:
-        """Search GitHub repos by topic using the search API."""
-        try:
-            import urllib.parse
-            import urllib.request
+        """Search GitHub repos by topic using the search API.
 
-            query = urllib.parse.quote(f"topic:{topic} stars:>={min_stars}")
-            url = f"{self.api_base}/search/repositories?q={query}&sort=stars&order=desc&per_page={min(30, max_results)}"
+        Uses class-level caching to avoid repeat API calls for the same topic
+        within a 5-minute window."
+        """
+        import urllib.parse
 
-            req = urllib.request.Request(
-                url,
-                headers={
-                    "User-Agent": "PythonAI/2.0 (data-discovery)",
-                    "Accept": "application/vnd.github.v3+json",
-                },
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
+        query = urllib.parse.quote(f"topic:{topic} stars:>={min_stars}")
+        url = f"{self.api_base}/search/repositories?q={query}&sort=stars&order=desc&per_page={min(30, max_results)}"
 
-            repos: list[GitHubRepo] = []
-            for item in data.get("items", [])[:max_results]:
-                repo = self._parse_repo(item)
-                repo.relevance_score = self._compute_relevance(repo, topic)
-                repos.append(repo)
-            return repos
-
-        except Exception as exc:
-            print(f"[GitHubTrending] Search by topic '{topic}' failed: {exc}")
+        data = self._api_request(url)
+        if data is None:
             return []
+
+        repos: list[GitHubRepo] = []
+        for item in data.get("items", [])[:max_results]:
+            repo = self._parse_repo(item)
+            repo.relevance_score = self._compute_relevance(repo, topic)
+            repos.append(repo)
+        return repos
 
     def _fetch_trending(self, max_results: int) -> list[GitHubRepo]:
         """Fetch trending repos from GitHub's trending page."""
-        try:
-            import urllib.request
+        url = "https://api.github.com/search/repositories?q=created:>2026-01-01+pushed:>2026-04-01&sort=stars&order=desc&per_page=25"
 
-            url = "https://api.github.com/search/repositories?q=created:>2026-01-01+pushed:>2026-04-01&sort=stars&order=desc&per_page=25"
-
-            req = urllib.request.Request(
-                url,
-                headers={
-                    "User-Agent": "PythonAI/2.0 (data-discovery)",
-                    "Accept": "application/vnd.github.v3+json",
-                },
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-
-            repos: list[GitHubRepo] = []
-            for item in data.get("items", [])[:max_results]:
-                repo = self._parse_repo(item)
-                # Check if repo has dataset-related content
-                desc = (repo.description or "").lower()
-                has_dataset_keywords = any(
-                    kw in desc for kw in ["dataset", "data", "corpus", "benchmark", "collection"]
-                )
-                if has_dataset_keywords or any(t in DATASET_TOPICS for t in repo.topics):
-                    repo.relevance_score = self._compute_relevance(repo, "trending")
-                    repos.append(repo)
-            return repos
-
-        except Exception as exc:
-            print(f"[GitHubTrending] Fetch trending failed: {exc}")
+        data = self._api_request(url)
+        if data is None:
             return []
+
+        repos: list[GitHubRepo] = []
+        for item in data.get("items", [])[:max_results]:
+            repo = self._parse_repo(item)
+            desc = (repo.description or "").lower()
+            has_dataset_keywords = any(
+                kw in desc for kw in ["dataset", "data", "corpus", "benchmark", "collection"]
+            )
+            if has_dataset_keywords or any(t in DATASET_TOPICS for t in repo.topics):
+                repo.relevance_score = self._compute_relevance(repo, "trending")
+                repos.append(repo)
+        return repos
 
     def _parse_repo(self, item: dict[str, Any]) -> GitHubRepo:
         """Parse a GitHub API repo object into GitHubRepo."""

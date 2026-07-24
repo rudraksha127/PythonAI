@@ -419,8 +419,17 @@ def _fetch_stackoverflow_context(keyword: str) -> str:
 def _fetch_github_context(keyword: str) -> str:
     """Fetch top GitHub repositories for a keyword."""
     try:
+        import os
         import urllib.parse
         import urllib.request
+
+        _gh_token = os.environ.get("GITHUB_TOKEN", "")
+        headers: dict[str, str] = {
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "ForgeAI/1.0",
+        }
+        if _gh_token:
+            headers["Authorization"] = f"Bearer {_gh_token}"
 
         params = urllib.parse.urlencode({
             "q": keyword,
@@ -430,10 +439,7 @@ def _fetch_github_context(keyword: str) -> str:
         })
         req = urllib.request.Request(
             f"https://api.github.com/search/repositories?{params}",
-            headers={
-                "Accept": "application/vnd.github+json",
-                "User-Agent": "ForgeAI/1.0",
-            },
+            headers=headers,
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode())

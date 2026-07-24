@@ -873,6 +873,12 @@ edge case handling, and practical usage examples."""
 class TestTimeScalingPipeline:
     """Orchestrates the complete PDR+RTV pipeline.
 
+    NOTE: __test__ = False prevents pytest from collecting this as a test class
+    (pytest treats classes starting with "Test" as test containers).
+    """
+    __test__ = False
+    """Orchestrates the complete PDR+RTV pipeline.
+
     Complexity routing:
       - score < 0.4: Fast path — single LLM call
       - 0.4 <= score <= 0.7: Balanced path — single LLM call with RAG
@@ -893,16 +899,10 @@ class TestTimeScalingPipeline:
         self.generator = RolloutGenerator(llm_call, self.config)
         self.tournament = RecursiveTournamentVoting(llm_call, self.config)
         self.pdr = PDRConditioning(llm_call, self.config)
-        self._stats: dict[str, Any] = {
-            "total_pipelines": 0,
-            "hard_tasks": 0,
-            "medium_tasks": 0,
-            "fast_tasks": 0,
-            "total_tokens_used": 0,
-            "total_elapsed_ms": 0.0,
-            "avg_complexity_score": 0.0,
-            "complexity_threshold": self.config.complexity_threshold,
-        }
+        self.    _stats: dict[str, Any]
+
+        # Initialize stats separately to avoid pytest collection issues
+        self._reset_stats()
 
     def set_llm_call(self, llm_call: LLMCallable) -> None:
         """Set the LLM call function for all sub-components."""
@@ -1105,8 +1105,8 @@ class TestTimeScalingPipeline:
         })
         return s
 
-    def reset_stats(self) -> None:
-        """Reset all statistics."""
+    def _reset_stats(self) -> None:
+        """Initialize or reset all statistics."""
         self._stats = {
             "total_pipelines": 0,
             "hard_tasks": 0,
@@ -1120,6 +1120,10 @@ class TestTimeScalingPipeline:
         self.generator._stats = {"total_rollouts": 0, "total_tokens": 0, "total_elapsed_ms": 0.0}
         self.tournament._stats = {"rounds": 0, "comparisons": 0, "judge_tokens": 0}
         self.pdr._stats = {"pdr_rounds": 0, "pdr_tokens": 0}
+
+    def reset_stats(self) -> None:
+        """Reset all statistics."""
+        self._reset_stats()
 
 
 # ═══════════════════════════════════════════════

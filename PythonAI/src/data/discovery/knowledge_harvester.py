@@ -586,14 +586,14 @@ class KnowledgeIntelligence:
         """
         import time as _time
 
-        print(f"\n🔄 Continuous Knowledge Harvesting started (every {interval_minutes} min)")
+        print(f"\n[CONTINUOUS] Knowledge Harvesting started (every {interval_minutes} min)")
         print("   Press Ctrl+C to stop.\n")
 
         run_count = 0
         while True:
             run_count += 1
             print(f"\n{'='*60}")
-            print(f"📡 Harvest Run #{run_count} — {datetime.now().isoformat()}")
+            print(f"[HARVEST] Run #{run_count} - {datetime.now().isoformat()}")
             print(f"{'='*60}")
 
             try:

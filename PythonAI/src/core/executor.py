@@ -29,6 +29,16 @@ from .tool import (
 )
 
 # =======================================
+#  Langfuse Tracing (graceful if not available)
+# =======================================
+try:
+    from src.utils.observability import trace_llm_call
+    _HAS_TRACING = True
+except ImportError:
+    trace_llm_call = None  # type: ignore[assignment]
+    _HAS_TRACING = False
+
+# =======================================
 #  Immutable Config Snapshot
 # =======================================
 
@@ -330,7 +340,15 @@ class ToolCallingEngine:
     # == Provider Methods =====================================
 
     def _call_llm(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> dict[str, Any]:
-        """Call LLM with model fallback support."""
+        """Call LLM with model fallback support and Langfuse tracing."""
+        # Apply Langfuse trace decorator if available
+        if _HAS_TRACING and trace_llm_call is not None:
+            traced_fn = trace_llm_call(name="executor.call_llm")(self._do_call_llm)
+            return traced_fn(messages, tools)
+        return self._do_call_llm(messages, tools)
+
+    def _do_call_llm(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> dict[str, Any]:
+        """Internal LLM call — extracted for tracing support."""
         # Use injected deps first
         if self.deps.call_llm:
             return self.deps.call_llm(messages, tools)  # type: ignore[no-any-return]

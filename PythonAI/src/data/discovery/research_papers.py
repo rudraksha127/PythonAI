@@ -20,9 +20,12 @@ Usage:
 from __future__ import annotations
 
 import json
+import os
 import re
+import ssl
 import time
 import hashlib
+import urllib.error
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
@@ -31,6 +34,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from collections import defaultdict
+
+import certifi
+
+# SSL context using certifi CA bundle — fixes SSL errors on Windows
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 # ── Paths ───────────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -212,6 +220,247 @@ class PaperKnowledge:
         }
 
 
+# ── PapersWithCode / Code Linking Client ───────────────────────
+
+
+class PapersWithCodeClient:
+    """
+    Links papers to code implementations.
+
+    Uses two strategies:
+      1. (Attempts) Fetches the paperswithcode-data GitHub archive (static JSON dumps)
+      2. Primary: Uses GitHub search API to find repos by paper title / arxiv ID
+
+    Notes:
+      - The official PapersWithCode API was discontinued in July 2025.
+      - The static archive at paperswithcode-data may be stale or 404.
+      - GitHub search is the primary method; archive is a nice-to-have supplement.
+      - Set GITHUB_TOKEN env var for 5,000 req/hr instead of 60.
+    """
+
+    # Try multiple known archive file paths
+    ARCHIVE_CANDIDATES = [
+        "https://raw.githubusercontent.com/paperswithcode/paperswithcode-data/master/data/links-between-papers-and-code.json",
+        "https://raw.githubusercontent.com/paperswithcode/paperswithcode-data/master/links-between-papers-and-code.json",
+        "https://raw.githubusercontent.com/paperswithcode/paperswithcode-data/main/data/links-between-papers-and-code.json",
+        "https://raw.githubusercontent.com/paperswithcode/paperswithcode-data/main/links-between-papers-and-code.json",
+        "https://paperswithcode.com/api/v1/papers/?items_per_page=1",  # API ping to check if REST API is alive
+    ]
+    _ARCHIVE_CACHE: dict[str, list[str]] | None = None  # Class-level cache
+    _ARCHIVE_CACHE_TIME: float = 0.0
+    _ARCHIVE_CACHE_TTL: int = 86400  # 24 hours
+
+    def __init__(self) -> None:
+        self._gh_token = os.environ.get("GITHUB_TOKEN", "")
+
+    def link_papers(self, papers: list[PaperKnowledge]) -> int:
+        """
+        Find code implementations for a list of papers.
+
+        First tries the paperswithcode-data archive, then falls back
+        to GitHub search for papers still missing code links.
+
+        Args:
+            papers: List of PaperKnowledge objects to enrich.
+
+        Returns:
+            Number of papers that received new code links.
+        """
+        linked = 0
+
+        # Strategy 1: Fetch the paper-to-code mapping from the archive
+        archive_links = self._fetch_archive_links()
+        if archive_links:
+            for paper in papers:
+                # Try matching by arXiv ID first, then by title
+                matched: list[str] = []
+                for key in [paper.arxiv_id, paper.doi, paper.title.lower().strip()]:
+                    if not key:
+                        continue
+                    if key in archive_links:
+                        matched = archive_links[key]
+                        break
+                    # Also try partial title match
+                    for archive_key, repos in archive_links.items():
+                        if len(key) > 20 and (key in archive_key or archive_key in key):
+                            matched = repos
+                            break
+                    if matched:
+                        break
+
+                if matched:
+                    new_repos = [r for r in matched if r not in paper.code_repositories]
+                    if new_repos:
+                        paper.code_repositories.extend(new_repos)
+                        paper.paperswithcode_url = matched[0]
+                        linked += 1
+
+        # Strategy 2: GitHub search for papers still missing code links
+        missing = [p for p in papers if not p.code_repositories]
+        if missing:
+            gh_linked = self._search_github(missing)
+            linked += gh_linked
+
+        return linked
+
+    def _fetch_archive_links(self) -> dict[str, list[str]]:
+        """
+        Fetch paper-to-code mappings from the paperswithcode-data archive.
+
+        Tries multiple known archive paths (the repo has changed structure
+        over time) and caches results class-wide to avoid retrying failed
+        URLs on every scan.
+        """
+        # Check class-level cache first
+        if PapersWithCodeClient._ARCHIVE_CACHE is not None:
+            cache_age = time.time() - PapersWithCodeClient._ARCHIVE_CACHE_TIME
+            if cache_age < PapersWithCodeClient._ARCHIVE_CACHE_TTL:
+                return PapersWithCodeClient._ARCHIVE_CACHE
+
+        links: dict[str, list[str]] = {}
+
+        for url in self.ARCHIVE_CANDIDATES:
+            try:
+                req = urllib.request.Request(
+                    url,
+                    headers={"User-Agent": "PythonAI/2.0"},
+                )
+                with urllib.request.urlopen(req, timeout=10, context=_SSL_CONTEXT) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+
+                # Archive files: list of {arxiv_id, repo_url, title, ...}
+                if isinstance(data, list):
+                    for entry in data:
+                        arxiv_id = (entry.get("arxiv_id", "") or "").strip()
+                        repo_url = (entry.get("repo_url", "") or entry.get("code_url", "") or "").strip()
+                        title = (entry.get("title", "") or "").strip().lower()
+                        if arxiv_id and repo_url:
+                            links.setdefault(arxiv_id, []).append(repo_url)
+                        if title and repo_url:
+                            links.setdefault(title, []).append(repo_url)
+
+                    print(f"  [PwC] Loaded {len(data)} entries from archive")
+                    break  # Success — stop trying more URLs
+
+                # API response: {count, next, previous, results}
+                elif isinstance(data, dict) and "count" in data:
+                    print(f"  [PwC] REST API responded (not archive) — not used")
+                    continue
+
+            except urllib.error.HTTPError as exc:
+                if exc.code in (404, 410):
+                    continue  # Try next candidate silently
+                elif exc.code == 403:
+                    print(f"  [PwC] Rate limited (403) on {url[:70]}...")
+                    continue
+                else:
+                    print(f"  [PwC] HTTP {exc.code} on {url[:70]}...")
+                    continue
+            except (OSError, ValueError, json.JSONDecodeError) as exc:
+                continue  # Try next candidate
+            except Exception as exc:
+                continue  # Try next candidate
+
+        # Cache the result (even empty, to avoid retrying every scan)
+        PapersWithCodeClient._ARCHIVE_CACHE = links
+        PapersWithCodeClient._ARCHIVE_CACHE_TIME = time.time()
+
+        if links:
+            print(f"  [PwC] {len(links)} unique paper-code mappings loaded from archive")
+        else:
+            print(f"  [PwC] No archive available — using GitHub search as primary method")
+
+        return links
+
+    def _search_github(self, papers: list[PaperKnowledge]) -> int:
+        """
+        Search GitHub for code repositories related to papers.
+
+        Uses the GitHub search API to find repos whose name or
+        description matches the paper title or arxiv ID.
+
+        Tracks papers with no results to avoid re-querying.
+        """
+        linked = 0
+        rate_limit_warned = False
+
+        for paper in papers:
+            # Skip papers already searched with zero results
+            if getattr(paper, '_gh_searched_empty', False):
+                continue
+
+            # Build search queries from paper metadata
+            search_terms = []
+            if paper.arxiv_id:
+                search_terms.append(paper.arxiv_id)
+            # Use the first few meaningful words from the title
+            title_words = [w for w in paper.title.split() if len(w) > 3 and w.lower() not in {"with", "from", "that", "this", "what", "were", "been", "have", "their"}]
+            search_terms.extend(title_words[:4])
+
+            query = " ".join(search_terms[:5])
+            if not query:
+                continue
+
+            try:
+                params = urllib.parse.urlencode({
+                    "q": query,
+                    "sort": "stars",
+                    "order": "desc",
+                    "per_page": 3,
+                })
+                url = f"https://api.github.com/search/repositories?{params}"
+
+                headers: dict[str, str] = {
+                    "Accept": "application/vnd.github.v3+json",
+                    "User-Agent": "PythonAI/2.0",
+                }
+                if self._gh_token:
+                    headers["Authorization"] = f"Bearer {self._gh_token}"
+
+                req = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(req, timeout=10, context=_SSL_CONTEXT) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+
+                repos = data.get("items", [])
+                if not repos:
+                    # Mark as empty-searched to avoid re-querying
+                    paper._gh_searched_empty = True
+                    continue
+
+                for repo in repos[:3]:
+                    repo_url = repo.get("html_url", "")
+                    description = (repo.get("description", "") or "").lower()
+                    full_name = repo.get("full_name", "")
+
+                    # Verify relevance: repo should match paper topic
+                    if repo_url and repo_url not in paper.code_repositories:
+                        # Only add if relevant (title word overlap or arxiv ID mention)
+                        title_overlap = any(
+                            w.lower() in (description + " " + full_name).lower()
+                            for w in title_words[:3]
+                        )
+                        if title_overlap or any(t in (description + " " + full_name).lower() for t in search_terms[:2]):
+                            paper.code_repositories.append(repo_url)
+                            if not paper.paperswithcode_url:
+                                paper.paperswithcode_url = repo_url
+                            linked += 1
+
+            except urllib.error.HTTPError as exc:
+                if exc.code in (403, 429) and not rate_limit_warned:
+                    print(f"  [PwC] GitHub API rate limit hit (HTTP {exc.code}) — stopping GitHub search")
+                    print(f"  [PwC] Set GITHUB_TOKEN env var for 5,000 req/hr")
+                    rate_limit_warned = True
+                    break  # Stop making more requests
+                continue
+            except Exception:
+                continue
+
+            # Be gentle with GitHub API rate limits
+            time.sleep(0.3)
+
+        return linked
+
+
 # ── API Wrappers ────────────────────────────────────────────────────
 
 
@@ -221,9 +470,11 @@ class ArxivAPIClient:
     BASE_URL = "http://export.arxiv.org/api/query"
 
     # Major AI/ML categories to monitor
+    # Expanded Oct 2026: added cs.RO (robotics), cs.MA (multi-agent), cs.GT (game theory)
     TARGET_CATEGORIES = [
         "cs.AI", "cs.LG", "cs.CL", "cs.CV", "cs.SE",
         "cs.PL", "cs.NE", "cs.IR", "cs.CR",
+        "cs.RO", "cs.MA", "cs.GT",
         "stat.ML", "math.OC", "math.ST",
     ]
 
@@ -356,31 +607,55 @@ class ArxivAPIClient:
         self._save_cache()
         return papers
 
-    def _fetch_papers(self, url: str) -> list[dict[str, Any]]:
-        """Fetch and parse papers from arXiv API."""
+    def _fetch_papers(self, url: str, max_retries: int = 3) -> list[dict[str, Any]]:
+        """Fetch and parse papers from arXiv API.
+
+        Handles rate-limiting (429) with exponential backoff retry and
+        adds a gentle 1s delay between calls to stay within arXiv API limits.
+
+        Args:
+            url: The arXiv API URL to fetch.
+            max_retries: Number of retries on 429 rate-limit errors.
+        """
         papers: list[dict[str, Any]] = []
 
-        try:
-            req = urllib.request.Request(
-                url,
-                headers={"User-Agent": "PythonAI/2.0 (research-knowledge-base)"},
-            )
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                xml_data = resp.read().decode("utf-8")
+        for attempt in range(max_retries + 1):
+            try:
+                # Respect arXiv rate limits — light pause between calls
+                time.sleep(1.0)
 
-            root = ET.fromstring(xml_data)
-            ns = {"a": "http://www.w3.org/2005/Atom"}
+                req = urllib.request.Request(
+                    url,
+                    headers={"User-Agent": "PythonAI/2.0 (research-knowledge-base)"},
+                )
+                with urllib.request.urlopen(req, timeout=30, context=_SSL_CONTEXT) as resp:
+                    xml_data = resp.read().decode("utf-8")
 
-            for entry in root.findall("a:entry", ns):
-                try:
-                    paper = self._parse_entry(entry)
-                    if paper:
-                        papers.append(paper)
-                except Exception:
-                    continue
+                root = ET.fromstring(xml_data)
+                ns = {"a": "http://www.w3.org/2005/Atom"}
 
-        except Exception as exc:
-            print(f"[ArxivAPI] Error fetching {url[:80]}: {exc}")
+                for entry in root.findall("a:entry", ns):
+                    try:
+                        paper = self._parse_entry(entry)
+                        if paper:
+                            papers.append(paper)
+                    except Exception:
+                        continue
+
+                # Success — break out of retry loop
+                break
+
+            except urllib.error.HTTPError as exc:
+                if exc.code == 429 and attempt < max_retries:
+                    backoff = 5 * (2 ** attempt)  # 5s, 10s, 20s
+                    print(f"[ArxivAPI] Rate limited (429). Retrying in {backoff}s (attempt {attempt + 1}/{max_retries})...")
+                    time.sleep(backoff)
+                else:
+                    print(f"[ArxivAPI] HTTP error fetching {url[:80]}: {exc}")
+                    break
+            except Exception as exc:
+                print(f"[ArxivAPI] Error fetching {url[:80]}: {exc}")
+                break
 
         return papers
 
@@ -490,7 +765,7 @@ class SemanticScholarClient:
                 req.add_header("x-api-key", self.api_key)
             req.add_header("User-Agent", "PythonAI/2.0")
 
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=15, context=_SSL_CONTEXT) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 
             # Parse TLDR
@@ -534,7 +809,7 @@ class SemanticScholarClient:
             req = urllib.request.Request(url)
             req.add_header("User-Agent", "PythonAI/2.0")
 
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=15, context=_SSL_CONTEXT) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 
             results: list[dict[str, Any]] = []
@@ -571,7 +846,7 @@ class SemanticScholarClient:
             req = urllib.request.Request(url)
             req.add_header("User-Agent", "PythonAI/2.0")
 
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=15, context=_SSL_CONTEXT) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 
             results: list[dict[str, Any]] = []
@@ -745,12 +1020,14 @@ class ResearchPaperKnowledgeBase:
         data_dir: str | Path | None = None,
         arxiv_client: ArxivAPIClient | None = None,
         semantic_client: SemanticScholarClient | None = None,
+        pwc_client: PapersWithCodeClient | None = None,
     ):
         self.data_dir = Path(data_dir) if data_dir else KNOWLEDGE_DIR
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
         self.arxiv = arxiv_client or ArxivAPIClient()
         self.semantic = semantic_client or SemanticScholarClient()
+        self.pwc = pwc_client or PapersWithCodeClient()
         self.extractor = PaperKnowledgeExtractor()
 
         # In-memory index
@@ -843,7 +1120,7 @@ class ResearchPaperKnowledgeBase:
             List of PaperKnowledge objects.
         """
         print(f"\n{'='*60}")
-        print(f"📚 RESEARCH PAPER KNOWLEDGE BASE")
+        print(f"[RESEARCH PAPER KNOWLEDGE BASE]")
         print(f"{'='*60}")
         print(f"Collecting papers (limit: {limit})...")
 
@@ -854,14 +1131,14 @@ class ResearchPaperKnowledgeBase:
             print("\n[1/3] Fetching recent papers from arXiv categories...")
             recent = self.arxiv.search_by_categories(max_total=limit // 2)
             raw_papers.extend(recent)
-            print(f"  → {len(recent)} recent papers found")
+            print(f"  -> {len(recent)} recent papers found")
 
         if topics:
             print(f"\n[2/3] Searching arXiv for topics: {topics[:5]}...")
             for topic in topics[:10]:
                 topic_papers = self.arxiv.search(topic, max_results=20)
                 raw_papers.extend(topic_papers)
-            print(f"  → Topic search returned {len(raw_papers)} papers total")
+            print(f"  -> Topic search returned {len(raw_papers)} papers total")
 
         # Step 2: Convert to PaperKnowledge
         print(f"\n[3/3] Processing {len(raw_papers)} papers...")
@@ -883,8 +1160,16 @@ class ResearchPaperKnowledgeBase:
                 self._papers[paper.paper_id] = paper
                 new_count += 1
 
+        # Link papers to code implementations via PapersWithCode + GitHub search
+        print("\n  Linking papers to code implementations...")
+        try:
+            linked = self.pwc.link_papers(list(self._papers.values()))
+            print(f"  -> {linked} papers linked to code repos")
+        except Exception as e:
+            print(f"  -> Code linking skipped: {e}")
+
         self._save_index()
-        print(f"\n✅ Collection complete: {new_count} new papers (total: {len(self._papers)})")
+        print(f"\n[OK] Collection complete: {new_count} new papers (total: {len(self._papers)})")
         return list(self._papers.values())
 
     def _raw_to_paper(self, raw: dict[str, Any]) -> PaperKnowledge:
@@ -1027,7 +1312,7 @@ class ResearchPaperKnowledgeBase:
             json.dumps(chunks, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
-        print(f"\n📦 Saved {len(chunks)} knowledge chunks to {KNOWLEDGE_CHUNKS_FILE}")
+        print(f"\n[SAVED] {len(chunks)} knowledge chunks to {KNOWLEDGE_CHUNKS_FILE}")
         return KNOWLEDGE_CHUNKS_FILE
 
     # ── Query & Discovery ─────────────────────────────────────
@@ -1117,11 +1402,11 @@ class ResearchPaperKnowledgeBase:
             interval_hours: How often to check for new papers.
             max_per_run: Maximum papers to collect per run.
         """
-        print(f"\n🔄 Continuous paper collection (interval: {interval_hours}h)")
+        print(f"\n[CONTINUOUS] Paper collection (interval: {interval_hours}h)")
         self.collect_papers(limit=max_per_run, include_recent=True)
         self.save_knowledge_chunks()
         stats = self.get_statistics()
-        print(f"📊 Knowledge Base: {stats['total_papers']} papers, {stats['total_findings']} findings")
+        print(f"[KB] {stats['total_papers']} papers, {stats['total_findings']} findings")
         print(f"   Top categories: {list(stats['top_categories'].keys())[:5]}")
 
 
@@ -1144,7 +1429,7 @@ def collect_research_knowledge(
 def print_paper_summary(papers: list[PaperKnowledge], top_n: int = 10) -> None:
     """Print a formatted summary of papers."""
     print(f"\n{'='*70}")
-    print(f"{'📄 TOP PAPERS':^70}")
+    print(f"{'TOP PAPERS':^70}")
     print(f"{'='*70}")
 
     for i, paper in enumerate(papers[:top_n], 1):
@@ -1157,7 +1442,7 @@ def print_paper_summary(papers: list[PaperKnowledge], top_n: int = 10) -> None:
         print(f"      {', '.join(a.name for a in paper.authors[:3])} | {citations}")
         print(f"      [{cats}] | {findings} findings, {datasets} datasets | score: {paper.relevance_score:.2f}")
         if paper.key_findings:
-            print(f"      → {paper.key_findings[0].finding[:100]}")
+            print(f"      -> {paper.key_findings[0].finding[:100]}")
     print(f"\n{'='*70}")
 
 

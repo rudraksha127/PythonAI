@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import os
 import time
 import urllib.parse
 import urllib.request
@@ -179,6 +180,13 @@ def collect_so_answers(question_ids: list[int]) -> int:
 
 def collect_github_python_repos(query: str = "python language:python", pages: int = 3) -> int:
     """Collect Python repos metadata from GitHub (no auth needed for basic search)."""
+    _gh_token = os.environ.get("GITHUB_TOKEN", "")
+    headers: dict[str, str] = {
+        "Accept": "application/vnd.github.v3+json",
+    }
+    if _gh_token:
+        headers["Authorization"] = f"Bearer {_gh_token}"
+
     output_dir = DIRS["github_data"]
     total = 0
 
@@ -193,7 +201,7 @@ def collect_github_python_repos(query: str = "python language:python", pages: in
 
         try:
             print(f"  [Page {page}/{pages}]", end="", flush=True)
-            req = urllib.request.Request(url, headers={"Accept": "application/vnd.github.v3+json"})
+            req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 
